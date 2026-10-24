@@ -210,8 +210,8 @@ export const fo4Rules: GameRules = {
     '- Слоти: ["I need ", 0, " caps."] → ["Мені потрібно ", 0, " кришок."] (індекси не чіпати).',
     '- ARMO/FULL: "Combat Armor" → "Бойова броня"; "T-51 Right Arm Armor" → "Права рука T-51" або "Броня T-51 для правої руки"; "Hellfire Mk.II Arm Armor" → "Хелфайр броня для рук Mk.II" (без "Права/Ліва", якщо їх немає в source).',
     '- MISC PA: "T-45d Arm Armor" → "Броня T-45d для руки"; "T-45d Helmet" → "Шолом T-45d"; "T-45d Torso Lining" → "Обшивка T-45d".',
-    '- DIAL: "Barter" → "Торгувати"; "Not Interested" → "Мені це не цікаво"; "Sarcastic" → "Сарказм" (фіксовані варіанти меню).',
-    '- INFO: "Paladin. Congratulations." → "Паладин. Вітаю."; "You\'ve walked into a hornet\'s nest." → "Ласкаво просимо до осиного гнізда." (ідіома, не дослівно); "How do you want to play this?" → "Як діятимемо?" (не «Як ви хочете це зіграти?»).',
+    '- DIAL: "Barter" → "Торгувати"; "Not Interested" → "Мені це не цікаво"; "Sarcastic" → "[Сарказм]" (фіксовані варіанти меню; тон — ремарка в дужках).',
+    '- INFO: "Paladin. Congratulations." → "Паладине, вітаю." (звертання — кличний відмінок); "You\'ve walked into a hornet\'s nest." → "Ласкаво просимо до осиного гнізда." (ідіома, не дослівно); "How do you want to play this?" → "Як діятимемо?" (не «Як ви хочете це зіграти?»).',
     '- BOOK: "The Commonwealth is a dangerous place." → "Співдружність — небезпечне місце." (тон оповіді).',
   ],
   verifyEn: () => [

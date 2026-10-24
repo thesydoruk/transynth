@@ -48,9 +48,11 @@ export const createCreationEngineTextAdapter = (title: CreationEngineTitle): Gam
   restoreCensoredSpeech: (text) => text,
   /**
    * No markup to restore — but a model answering in Ukrainian reaches for «»
-   * and an em dash, and the Bethesda font atlas has neither. Folding both to
-   * ASCII is unconditional here: nothing in a Creation Engine string gives a
-   * typographic dash a meaning worth keeping.
+   * and an em dash. Not every font a Creation Engine title ships can draw
+   * them: Fallout 4's main fonts have both, but its handwritten Institute font
+   * has no em dash, and the other titles' fonts were never checked. Folding
+   * both to ASCII is the one rule that is safe everywhere; nothing in a
+   * Creation Engine string gives a typographic dash a meaning worth keeping.
    */
   restoreMarkupShape: (_source, translation) =>
     normalizeAutoTranslationDashes(normalizeAutoTranslationQuotes(translation)),
