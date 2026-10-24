@@ -14,6 +14,8 @@
     "db:seed:glossary": "tsx scripts/seedGlossary.ts",
     "qa:refresh": "tsx scripts/refreshQaIssues.ts",
     "translations:apply": "tsx scripts/applyTranslationFixes.ts",
+    "review:batches": "tsx scripts/reviewBatches.ts",
+    "review:validate": "tsx scripts/reviewValidate.ts",
     "eval:quality": "tsx scripts/evalTranslationQuality.ts",
     "dialog:refresh": "tsx scripts/refreshDialogSpeakers.ts",
     "rag:reindex": "tsx scripts/reindexRag.ts",
