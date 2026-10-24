@@ -1,47 +1,12 @@
 import { describe, expect, it } from '@jest/globals';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import {
   buildVoiceOriginResolver,
-  isOriginVoiceKey,
   normalizeVoiceOrigin,
   originFormidKey,
   originFromVoiceRelPath,
-  readVoiceOriginMasters,
   speakerFromVoiceRelPath,
   splitOriginFormidKey,
 } from '../voiceOrigin';
-
-const subrecord = (sig: string, text: string): Buffer => {
-  const data = Buffer.from(`${text}\0`, 'utf8');
-  const header = Buffer.alloc(6);
-  header.write(sig, 0, 'ascii');
-  header.writeUInt16LE(data.length, 4);
-  return Buffer.concat([header, data]);
-};
-
-const writePlugin = (dir: string, name: string, masters: string[]): string => {
-  const data = Buffer.concat([
-    subrecord('CNAM', 'Author'),
-    ...masters.map((m) => subrecord('MAST', m)),
-  ]);
-  const header = Buffer.alloc(24);
-  header.write('TES4', 0, 'ascii');
-  header.writeUInt32LE(data.length, 4);
-  const file = path.join(dir, name);
-  fs.writeFileSync(file, Buffer.concat([header, data, Buffer.alloc(32)]));
-  return file;
-};
-
-const withTempDir = (fn: (dir: string) => void): void => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'voice-origin-'));
-  try {
-    fn(dir);
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
-};
 
 describe('normalizeVoiceOrigin', () => {
   it('trims and lower-cases; missing becomes empty', () => {
@@ -135,39 +100,5 @@ describe('originFormidKey / splitOriginFormidKey', () => {
 
   it('splits a bare key without an origin', () => {
     expect(splitOriginFormidKey('016D03')).toEqual({ origin: null, lineKey: '016D03' });
-  });
-});
-
-describe('isOriginVoiceKey', () => {
-  it('accepts origin-qualified take keys only', () => {
-    expect(isOriginVoiceKey('fallout4.esm/123456:1')).toBe(true);
-    expect(isOriginVoiceKey('123456:1')).toBe(false);
-    expect(isOriginVoiceKey('fallout4.esm/123456')).toBe(false);
-  });
-});
-
-describe('readVoiceOriginMasters', () => {
-  it('reads the MAST list from a TES4 header', () => {
-    withTempDir((dir) => {
-      const file = writePlugin(dir, 'Patch.esp', ['Fallout4.esm', 'DLCCoast.esm']);
-      expect(readVoiceOriginMasters(file)).toEqual(['Fallout4.esm', 'DLCCoast.esm']);
-    });
-  });
-
-  it('returns [] for a plugin without masters', () => {
-    withTempDir((dir) => {
-      expect(readVoiceOriginMasters(writePlugin(dir, 'Solo.esp', []))).toEqual([]);
-    });
-  });
-
-  it('returns [] for a missing path and for a non-TES4 file', () => {
-    expect(
-      readVoiceOriginMasters(path.join(os.tmpdir(), 'does-not-exist-voice-origin.esp')),
-    ).toEqual([]);
-    withTempDir((dir) => {
-      const file = path.join(dir, 'junk.esp');
-      fs.writeFileSync(file, Buffer.alloc(64, 1));
-      expect(readVoiceOriginMasters(file)).toEqual([]);
-    });
   });
 });

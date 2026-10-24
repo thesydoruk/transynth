@@ -65,7 +65,8 @@ const ttsVersionForLine = (line: ReuseVoiceLineKey, tgtLang: string): string => 
   const prepared = prepareVoiceTtsText({
     lineSource: line.sourceText,
     translation: line.translation,
-    speakerSource: line.sourceText,
+    // Same speaker text as synthesis, or a reused master-backed take would look stale.
+    speakerSource: line.speakerSource ?? line.sourceText,
   });
   if (prepared.action === 'synthesize') {
     return voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
@@ -129,6 +130,7 @@ const loadVoiceReuseSnapshot = async (
     variant: take.entry.variant,
     sourceText: take.source,
     translation: take.translation,
+    ...(take.speakerSource ? { speakerSource: take.speakerSource } : {}),
     sourceAbsPath: take.entry.absolutePath,
     sourceRelPath: take.entry.relPath,
     destRelPath: take.destRelPath,

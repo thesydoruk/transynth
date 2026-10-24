@@ -70,7 +70,7 @@ export const creationEngineVoiceAdapter: GameVoiceAdapter = {
     const wanted = speakerKey?.trim() || '';
 
     const takes: VoiceTake[] = [];
-    for (const { entry, row } of work.items) {
+    for (const { entry, row, referenceSource } of work.items) {
       const speaker = voiceSpeakerKey(entry, work.voiceRootRel);
       if (wanted && speaker !== wanted) continue;
       takes.push({
@@ -79,6 +79,7 @@ export const creationEngineVoiceAdapter: GameVoiceAdapter = {
         destRelPath: outputLocalizedFuzRelPath(entry),
         source: row.source,
         translation: row.translation,
+        ...(referenceSource ? { speakerSource: referenceSource } : {}),
       });
     }
     return takes;

@@ -70,6 +70,34 @@ describe('discoverVoiceFiles', () => {
     }
   });
 
+  it("walks only the plugin's own folder and its masters' when the plugin can be read", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'discover-voice-'));
+    try {
+      // A TES4 header naming Fallout4.esm as the only master.
+      const mast = Buffer.from('Fallout4.esm\0', 'utf8');
+      const sub = Buffer.alloc(6);
+      sub.write('MAST', 0, 'ascii');
+      sub.writeUInt16LE(mast.length, 4);
+      const record = Buffer.alloc(24);
+      record.write('TES4', 0, 'ascii');
+      record.writeUInt32LE(sub.length + mast.length, 4);
+      fs.mkdirSync(path.join(root, 'Data'), { recursive: true });
+      fs.writeFileSync(path.join(root, 'Data', 'Patch.esp'), Buffer.concat([record, sub, mast]));
+
+      const voice = path.join(root, 'Data', 'Sound', 'Voice');
+      for (const folder of ['Patch.esp', 'Fallout4.esm', 'DLCCoast.esm']) {
+        fs.mkdirSync(path.join(voice, folder, 'MaleRough'), { recursive: true });
+        fs.writeFileSync(path.join(voice, folder, 'MaleRough', '00016D03_1.fuz'), 'x');
+      }
+
+      const found = discoverVoiceFiles(root, 'Data/Patch.esp');
+
+      expect(found.map((e) => e.originPlugin)).toEqual(['fallout4.esm', 'patch.esp']);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('returns nothing when there is no voice tree', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'discover-voice-'));
     try {

@@ -6,6 +6,8 @@ export type ReuseVoiceLineKey = {
   originPlugin: string;
   sourceText: string;
   translation: string;
+  /** Transcript of the reference clip when it is not `sourceText` (see `VoiceTake`). */
+  speakerSource?: string;
 };
 
 export type ReuseVoiceDestLine = ReuseVoiceLineKey & {

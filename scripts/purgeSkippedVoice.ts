@@ -137,9 +137,10 @@ try {
       const variant = Number.parseInt(key.slice(colon + 1), 10);
       if (slash < 0 || !lineKey || !Number.isFinite(variant)) continue;
       const { rowCount } = await db.query(
+        // A take stamped before origins existed carries ''; its stamp goes with the file.
         `DELETE FROM voice_synthesis_state
          WHERE mod_id = $1 AND target_lang = $2
-           AND line_key = $3 AND variant = $4 AND origin_plugin = $5`,
+           AND line_key = $3 AND variant = $4 AND origin_plugin IN ($5, '')`,
         [mod.id, lang, lineKey.toUpperCase(), variant, origin],
       );
       dbRowsRemoved += rowCount ?? 0;

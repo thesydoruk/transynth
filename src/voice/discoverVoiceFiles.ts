@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { readPluginMasterNames } from '../formats/esp';
 import { normalizeVoiceOrigin } from './voiceOrigin';
 
 export type VoiceFileEntry = {
@@ -37,17 +38,36 @@ const resolveVoiceTreeRel = (pluginRelPath: string): string =>
   normalizeRelPath(path.dirname(resolveVoiceRootRel(pluginRelPath)));
 
 /**
+ * Origin folders the plugin's takes may sit in: its own and its TES4 masters'.
+ * Null when the plugin file cannot be read, and then every folder is walked.
+ */
+const allowedVoiceOrigins = (packageDir: string, pluginRelPath: string): Set<string> | null => {
+  const pluginPath = path.join(packageDir, ...normalizeRelPath(pluginRelPath).split('/'));
+  if (!fs.existsSync(pluginPath)) return null;
+  let masters: string[];
+  try {
+    masters = readPluginMasterNames(pluginPath);
+  } catch {
+    return null;
+  }
+  return new Set([path.basename(pluginRelPath), ...masters].map(normalizeVoiceOrigin));
+};
+
+/**
  * Scan `<plugin-dir>/Sound/Voice/<origin>/` for voiced dialogue files.
  *
- * Every origin folder is walked, not only the plugin's own: a patch keeps its
+ * The plugin's own folder is walked and so are its masters': a patch keeps its
  * fixed takes under the master it overrides (`Sound/Voice/Fallout4.esm/…`),
- * and the game looks them up there. Folder names are matched by what they are,
+ * and the game looks them up there. Folders of plugins that are neither — the
+ * DLC folders beside `Fallout4.esm` in a game's Data directory, a sibling
+ * add-on — belong to someone else. Folder names are matched by what they are,
  * so a folder whose case differs from the plugin file name is found too.
  */
 export const discoverVoiceFiles = (packageDir: string, pluginRelPath: string): VoiceFileEntry[] => {
   const treeRel = resolveVoiceTreeRel(pluginRelPath);
   const treeRoot = path.join(packageDir, ...treeRel.split('/'));
   if (!fs.existsSync(treeRoot)) return [];
+  const allowed = allowedVoiceOrigins(packageDir, pluginRelPath);
 
   const entries: VoiceFileEntry[] = [];
   const walk = (currentDir: string, relDir: string, origin: string): void => {
@@ -74,6 +94,7 @@ export const discoverVoiceFiles = (packageDir: string, pluginRelPath: string): V
 
   for (const originDir of fs.readdirSync(treeRoot, { withFileTypes: true })) {
     if (!originDir.isDirectory()) continue;
+    if (allowed && !allowed.has(normalizeVoiceOrigin(originDir.name))) continue;
     walk(
       path.join(treeRoot, originDir.name),
       `${treeRel}/${originDir.name}`,

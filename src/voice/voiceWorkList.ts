@@ -24,6 +24,7 @@ import {
 } from './discoverVoiceFiles';
 import {
   findImportedMasterMods,
+  findMasterByOrigin,
   loadInheritedVoiceLookup,
   lookupInheritedVoiceLine,
   masterOrigin,
@@ -115,6 +116,38 @@ const notCurrent =
     candidate.variant !== current.variant ||
     candidate.originPlugin !== current.originPlugin;
 
+/**
+ * A master's take as the dubbing mod sees it: the same file to clone from, at
+ * the path it has in the mod's own voice tree, so the dub lands in the mod's
+ * localize tree (`Data/Sound/Voice/…` when the mod keeps a `Data/` folder).
+ */
+const asDubbingEntry = (
+  take: VoiceFileEntry,
+  ctx: MasterVoiceContext,
+  voiceRootRel: string,
+): VoiceFileEntry => {
+  const masterTree = path.posix.dirname(ctx.voiceRootRel);
+  const below = path.posix.relative(masterTree, take.relPath.replace(/\\/g, '/'));
+  return { ...take, relPath: path.posix.join(path.posix.dirname(voiceRootRel), below) };
+};
+
+/**
+ * The origin master's own text for a line: the transcript of the take it lends.
+ * A DLC that overrides the same line must not answer here — its words are not
+ * what the borrowed audio says.
+ */
+const lookupOriginMasterLine = (
+  inherited: InheritedVoiceLookup,
+  lineKey: string,
+  variant: number,
+  origin: string,
+) => {
+  const master = findMasterByOrigin(inherited.masters, origin);
+  return master
+    ? lookupInheritedVoiceLine({ ...inherited, masters: [master] }, lineKey, variant, origin)
+    : null;
+};
+
 export type MasterBackedTake = {
   entry: VoiceFileEntry;
   context: MasterVoiceContext;
@@ -143,22 +176,24 @@ export const findMasterBackedTake = async (
   const origin = normalizeVoiceOrigin(input.originPlugin);
   if (!origin) return null;
   const masters = await findImportedMasterMods(db, input.pluginPath, input.modId);
-  const master = masters.find((candidate) => masterOrigin(candidate) === origin);
+  const master = findMasterByOrigin(masters, origin);
   if (!master) return null;
   const context = loadMasterVoiceContext(master);
   if (!context) return null;
 
   const takes = context.byLine.get(voiceTranslationMapKey(input.lineKey, input.variant, origin));
   const wantSpeaker = input.speakerKey?.trim();
-  const entry = takes?.find(
-    (take) => !wantSpeaker || voiceSpeakerKey(take, context.voiceRootRel) === wantSpeaker,
+  const take = takes?.find(
+    (candidate) => !wantSpeaker || voiceSpeakerKey(candidate, context.voiceRootRel) === wantSpeaker,
   );
-  if (!entry) return null;
+  if (!take) return null;
+  const packageDir = resolveModDirectoryFromPath(input.pluginPath);
+  const voiceRootRel = resolveVoiceRootRel(pluginRelPath(packageDir, input.pluginPath));
 
   const inherited = await loadInheritedVoiceLookup(db, [master], input.srcLang, input.tgtLang);
   const line = lookupInheritedVoiceLine(inherited, input.lineKey, input.variant, origin);
   return {
-    entry,
+    entry: asDubbingEntry(take, context, voiceRootRel),
     context,
     referenceSource: line?.source ?? null,
     masterTranslation: line?.translation ?? null,
@@ -276,18 +311,24 @@ export const loadVoiceWorkList = async (
       }
       continue;
     }
+    // "Same as master" asks what the player would see without this mod: the most
+    // specific master's translation. The transcript is the origin master's own line.
     const master = inheritedLine(lineKey, variant, origin);
     if (master && sameVoiceText(row.translation, master.translation)) {
       sameAsMaster += masterTakes.length;
       continue;
     }
+    const reference = inherited
+      ? lookupOriginMasterLine(inherited, lineKey, variant, origin)
+      : null;
     for (const take of masterTakes) {
-      masterOf.set(take, ctx);
+      const entry = asDubbingEntry(take, ctx, voiceRootRel);
+      masterOf.set(entry, ctx);
       items.push({
-        entry: take,
+        entry,
         row,
         masterBacked: ctx,
-        referenceSource: master?.source ?? null,
+        referenceSource: reference?.source ?? null,
       });
     }
   }
@@ -303,12 +344,21 @@ export const loadVoiceWorkList = async (
     );
   }
 
+  // A speaker's clips across the mod and every lent master: a reference picked in the
+  // editor may be a master's take, and every take of that voice must be able to find it.
   let ownBySpeaker: Map<string, VoiceFileEntry[]> | undefined;
+  const allBySpeaker = new Map<string, VoiceFileEntry[]>();
   const siblingsOf = (speakerKey: string, entry: VoiceFileEntry): VoiceFileEntry[] => {
-    const ctx = masterOf.get(entry);
-    if (ctx) return (ctx.bySpeaker.get(speakerKey) ?? []).filter(notCurrent(entry));
-    if (!ownBySpeaker) ownBySpeaker = groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel);
-    return (ownBySpeaker.get(speakerKey) ?? []).filter(notCurrent(entry));
+    let pool = allBySpeaker.get(speakerKey);
+    if (!pool) {
+      ownBySpeaker ??= groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel);
+      pool = [
+        ...(ownBySpeaker.get(speakerKey) ?? []),
+        ...[...contexts.values()].flatMap((ctx) => ctx.bySpeaker.get(speakerKey) ?? []),
+      ];
+      allBySpeaker.set(speakerKey, pool);
+    }
+    return pool.filter(notCurrent(entry));
   };
 
   return {

@@ -74,6 +74,12 @@ export type VoiceTake = {
   destRelPath: string;
   source: string;
   translation: string;
+  /**
+   * Transcript of the reference clip when it is not `source` — a patch dubbing
+   * a line against its master's take. Version stamps are built on it, so every
+   * path that stamps a take must use it.
+   */
+  speakerSource?: string;
 };
 
 /** Inputs shared by the single-line synthesis entry points. */

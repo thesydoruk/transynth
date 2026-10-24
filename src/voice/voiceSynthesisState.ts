@@ -251,7 +251,10 @@ export const upsertVoiceSynthesisState = async (
   );
   // The take now has its own stamp; a row this speaker's take had before origins existed
   // would linger beside it and be counted twice (low-similarity count, revisions). The
-  // shared no-speaker row stays: Nate and Nora may both still fall back to it.
+  // shared no-speaker row stays: Nate and Nora may both still fall back to it. Which
+  // origin a legacy row belonged to is not recorded: if two origins of one mod share
+  // speaker, lower-6 and response, the other take loses its fallback and is synthesized
+  // once more — a redundant take, never a wrong one.
   if (normalizeVoiceOrigin(row.originPlugin) && normalizeVoiceSpeakerKey(row.speakerKey)) {
     await db.query(
       `DELETE FROM voice_synthesis_state

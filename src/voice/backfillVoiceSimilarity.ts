@@ -167,7 +167,7 @@ export const backfillVoiceSimilarity = async (
         speakerKey: take.speakerKey || null,
         entry: take.entry,
         lineEnglishWav,
-        lineSource: take.source,
+        lineSource: take.speakerSource ?? take.source,
         referenceMode,
         voiceSources: catalog.sources,
         getSiblingEntries: (key) =>

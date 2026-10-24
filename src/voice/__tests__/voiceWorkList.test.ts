@@ -206,19 +206,43 @@ describe('voice work list', () => {
       expect(list.voiceSources.has('fallout4.esm/000777:1')).toBe(true);
     });
 
-    it('siblingsOf lends master takes for master-backed entries and own takes otherwise', async () => {
+    it('siblingsOf pools a speaker across the mod and its lent masters', async () => {
       const list = await loadVoiceWorkList(makeDb({ masterImported: true }), input());
       const backed = list.items.find(
         (i) => i.masterBacked && i.entry.relPath.includes('/MaleRough/'),
       )!;
       const sibs = list.siblingsOf('MaleRough', backed.entry);
       expect(sibs.length).toBeGreaterThan(0);
-      expect(sibs).not.toContain(backed.entry);
-      expect(sibs.every((s) => s.absolutePath.startsWith(masterDir))).toBe(true);
-      expect(sibs.map((s) => s.fileName).sort()).toEqual(['00000777_1.fuz', '00012345_2.fuz']);
+      expect(sibs.some((s) => s.fileName === backed.entry.fileName)).toBe(false);
+      // A reference picked in the editor may be any of these, so every take must see them.
+      expect(
+        sibs
+          .filter((s) => s.absolutePath.startsWith(masterDir))
+          .map((s) => s.fileName)
+          .sort(),
+      ).toEqual(['00000777_1.fuz', '00012345_2.fuz']);
 
       const own = list.items.find((i) => i.entry.fileName === '00016D03_1.fuz')!;
       expect(list.siblingsOf('PlayerVoiceFemale01', own.entry)).toEqual([]);
+    });
+
+    it("places a borrowed take in the patch's own voice tree, Data/ folder included", async () => {
+      const dataPackage = path.join(tmp, 'patch-data');
+      patchPlugin = path.join(dataPackage, 'Data', 'unofficial fallout 4 patch.esp');
+      writePlugin(patchPlugin, ['Fallout4.esm']);
+
+      const list = await loadVoiceWorkList(makeDb({ masterImported: true }), {
+        ...input(),
+        packageDir: dataPackage,
+        pluginPath: patchPlugin,
+      });
+
+      const backed = list.items.filter((i) => i.masterBacked);
+      expect(backed.map((i) => i.entry.relPath)).toContain(
+        'Data/Sound/Voice/Fallout4.esm/MaleRough/00012345_1.fuz',
+      );
+      // The audio to clone is still the master's file.
+      expect(backed.every((i) => i.entry.absolutePath.startsWith(masterDir))).toBe(true);
     });
 
     it('skips master lines when the master is not imported', async () => {

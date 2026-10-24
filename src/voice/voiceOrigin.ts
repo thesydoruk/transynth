@@ -20,11 +20,7 @@
  * as `MM000yyy`, while that master names its own take `FExxxyyy`; those two do
  * not meet here. No mod in the corpus overrides ESL dialogue yet.
  */
-import fs from 'node:fs';
 import path from 'node:path';
-import { parseTes4MasterNames } from '../formats/esp/pluginHeader';
-
-const RECORD_HEADER_SIZE = 24;
 
 export type VoiceOriginResolver = {
   /** The plugin's own file name, lower-cased. */
@@ -59,55 +55,6 @@ export const buildVoiceOriginResolver = (
     },
   };
 };
-
-type CacheEntry = { mtimeMs: number; size: number; masters: string[] };
-const cache = new Map<string, CacheEntry>();
-const MAX_CACHED = 32;
-
-/** Read the TES4 `MAST` list of a plugin; a missing or unreadable file has no masters. */
-export const readVoiceOriginMasters = (pluginPath: string): string[] => {
-  let st: fs.Stats;
-  try {
-    st = fs.statSync(pluginPath);
-  } catch {
-    return [];
-  }
-  const hit = cache.get(pluginPath);
-  if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return hit.masters;
-
-  let masters: string[] = [];
-  try {
-    const fd = fs.openSync(pluginPath, 'r');
-    try {
-      const header = Buffer.alloc(RECORD_HEADER_SIZE);
-      if (
-        fs.readSync(fd, header, 0, RECORD_HEADER_SIZE, 0) === RECORD_HEADER_SIZE &&
-        header.toString('ascii', 0, 4) === 'TES4'
-      ) {
-        const dataSize = header.readUInt32LE(4);
-        const data = Buffer.alloc(dataSize);
-        const read = fs.readSync(fd, data, 0, dataSize, RECORD_HEADER_SIZE);
-        masters = parseTes4MasterNames(data, read);
-      }
-    } finally {
-      fs.closeSync(fd);
-    }
-  } catch {
-    masters = [];
-  }
-
-  cache.set(pluginPath, { mtimeMs: st.mtimeMs, size: st.size, masters });
-  while (cache.size > MAX_CACHED) {
-    const oldest = cache.keys().next().value;
-    if (oldest == null) break;
-    cache.delete(oldest);
-  }
-  return masters;
-};
-
-/** Resolver for a plugin on disk. The file may be absent: then every record is its own. */
-export const loadVoiceOriginResolver = (pluginPath: string): VoiceOriginResolver =>
-  buildVoiceOriginResolver(pluginPath, readVoiceOriginMasters(pluginPath));
 
 /**
  * Origin folder of a take by its path: the segment right after `Sound/Voice/`,
@@ -150,7 +97,3 @@ export const splitOriginFormidKey = (key: string): { origin: string | null; line
   if (slash < 0) return { origin: null, lineKey: key };
   return { origin: key.slice(0, slash), lineKey: key.slice(slash + 1) };
 };
-
-/** `isVoiceFormidKey`-shaped check that also admits an origin-qualified key. */
-export const isOriginVoiceKey = (value: string): boolean =>
-  /^[^\s:/]+\/[0-9A-Za-z]{1,32}:\d+$/.test(value);
