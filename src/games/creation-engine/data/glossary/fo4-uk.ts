@@ -123,7 +123,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Aldersea Day Spa',
-    translation: 'Спа-салон «Олдерсі»',
+    translation: 'Спа-салон "Олдерсі"',
   },
   {
     term: 'Alexis Combes',
@@ -203,7 +203,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Andrew Station',
-    translation: 'Станція «Ендрю»',
+    translation: 'Станція "Ендрю"',
   },
   {
     term: 'Angie',
@@ -235,11 +235,11 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Annihilator Sentry Bot',
-    translation: 'Робот-охоронець «Анігілятор»',
+    translation: 'Робот-охоронець "Анігілятор"',
   },
   {
     term: 'Annihilator Sentry Bot Mk.II',
-    translation: 'Робот-охоронець «Анігілятор» Mk.II',
+    translation: 'Робот-охоронець "Анігілятор" Mk.II',
   },
   {
     term: 'Announcer',
@@ -379,7 +379,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Back Street Apparel',
-    translation: 'Одяг «Бек-стріт»',
+    translation: 'Одяг "Бек-стріт"',
   },
   {
     term: 'BADTFL Regional Office',
@@ -419,7 +419,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Beantown Brewery',
-    translation: 'Броварня «Бінтаун»',
+    translation: 'Броварня "Бінтаун"',
   },
   {
     term: 'Bear',
@@ -435,7 +435,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Beaver Creek Lanes',
-    translation: 'Боулінг «Бівер-Крік»',
+    translation: 'Боулінг "Бівер-Крік"',
   },
   {
     term: 'Becka',
@@ -619,7 +619,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Boston Bugle',
-    translation: '«Бостонський горн»',
+    translation: '"Бостонський горн"',
   },
   {
     term: 'Boston Common',
@@ -1231,7 +1231,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Cliff\'s Edge Hotel',
-    translation: 'Готель «Кліффс-Едж»',
+    translation: 'Готель "Кліффс-Едж"',
   },
   {
     term: 'Clint',
@@ -1267,7 +1267,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Cola-Cars Arena',
-    translation: 'Арена «Кола-Карс»',
+    translation: 'Арена "Кола-Карс"',
   },
   {
     term: 'Cole',
@@ -1383,7 +1383,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Corvega Assembly Plant',
-    translation: 'Складальний завод «Корвега»',
+    translation: 'Складальний завод "Корвега"',
   },
   {
     term: 'County Crossing',
@@ -1555,7 +1555,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Dartmouth Professional Building',
-    translation: 'Офісний центр «Дартмут»',
+    translation: 'Офісний центр "Дартмут"',
   },
   {
     term: 'David',
@@ -1851,7 +1851,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Dugout Inn',
-    translation: 'Корчма «Дугаут»',
+    translation: 'Корчма "Дугаут"',
   },
   {
     term: 'Duke',
@@ -1863,7 +1863,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Dunwich Borers',
-    translation: '«Данвіч Борерс»',
+    translation: '"Данвіч Борерс"',
   },
   {
     term: 'Dusky Yao Guai',
@@ -1919,7 +1919,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Eden Meadows Cinemas',
-    translation: 'Кінотеатр «Іден-Медоуз»',
+    translation: 'Кінотеатр "Іден-Медоуз"',
   },
   {
     term: 'Edward Deegan',
@@ -1927,7 +1927,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Egret Tours Marina',
-    translation: 'Пристань «Ігрет-Турс»',
+    translation: 'Пристань "Ігрет-Турс"',
   },
   {
     term: 'Elder',
@@ -2119,7 +2119,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Fens Cafe',
-    translation: 'Кафе «Фенс»',
+    translation: 'Кафе "Фенс"',
   },
   {
     term: 'Fens Intersection',
@@ -2207,7 +2207,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Fizztop Grille',
-    translation: 'Гриль «Фізтоп»',
+    translation: 'Гриль "Фізтоп"',
   },
   {
     term: 'Fizztop Mountain',
@@ -2259,7 +2259,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Fort Hagen Red Rocket',
-    translation: '«Червона ракета» Форт-Гейген',
+    translation: '"Червона ракета" Форт-Гейген',
   },
   {
     term: 'Fort Hagen Satellite Array',
@@ -2271,7 +2271,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Four Leaf Fishpacking Plant',
-    translation: 'Рибоконсервний завод «Фо-Ліф»',
+    translation: 'Рибоконсервний завод "Фо-Ліф"',
   },
   {
     term: 'Frag Grenade',
@@ -2415,11 +2415,11 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'General Atomics Factory',
-    translation: 'Завод «Дженерал Атомікс»',
+    translation: 'Завод "Дженерал Атомікс"',
   },
   {
     term: 'General Atomics Galleria',
-    translation: 'Галерея «Дженерал Атомікс»',
+    translation: 'Галерея "Дженерал Атомікс"',
   },
   {
     term: 'General Braxton',
@@ -2647,7 +2647,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Greater Mass Blood Clinic',
-    translation: 'Клініка крові «Грейтер-Масс»',
+    translation: 'Клініка крові "Грейтер-Масс"',
   },
   {
     term: 'Green Guardian',
@@ -2699,7 +2699,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Gunner Annihilator Sentry Bot',
-    translation: 'Робот-охоронець Стрільців «Анігілятор»',
+    translation: 'Робот-охоронець Стрільців "Анігілятор"',
   },
   {
     term: 'Gunner Assaultron',
@@ -2791,7 +2791,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Gunner Siege Breaker Sentry Bot',
-    translation: 'Робот-охоронець Стрільців «Руйнівник облоги»',
+    translation: 'Робот-охоронець Стрільців "Руйнівник облоги"',
   },
   {
     term: 'Gunners',
@@ -2807,7 +2807,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Gwinnett Brewery',
-    translation: 'Броварня «Гвіннетт»',
+    translation: 'Броварня "Гвіннетт"',
   },
   {
     term: 'Haddock Cove',
@@ -2819,7 +2819,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'HalluciGen, Inc.',
-    translation: '«ГалюциГен»',
+    translation: '"ГалюциГен"',
   },
   {
     term: 'Ham',
@@ -2843,7 +2843,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Harbormaster Hotel',
-    translation: 'Готель «Гарбормастер»',
+    translation: 'Готель "Гарбормастер"',
   },
   {
     term: 'Harbormen',
@@ -2875,7 +2875,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Haymarket Mall',
-    translation: 'Торговий центр «Геймаркет»',
+    translation: 'Торговий центр "Геймаркет"',
   },
   {
     term: 'Hazmat Suit',
@@ -2971,11 +2971,11 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Horizon Flight 1207',
-    translation: 'Рейс 1207 «Горайзон»',
+    translation: 'Рейс 1207 "Горайзон"',
   },
   {
     term: 'Hotel Rexford',
-    translation: 'Готель «Рексфорд»',
+    translation: 'Готель "Рексфорд"',
   },
   {
     term: 'Hotel Worker',
@@ -2995,7 +2995,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Hub City Auto Wreckers',
-    translation: 'Авторозбирання «Хаб-Сіті»',
+    translation: 'Авторозбирання "Хаб-Сіті"',
   },
   {
     term: 'Hubologist\'s Camp',
@@ -3151,7 +3151,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Irish Pride Industries Shipyard',
-    translation: 'Верф «Айріш-Прайд Індастріз»',
+    translation: 'Верф "Айріш-Прайд Індастріз"',
   },
   {
     term: 'Irma',
@@ -3179,7 +3179,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Ivan\'s',
-    translation: '«В Івана»',
+    translation: '"В Івана"',
   },
   {
     term: 'Jack Cabot',
@@ -3643,7 +3643,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Listening Post Bravo',
-    translation: 'Пост прослуховування «Браво»',
+    translation: 'Пост прослуховування "Браво"',
   },
   {
     term: 'Liza',
@@ -3767,7 +3767,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Mahkra Fishpacking',
-    translation: 'Рибоконсервний завод «Макра»',
+    translation: 'Рибоконсервний завод "Макра"',
   },
   {
     term: 'Maisie',
@@ -3975,7 +3975,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Mean Pastries',
-    translation: '«Злі тістечка»',
+    translation: '"Злі тістечка"',
   },
   {
     term: 'Meat Locker',
@@ -3987,7 +3987,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Med-Tek Research',
-    translation: 'Дослідницький центр «Мед-Тек»',
+    translation: 'Дослідницький центр "Мед-Тек"',
   },
   {
     term: 'Med-X',
@@ -4335,7 +4335,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'MS Azalea',
-    translation: '«Азалія»',
+    translation: '"Азалія"',
   },
   {
     term: 'Ms. Boom',
@@ -4603,7 +4603,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Nuka-World Red Rocket',
-    translation: '«Червона ракета» Ядер-Світу',
+    translation: '"Червона ракета" Ядер-Світу',
   },
   {
     term: 'Nuka-World Transit Center',
@@ -4687,7 +4687,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Old Corner Bookstore',
-    translation: 'Стара книгарня «Корнер»',
+    translation: 'Стара книгарня "Корнер"',
   },
   {
     term: 'Old Gullet Sinkhole',
@@ -4727,7 +4727,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Operation Tea Party',
-    translation: 'Операція «Чаювання»',
+    translation: 'Операція "Чаювання"',
   },
   {
     term: 'Operator',
@@ -4919,7 +4919,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Parkview Lounge',
-    translation: 'Лаунж «Паркв\'ю»',
+    translation: 'Лаунж "Паркв\'ю"',
   },
   {
     term: 'Parsons Creamery',
@@ -4955,11 +4955,11 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Pearwood Residences',
-    translation: 'Житловий комплекс «Пірвуд»',
+    translation: 'Житловий комплекс "Пірвуд"',
   },
   {
     term: 'Peepers',
-    translation: 'Робооко «Піперс»',
+    translation: 'Робооко "Піперс"',
   },
   {
     term: 'Pembroke Residence',
@@ -5239,7 +5239,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Publick Occurrences',
-    translation: '«Публічні події»',
+    translation: '"Публічні події"',
   },
   {
     term: 'Purified Water',
@@ -5463,7 +5463,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Recon Bunker Theta',
-    translation: 'Розвідувальний бункер «Тета»',
+    translation: 'Розвідувальний бункер "Тета"',
   },
   {
     term: 'Red Death',
@@ -5479,11 +5479,11 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Red Rocket Lexington',
-    translation: '«Червона ракета» Лексінгтон',
+    translation: '"Червона ракета" Лексінгтон',
   },
   {
     term: 'Red Rocket Truck Stop',
-    translation: 'Заправка «Червона ракета»',
+    translation: 'Заправка "Червона ракета"',
   },
   {
     term: 'Red Tourette',
@@ -5491,7 +5491,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Red Widow Bloodbug',
-    translation: 'Гнус «Червона вдова»',
+    translation: 'Гнус "Червона вдова"',
   },
   {
     term: 'RedEye',
@@ -5579,7 +5579,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Roadside Pines Motel',
-    translation: 'Мотель «Роудсайд-Пайнс»',
+    translation: 'Мотель "Роудсайд-Пайнс"',
   },
   {
     term: 'RobCo Battlezone',
@@ -5731,7 +5731,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Safari Adventure Welcome Center',
-    translation: 'Вітальний центр «Сафарі-пригода»',
+    translation: 'Вітальний центр "Сафарі-пригода"',
   },
   {
     term: 'Safehouse',
@@ -5775,7 +5775,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Sandy Coves Convalescent Home',
-    translation: 'Санаторій «Сенді-Коувз»',
+    translation: 'Санаторій "Сенді-Коувз"',
   },
   {
     term: 'Santiago Avida',
@@ -5831,7 +5831,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Science! Center',
-    translation: 'Центр «Наука!»',
+    translation: 'Центр "Наука!"',
   },
   {
     term: 'Scrap Palace',
@@ -5879,7 +5879,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Sentinel Site',
-    translation: 'Об\'єкт «Сентінел»',
+    translation: 'Об\'єкт "Сентінел"',
   },
   {
     term: 'Sentry',
@@ -5891,23 +5891,23 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Sentry Bot Butcher',
-    translation: 'Робот-охоронець «Різник»',
+    translation: 'Робот-охоронець "Різник"',
   },
   {
     term: 'Sentry Bot Carnage',
-    translation: 'Робот-охоронець «Бійня»',
+    translation: 'Робот-охоронець "Бійня"',
   },
   {
     term: 'Sentry Bot Lament',
-    translation: 'Робот-охоронець «Плач»',
+    translation: 'Робот-охоронець "Плач"',
   },
   {
     term: 'Sentry Bot Reaper',
-    translation: 'Робот-охоронець «Жнець»',
+    translation: 'Робот-охоронець "Жнець"',
   },
   {
     term: 'Sentry Bot Ripper',
-    translation: 'Робот-охоронець «Патрач»',
+    translation: 'Робот-охоронець "Патрач"',
   },
   {
     term: 'SentryBot',
@@ -6023,7 +6023,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Siege Breaker Sentry Bot',
-    translation: 'Робот-охоронець «Руйнівник облоги»',
+    translation: 'Робот-охоронець "Руйнівник облоги"',
   },
   {
     term: 'Sierra Petrovita',
@@ -6039,7 +6039,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Silver Shroud Announcer',
-    translation: 'Диктор «Срібного Плаща»',
+    translation: 'Диктор "Срібного Плаща"',
   },
   {
     term: 'Simon',
@@ -6095,7 +6095,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Skylanes Flight 1981',
-    translation: 'Рейс 1981 «Скайлейнс»',
+    translation: 'Рейс 1981 "Скайлейнс"',
   },
   {
     term: 'Slab',
@@ -6111,7 +6111,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Slocum\'s Joe Corporate HQ',
-    translation: 'Штаб-квартира «Слокамс Джо»',
+    translation: 'Штаб-квартира "Слокамс Джо"',
   },
   {
     term: 'Slough',
@@ -6267,15 +6267,15 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Starlight Drive-In',
-    translation: 'Автокінотеатр «Старлайт»',
+    translation: 'Автокінотеатр "Старлайт"',
   },
   {
     term: 'Starlight Interstellar Theater',
-    translation: 'Міжзоряний театр «Старлайт»',
+    translation: 'Міжзоряний театр "Старлайт"',
   },
   {
     term: 'Starport Nuka',
-    translation: 'Старпорт «Ядер»',
+    translation: 'Старпорт "Ядер"',
   },
   {
     term: 'Startender',
@@ -6355,7 +6355,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Sunshine Tidings Co-op',
-    translation: 'Кооператив «Саншайн-Тайдінгс»',
+    translation: 'Кооператив "Саншайн-Тайдінгс"',
   },
   {
     term: 'Super Duper Mart',
@@ -6623,11 +6623,11 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'The Boston Bugle',
-    translation: '«Бостонський горн»',
+    translation: '"Бостонський горн"',
   },
   {
     term: 'The Boylston Club',
-    translation: 'Клуб «Бойлстон»',
+    translation: 'Клуб "Бойлстон"',
   },
   {
     term: 'The Brotherhood',
@@ -6679,7 +6679,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'The Last Plank',
-    translation: '«Остання дошка»',
+    translation: '"Остання дошка"',
   },
   {
     term: 'The Mariner',
@@ -6731,7 +6731,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'The Shamrock Taphouse',
-    translation: 'Паб «Шемрок»',
+    translation: 'Паб "Шемрок"',
   },
   {
     term: 'The Silver Shroud',
@@ -6775,7 +6775,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Ticker Tape Lounge',
-    translation: 'Лаунж «Тікер-Тейп»',
+    translation: 'Лаунж "Тікер-Тейп"',
   },
   {
     term: 'Ticket Taker',
@@ -6935,7 +6935,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Union\'s Hope Cathedral',
-    translation: 'Собор «Надія Союзу»',
+    translation: 'Собор "Надія Союзу"',
   },
   {
     term: 'University Point',
@@ -6947,11 +6947,11 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'USAF Satellite Station Olivia',
-    translation: 'Супутникова станція ВПС США «Олівія»',
+    translation: 'Супутникова станція ВПС США "Олівія"',
   },
   {
     term: 'USS Constitution',
-    translation: 'USS «Конституція»',
+    translation: 'USS "Конституція"',
   },
   {
     term: 'Utility Jumpsuit',
@@ -7119,11 +7119,11 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Vim! Basement',
-    translation: 'Підвал «Вім!»',
+    translation: 'Підвал "Вім!"',
   },
   {
     term: 'Vim! Pop Factory',
-    translation: 'Фабрика газованки «Вім!»',
+    translation: 'Фабрика газованки "Вім!"',
   },
   {
     term: 'Virgil',
@@ -7159,7 +7159,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Warren Theater',
-    translation: 'Театр «Воррен»',
+    translation: 'Театр "Воррен"',
   },
   {
     term: 'Warwick',
@@ -7195,15 +7195,15 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Waterfront Hotel',
-    translation: 'Готель «Вотерфронт»',
+    translation: 'Готель "Вотерфронт"',
   },
   {
     term: 'Wattz Used Electronics',
-    translation: 'Вживана електроніка «Ваттц»',
+    translation: 'Вживана електроніка "Ваттц"',
   },
   {
     term: 'Waves Crest Orphanage',
-    translation: 'Притулок «Вейвз-Крест»',
+    translation: 'Притулок "Вейвз-Крест"',
   },
   {
     term: 'Wayne',
@@ -7219,7 +7219,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Weatherby Investment Trust',
-    translation: 'Інвестиційний траст «Везербі»',
+    translation: 'Інвестиційний траст "Везербі"',
   },
   {
     term: 'Wellingham',
@@ -7259,7 +7259,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Wicked Shipping Fleet Lockup',
-    translation: 'Автобаза «Вікед Шиппінг»',
+    translation: 'Автобаза "Вікед Шиппінг"',
   },
   {
     term: 'Wild Mongrel',
@@ -7287,11 +7287,11 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Wilson Atomatoys Corporate HQ',
-    translation: 'Штаб-квартира «Вілсон Атоматойз»',
+    translation: 'Штаб-квартира "Вілсон Атоматойз"',
   },
   {
     term: 'Wilson Atomatoys Factory',
-    translation: 'Завод «Вілсон Атоматойз»',
+    translation: 'Завод "Вілсон Атоматойз"',
   },
   {
     term: 'Winlock',
@@ -7319,11 +7319,11 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Wreck of The FMS Northern Star',
-    translation: 'Уламки FMS «Нортерн Стар»',
+    translation: 'Уламки FMS "Нортерн Стар"',
   },
   {
     term: 'Wreck of the USS Riptide',
-    translation: 'Уламки USS «Ріптайд»',
+    translation: 'Уламки USS "Ріптайд"',
   },
   {
     term: 'Wretch',
@@ -7359,7 +7359,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Yangtze',
-    translation: '«Янцзи»',
+    translation: '"Янцзи"',
   },
   {
     term: 'Yao Guai',
