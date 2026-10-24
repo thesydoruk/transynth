@@ -23,6 +23,11 @@ ml_*/
 # Local Cursor rules and skills (not part of the public project)
 .cursor/
 
+# Local Claude Code state and host notes
+CLAUDE.local.md
+.claude/worktrees/
+.claude/settings.local.json
+
 # Homelab GPU / vLLM stacks (not the Transynth app)
 docker-compose.ai-translate.yml
 docker-compose.ai-translate-heretic.yml
