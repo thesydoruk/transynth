@@ -56,6 +56,9 @@ const readFixes = (file: string): TranslationFix[] => {
     ? json
     : ((json as { fixes?: unknown; ok?: unknown }).fixes ?? (json as { ok?: unknown }).ok);
   if (!Array.isArray(list)) throw new Error(`${file}: expected a list, or one under "fixes"/"ok"`);
+  // A review batch file names its batch; the revision note keeps it.
+  const batchId = (json as { batch_id?: unknown }).batch_id;
+  const prefix = typeof batchId === 'string' && batchId ? batchId : null;
   return list.map((item: Record<string, unknown>, i) => {
     if (
       !Number.isInteger(item.id) ||
@@ -64,7 +67,9 @@ const readFixes = (file: string): TranslationFix[] => {
     ) {
       throw new Error(`${file}: entry ${i} needs an integer id and string old/new`);
     }
-    const note = [item.reason, item.note].filter((v) => typeof v === 'string' && v).join(': ');
+    const note = [prefix, item.reason, item.note]
+      .filter((v) => typeof v === 'string' && v)
+      .join(': ');
     return { id: item.id as number, old: item.old, new: item.new, note: note || undefined };
   });
 };
