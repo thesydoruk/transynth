@@ -1,0 +1,2282 @@
+[
+  {
+    "id": 80,
+    "term": "Jun Long",
+    "before": "Цзюнь Лонг",
+    "canon": "Цзюнь Лонг",
+    "action": "keep",
+    "note": "Прізвище Long — «Лонг» (names, рішення); NPC_ «Цзюнь Лон» — обрізаний варіант, вирівняно."
+  },
+  {
+    "id": 95,
+    "term": "Marcy Long",
+    "before": "Марсі Лонг",
+    "canon": "Марсі Лонг",
+    "action": "keep",
+    "note": "Прізвище Long — «Лонг»; NPC_ «Марсі Лон» вирівняно."
+  },
+  {
+    "id": 118,
+    "term": "Myrna",
+    "before": "Мірна",
+    "canon": "Мірна",
+    "action": "keep",
+    "note": "Усі діалоги й термінал уже «Мірна/Мірно»; NPC_ «Мирна» — єдиний виняток."
+  },
+  {
+    "id": 1862,
+    "term": "Mirelurk Hunter",
+    "before": "Болотник-ловець",
+    "canon": "Болотник-ловець",
+    "action": "keep",
+    "note": "DECISIONS: Hunter (болотник) = «ловець», «мисливець» зайнятий під Courser; вирівняно NPC_/легендарні/альбінос/сяючий/ARMO."
+  },
+  {
+    "id": 1909,
+    "term": "Father",
+    "before": "Отець",
+    "canon": "Отець",
+    "action": "keep",
+    "note": "Отець — рішення (Інститут); виправлено лише NPC_ FULL, бо RNAM 6464846 «Father» — промпт «я був батьком» (буквальний батько, «Батько» правильно)."
+  },
+  {
+    "id": 1913,
+    "term": "Deathskull Radscorpion",
+    "before": "Радскорпіон-черепник",
+    "canon": "Радскорпіон-черепник",
+    "action": "keep",
+    "note": "GLOSSARY: Радскорпіон-черепник; три NPC_ із «Череп смерті» вирівняно (стиль серії: болотник-ловець)."
+  },
+  {
+    "id": 1918,
+    "term": "Brotherhood Initiate",
+    "before": "Новобранець Братерства сталі",
+    "canon": "Новобранець Братерства сталі",
+    "action": "keep",
+    "note": "Initiate → новобранець (рішення); вирівняно й решту рангу в NPC_/діалогах (початківець → новобранець)."
+  },
+  {
+    "id": 1920,
+    "term": "Fort Strong",
+    "before": "Форт-Стронг",
+    "canon": "Форт-Стронг",
+    "action": "keep",
+    "note": "У квестах/діалогах переважає «Форт-Стронг» (≈35 рядків); LCTN, CELL і кілька реплік «Форт Стронг/форту Стронг» вирівняно."
+  },
+  {
+    "id": 1921,
+    "term": "The Castle",
+    "before": "Форт",
+    "canon": "Форт",
+    "action": "keep",
+    "note": "Рішення: the Castle → Форт; квести й діалоги вже «Форт», LCTN/CELL і три репліки «Замок» вирівняно."
+  },
+  {
+    "id": 1924,
+    "term": "Blue",
+    "before": "Блу",
+    "canon": "Блу",
+    "action": "keep",
+    "note": "Поза цим проходом (генерики): «Блу» лише для прізвиська від Пайпер; рядки з rows — кольори (HDPT/OMOD…), не чіпано."
+  },
+  {
+    "id": 1936,
+    "term": "Doctor Duff",
+    "before": "Докторка Дафф",
+    "canon": "Докторка Дафф",
+    "action": "keep",
+    "note": "DECISIONS: Doctor Duff → Докторка Дафф; NPC_, промпт і 4 репліки з «доктор(а/у) Дафф» вирівняно."
+  },
+  {
+    "id": 1948,
+    "term": "Andrew Station",
+    "before": "Станція «Ендрю»",
+    "canon": "Станція «Ендрю»",
+    "action": "keep",
+    "note": "Квести/діалоги/записки послідовно «станція «Ендрю»»; CELL/LCTN вирівняно."
+  },
+  {
+    "id": 1952,
+    "term": "Atom's Divide",
+    "before": "Поділ Атома",
+    "canon": "Поділ Атома",
+    "action": "keep",
+    "note": "DECISIONS: Division → Поділ; діалоги «Поділ Атома», LCTN «Розлом» вирівняно."
+  },
+  {
+    "id": 1970,
+    "term": "Boston Police Rationing Site",
+    "before": "Пункт роздачі пайків поліції Бостона",
+    "canon": "Пункт роздачі пайків поліції Бостона",
+    "action": "keep",
+    "note": "Форма мапи (REFR); LCTN вирівняно."
+  },
+  {
+    "id": 1971,
+    "term": "Boston Public Library",
+    "before": "Бостонська публічна бібліотека",
+    "canon": "Бостонська публічна бібліотека",
+    "action": "keep",
+    "note": "Квести, діалоги й термінали — «Бостонська публічна бібліотека»; CELL/LCTN вирівняно."
+  },
+  {
+    "id": 1977,
+    "term": "Breakheart Banks",
+    "before": "Брейкгарт-Бенкс",
+    "canon": "Брейкгарт-Бенкс",
+    "action": "keep",
+    "note": "Складена назва через дефіс, h→г (Брейкгарт-Бенкс), як на мапі; CELL/LCTN вирівняно."
+  },
+  {
+    "id": 1981,
+    "term": "Cabot House",
+    "before": "Будинок Каботів",
+    "canon": "Будинок Каботів",
+    "action": "keep",
+    "note": "Квест і діалоги — «Будинок Каботів» (≈35 рядків); FACT/CELL/LCTN і одна репліка «Будинок Кабота» вирівняно."
+  },
+  {
+    "id": 1982,
+    "term": "Cambridge Construction Site",
+    "before": "Будмайданчик у Кембриджі",
+    "canon": "Будмайданчик у Кембриджі",
+    "action": "keep",
+    "note": "Форма мапи (REFR); LCTN вирівняно."
+  },
+  {
+    "id": 1983,
+    "term": "Cambridge Crater",
+    "before": "Кембриджський кратер",
+    "canon": "Кембриджський кратер",
+    "action": "keep",
+    "note": "Форма мапи й термінала; LCTN вирівняно."
+  },
+  {
+    "id": 1985,
+    "term": "Cambridge Intake Sluice",
+    "before": "Водозабірний шлюз Кембриджа",
+    "canon": "Водозабірний шлюз Кембриджа",
+    "action": "keep",
+    "note": "names; LCTN «Водозабір Кембриджа» вирівняно."
+  },
+  {
+    "id": 1992,
+    "term": "Chestnut Hillock Reservoir",
+    "before": "Водосховище Честнат-Гіллок",
+    "canon": "Водосховище Честнат-Гіллок",
+    "action": "keep",
+    "note": "Форма мапи (Гіллок, дефіс); LCTN вирівняно."
+  },
+  {
+    "id": 1997,
+    "term": "Codman Residence",
+    "before": "Резиденція Кодманів",
+    "canon": "Резиденція Кодманів",
+    "action": "keep",
+    "note": "Ключ і names — «Резиденція Кодманів»; CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2000,
+    "term": "College Square",
+    "before": "Коледж-сквер",
+    "canon": "Коледж-сквер",
+    "action": "keep",
+    "note": "Діалоги й квести — «Коледж-сквер»; LCTN, CELL і ключ станції з «Колледж» вирівняно."
+  },
+  {
+    "id": 2010,
+    "term": "Croup Manor",
+    "before": "Маєток Крупів",
+    "canon": "Маєток Крупів",
+    "action": "keep",
+    "note": "Діалоги/MESG Ядер-Світу — «Маєток Крупів»; LCTN, CELL підвалу й два ключі з «Кроупа» вирівняно."
+  },
+  {
+    "id": 2011,
+    "term": "Crow's Crag Park",
+    "before": "Парк Кроус-Крег",
+    "canon": "Парк Кроус-Крег",
+    "action": "keep",
+    "note": "names; LCTN «Кроу-Крег» вирівняно."
+  },
+  {
+    "id": 2012,
+    "term": "Custom House",
+    "before": "Митниця",
+    "canon": "Митна будівля",
+    "action": "update",
+    "note": "У корпусі лише «Митна будівля» (LCTN + мапа «Вежа Митної будівлі» в CELL/REFR); «Митниця» не вжито ніде."
+  },
+  {
+    "id": 2017,
+    "term": "Danvers Hideout",
+    "before": "Схованка Данверс",
+    "canon": "Схованка Данверс",
+    "action": "keep",
+    "note": "Hideout → «схованка» (прецедент DECISIONS: схованка Маровскі); обидва LCTN «Лігво Данверс» вирівняно."
+  },
+  {
+    "id": 2018,
+    "term": "Dark Hollow Pond",
+    "before": "Ставок Дарк-Голлоу",
+    "canon": "Ставок Дарк-Голлоу",
+    "action": "keep",
+    "note": "Форма мапи (Дарк-Голлоу, не калька «Темна Западина»); LCTN вирівняно."
+  },
+  {
+    "id": 2020,
+    "term": "Doc Crocker's House",
+    "before": "Будинок Дока Крокера",
+    "canon": "Будинок Дока Крокера",
+    "action": "keep",
+    "note": "Ключ і names — «Будинок Дока Крокера»; CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2022,
+    "term": "Donoghue Residence",
+    "before": "Резиденція Доног'ю",
+    "canon": "Резиденція Доног'ю",
+    "action": "keep",
+    "note": "names; LCTN «Доногі» вирівняно."
+  },
+  {
+    "id": 2027,
+    "term": "Dunwich Borers",
+    "before": "«Данвіч Борерс»",
+    "canon": "«Данвіч Борерс»",
+    "action": "keep",
+    "note": "Діалоги, термінали, ключ — «Данвіч Борерс» у лапках; CELL/LCTN «Бурильники Данвіча» вирівняно."
+  },
+  {
+    "id": 2032,
+    "term": "Easy City Downs",
+    "before": "Ізі-Сіті-Даунс",
+    "canon": "Ізі-Сіті-Даунс",
+    "action": "keep",
+    "note": "Мапа, квести, MESG — «Ізі-Сіті-Даунс»; LCTN і одна репліка без дефіса вирівняно."
+  },
+  {
+    "id": 2036,
+    "term": "Electricial Hobbyist's Club",
+    "before": "Клуб електриків-аматорів",
+    "canon": "Клуб електриків-любителів",
+    "action": "update",
+    "note": "І LCTN, і маркер мапи (REFR з EN «Electrical…») — «електриків-любителів»; «аматорів» ніде не вжито."
+  },
+  {
+    "id": 2047,
+    "term": "Fens Street Sewer",
+    "before": "Каналізація Фенс-стріт",
+    "canon": "Каналізація Фенс-стріт",
+    "action": "keep",
+    "note": "Складена назва Фенс-стріт (мапа); CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2049,
+    "term": "Finch Farm",
+    "before": "Ферма Фінчів",
+    "canon": "Ферма Фінчів",
+    "action": "keep",
+    "note": "Квести й діалоги — «Ферма Фінчів»; LCTN і репліка «Фінч-Фарм» вирівняно."
+  },
+  {
+    "id": 2052,
+    "term": "Forest Grove Marsh",
+    "before": "Болото Форест-Гроув",
+    "canon": "Болото Форест-Гроув",
+    "action": "keep",
+    "note": "Мапа й діалог — однина «Болото Форест-Гроув»; LCTN вирівняно."
+  },
+  {
+    "id": 2053,
+    "term": "Fort Hagen Red Rocket",
+    "before": "«Червона ракета» Форт-Гейген",
+    "canon": "«Червона ракета» Форт-Гейген",
+    "action": "keep",
+    "note": "names; LCTN без лапок вирівняно."
+  },
+  {
+    "id": 2055,
+    "term": "Four Leaf Fishpacking Plant",
+    "before": "Рибоконсервний завод «Фо-Ліф»",
+    "canon": "Рибоконсервний завод «Фо-Ліф»",
+    "action": "keep",
+    "note": "Квест/діалог/термінали — «Рибоконсервний завод «Фо-Ліф»»; CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2065,
+    "term": "Graygarden Homestead",
+    "before": "Садиба Грейгарден",
+    "canon": "Садиба Грейгарден",
+    "action": "keep",
+    "note": "Homestead → «Садиба» (як Садиба Ворвіків); CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2067,
+    "term": "Greater Mass Blood Clinic",
+    "before": "Клініка крові «Грейтер-Масс»",
+    "canon": "Клініка крові «Грейтер-Масс»",
+    "action": "keep",
+    "note": "Мапа й термінали — «Грейтер-Масс» у лапках; LCTN вирівняно."
+  },
+  {
+    "id": 2068,
+    "term": "Greenetech Genetics",
+    "before": "Грінетек Дженетікс",
+    "canon": "Грінетек Дженетікс",
+    "action": "keep",
+    "note": "Мапа, квести, термінали — «Грінетек Дженетікс»; CELL/LCTN «Грінітек Дженетикс» вирівняно."
+  },
+  {
+    "id": 2071,
+    "term": "HalluciGen, Inc.",
+    "before": "«ГалюциГен»",
+    "canon": "«ГалюциГен»",
+    "action": "keep",
+    "note": "Override: «ГалюциГен» (у лапках як назва компанії-локації, як на мапі); CELL/LCTN і зламані «Галлюсіген/Галлюціген/Hallucigen, Inc.» вирівняно."
+  },
+  {
+    "id": 2072,
+    "term": "Hancock's Strongroom",
+    "before": "Скарбниця Генкока",
+    "canon": "Сховище Генкока",
+    "action": "update",
+    "note": "Квест MS16 послідовно «сховище» (≈40 рядків, names: Strongroom → Сховище; LCTN «Сховище Генкока»); ключ і 2 рядки зі «скарбниця» вирівняно — див. сумнів про колізію з Vault."
+  },
+  {
+    "id": 2084,
+    "term": "Hub City Auto Wreckers",
+    "before": "Авторозбирання «Хаб-Сіті»",
+    "canon": "Авторозбирання «Хаб-Сіті»",
+    "action": "keep",
+    "note": "Явне рішення DECISIONS (base-prose-054): Авторозбирання «Хаб-Сіті»; LCTN вирівняно."
+  },
+  {
+    "id": 2088,
+    "term": "Institute Advanced Systems",
+    "before": "Відділ передових систем Інституту",
+    "canon": "Відділ передових систем Інституту",
+    "action": "keep",
+    "note": "DECISIONS: Advanced Systems = відділ передових систем (так у ≈25 діалогах); CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2089,
+    "term": "Institute BioScience",
+    "before": "Відділ біонаук Інституту",
+    "canon": "Відділ біонаук Інституту",
+    "action": "keep",
+    "note": "Корпус: «відділ біонаук» (≈50 рядків); CELL/LCTN «Біологічні науки» вирівняно."
+  },
+  {
+    "id": 2094,
+    "term": "Institute Robotics",
+    "before": "Відділ робототехніки Інституту",
+    "canon": "Відділ робототехніки Інституту",
+    "action": "keep",
+    "note": "Аналогія з іншими відділами Інституту; CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2095,
+    "term": "Institute SRB",
+    "before": "БУС Інституту",
+    "canon": "БУС Інституту",
+    "action": "keep",
+    "note": "GLOSSARY/DECISIONS: SRB → БУС; CELL/LCTN і 2 репліки з латинським «SRB» вирівняно."
+  },
+  {
+    "id": 2097,
+    "term": "Institute Sublevel 21-D",
+    "before": "Підрівень 21-D Інституту",
+    "canon": "Підрівень 21-D Інституту",
+    "action": "keep",
+    "note": "names; порядок «Підрівень 21-D Інституту» у CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2098,
+    "term": "Irish Pride Industries Shipyard",
+    "before": "Верф «Айріш-Прайд Індастріз»",
+    "canon": "Верф «Айріш-Прайд Індастріз»",
+    "action": "keep",
+    "note": "Мапа — «Айріш-Прайд Індастріз» через дефіс; CELL/LCTN і записка вирівняно."
+  },
+  {
+    "id": 2101,
+    "term": "Jalbert Brothers Disposal",
+    "before": "Утилізація братів Джалбертів",
+    "canon": "Утилізація братів Джалбертів",
+    "action": "keep",
+    "note": "Мапа — «братів Джалбертів»; LCTN і термінал Дітей Атома вирівняно."
+  },
+  {
+    "id": 2103,
+    "term": "John and Jessica's House",
+    "before": "Будинок Джона і Джессіки",
+    "canon": "Будинок Джона і Джессіки",
+    "action": "keep",
+    "note": "Ключ і names — «Джона і Джессіки»; LCTN вирівняно."
+  },
+  {
+    "id": 2104,
+    "term": "KL-E-0's House",
+    "before": "Будинок KL-E-0",
+    "canon": "Будинок KL-E-0",
+    "action": "keep",
+    "note": "Робот KL-E-0 скрізь латиницею (NPC_, ключ); LCTN «КЛ-Е-0» вирівняно."
+  },
+  {
+    "id": 2109,
+    "term": "Lake Cochituate",
+    "before": "Озеро Кочітуейт",
+    "canon": "Озеро Кочітуейт",
+    "action": "keep",
+    "note": "Мапа — Кочітуейт; LCTN вирівняно."
+  },
+  {
+    "id": 2110,
+    "term": "Lake Quannapowitt",
+    "before": "Озеро Квоннаповіт",
+    "canon": "Озеро Квоннаповіт",
+    "action": "keep",
+    "note": "Мапа, записки, термінали — Квоннаповіт; LCTN вирівняно."
+  },
+  {
+    "id": 2111,
+    "term": "Latimer Residence",
+    "before": "Резиденція Латімерів",
+    "canon": "Резиденція Латімерів",
+    "action": "keep",
+    "note": "Ключ і names — «Латімерів» (родина); CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2112,
+    "term": "Layton Towers",
+    "before": "Вежі Лейтон",
+    "canon": "Вежі Лейтон",
+    "action": "keep",
+    "note": "Форма мапи (REFR); CELL/LCTN «Вежі Лейтона» вирівняно."
+  },
+  {
+    "id": 2118,
+    "term": "Longneck Lukowski's Cannery",
+    "before": "Консервний завод Лонгнека Луковські",
+    "canon": "Консервний завод Лонгнека Луковського",
+    "action": "update",
+    "note": "DECISIONS: Луковський відмінюється, назву локації вирівняти; CELL/LCTN уже так, мапу й термінал виправлено."
+  },
+  {
+    "id": 2122,
+    "term": "Mahkra Fishpacking",
+    "before": "Рибоконсервний завод «Макра»",
+    "canon": "Рибоконсервний завод «Макра»",
+    "action": "keep",
+    "note": "Мапа й термінали — «Рибоконсервний завод «Макра»»; CELL/LCTN «Рибопакувальний/Махра» вирівняно."
+  },
+  {
+    "id": 2123,
+    "term": "Malden Center",
+    "before": "Молден-Центр",
+    "canon": "Молден-Центр",
+    "action": "keep",
+    "note": "Мапа, квести, діалоги — «Молден-Центр»; CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2127,
+    "term": "Mass Fusion Building",
+    "before": "Будівля Масс Ф'южн",
+    "canon": "Будівля Масс Ф'южн",
+    "action": "keep",
+    "note": "DECISIONS: Mass Fusion → Масс Ф'южн (без лапок, як на мапі й у квестах); CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2128,
+    "term": "Mass Fusion Containment Shed",
+    "before": "Ізоляційний склад Масс Ф'южн",
+    "canon": "Ізоляційний склад Масс Ф'южн",
+    "action": "keep",
+    "note": "Мапа; LCTN вирівняно."
+  },
+  {
+    "id": 2134,
+    "term": "Mean Pastries",
+    "before": "«Злі тістечка»",
+    "canon": "«Злі тістечка»",
+    "action": "keep",
+    "note": "Форма мапи; CELL/LCTN «Підлі тістечка» вирівняно."
+  },
+  {
+    "id": 2143,
+    "term": "Mole Rat Den",
+    "before": "Лігво кротощурів",
+    "canon": "Лігво кротощурів",
+    "action": "keep",
+    "note": "Назва локації — множина «кротощурів»; CELL/LCTN вирівняно (родова репліка «лігва кротощура» — загальна, не чіпано)."
+  },
+  {
+    "id": 2145,
+    "term": "Murkwater Construction Site",
+    "before": "Будмайданчик Мерквотер",
+    "canon": "Будмайданчик Мерквотер",
+    "action": "keep",
+    "note": "Мапа; LCTN вирівняно."
+  },
+  {
+    "id": 2147,
+    "term": "Myrna's House",
+    "before": "Будинок Мірни",
+    "canon": "Будинок Мірни",
+    "action": "keep",
+    "note": "Мірна; CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2153,
+    "term": "Natick Banks",
+    "before": "Натік-Бенкс",
+    "canon": "Натік-Бенкс",
+    "action": "keep",
+    "note": "Складена назва через дефіс (мапа); LCTN «Береги Натіка» вирівняно."
+  },
+  {
+    "id": 2161,
+    "term": "Nucleus Memory Banks",
+    "before": "Банки пам'яті Ядра",
+    "canon": "Банки пам'яті Нуклеуса",
+    "action": "update",
+    "note": "Override (the Nucleus → Нуклеус); рядок корпусу вже правильний."
+  },
+  {
+    "id": 2175,
+    "term": "Old Gullet Sinkhole",
+    "before": "Провалля Олд-Галлет",
+    "canon": "Провалля Олд-Галлет",
+    "action": "keep",
+    "note": "Форма мапи; CELL/LCTN «Стара карстова воронка» вирівняно."
+  },
+  {
+    "id": 2183,
+    "term": "Pearwood Residences",
+    "before": "Житловий комплекс «Пірвуд»",
+    "canon": "Житловий комплекс «Пірвуд»",
+    "action": "keep",
+    "note": "Pearwood → Пірвуд; CELL/LCTN і записка «в Первуді» вирівняно."
+  },
+  {
+    "id": 2184,
+    "term": "Pembroke Residence",
+    "before": "Резиденція Пемброків",
+    "canon": "Резиденція Пемброків",
+    "action": "keep",
+    "note": "Ключ і names — «Пемброків»; CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2189,
+    "term": "Poseidon Energy Turbine #18-F",
+    "before": "Турбіна №18-F Посейдон Енерджі",
+    "canon": "Турбіна Посейдон Енерджі №18-F",
+    "action": "update",
+    "note": "І LCTN, і маркер мапи (REFR з EN-одруком «Poseiden») — номер наприкінці; глосарний порядок ніде не вжито."
+  },
+  {
+    "id": 2190,
+    "term": "Poseidon Reservoir",
+    "before": "Водосховище Посейдон",
+    "canon": "Водосховище Посейдон",
+    "action": "keep",
+    "note": "Мапа й ключ — «Водосховище Посейдон»; CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2193,
+    "term": "Prydwen Quarters",
+    "before": "Житлові відсіки Придвена",
+    "canon": "Житлові відсіки Придвена",
+    "action": "keep",
+    "note": "names (як «Головна палуба Придвена»); CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2195,
+    "term": "Pump Control",
+    "before": "Пульт керування насосами",
+    "canon": "Пульт керування насосами",
+    "action": "delete",
+    "note": "Надто загальний термін: ловить «Pump Control Switch/System» (перемикач, система) як хибні порушення; єдиний CELL вирівняно до назви LCTN."
+  },
+  {
+    "id": 2196,
+    "term": "Quincy Police Lockup",
+    "before": "Відділок поліції Квінсі",
+    "canon": "Поліцейський відділок Квінсі",
+    "action": "update",
+    "note": "LCTN, CELL і маркер мапи (Quincy Police Station) — «Поліцейський відділок Квінсі»; глосарна форма ніде не вжита."
+  },
+  {
+    "id": 2199,
+    "term": "Railroad HQ",
+    "before": "Штаб Підземки",
+    "canon": "Штаб Підземки",
+    "action": "keep",
+    "note": "Мапа, квести, MESG — «штаб Підземки»; CELL/LCTN і 2 рядки «штаб-квартира» вирівняно."
+  },
+  {
+    "id": 2204,
+    "term": "Red Rocket Lexington",
+    "before": "«Червона ракета» Лексінгтон",
+    "canon": "«Червона ракета» Лексінгтон",
+    "action": "keep",
+    "note": "names; LCTN без лапок вирівняно."
+  },
+  {
+    "id": 2205,
+    "term": "Red Rocket Truck Stop",
+    "before": "Заправка «Червона ракета»",
+    "canon": "Заправка «Червона ракета»",
+    "action": "keep",
+    "note": "Мапа і діалоги — «заправка «Червона ракета»»; LCTN «Стоянка» вирівняно."
+  },
+  {
+    "id": 2209,
+    "term": "Revere Beach Station",
+    "before": "Станція Ревір-Біч",
+    "canon": "Станція Ревер-Біч",
+    "action": "update",
+    "note": "Override (Revere → Ревер); CELL/LCTN уже так, REFR «Ревір» лишено проходу Ревер."
+  },
+  {
+    "id": 2210,
+    "term": "Revere Satellite Array",
+    "before": "Супутникові антени Ревір",
+    "canon": "Супутникові антени Ревер",
+    "action": "update",
+    "note": "Override; квести/термінали — «супутникові антени Ревер»; LCTN «Масив…» вирівняно, REFR «Ревір» — прохід Ревер."
+  },
+  {
+    "id": 2211,
+    "term": "Roadside Pines Motel",
+    "before": "Мотель «Роудсайд-Пайнс»",
+    "canon": "Мотель «Роудсайд-Пайнс»",
+    "action": "keep",
+    "note": "Мапа — дефіс у «Роудсайд-Пайнс»; LCTN вирівняно."
+  },
+  {
+    "id": 2218,
+    "term": "Rocky Narrows Park",
+    "before": "Парк Рокі-Нерроуз",
+    "canon": "Парк Рокі-Нерроуз",
+    "action": "keep",
+    "note": "Мапа — Рокі-Нерроуз; LCTN вирівняно."
+  },
+  {
+    "id": 2223,
+    "term": "Salem Street Cottage",
+    "before": "Котедж на Сейлем-стріт",
+    "canon": "Котедж на Сейлем-стріт",
+    "action": "keep",
+    "note": "Складена назва Сейлем-стріт; LCTN вирівняно."
+  },
+  {
+    "id": 2224,
+    "term": "Sandy Coves Convalescent Home",
+    "before": "Санаторій «Сенді-Коувз»",
+    "canon": "Санаторій «Сенді-Коувз»",
+    "action": "keep",
+    "note": "Мапа і всі репліки робота — «санаторій «Сенді-Коувз»»; CELL/LCTN/TERM (верхній регістр) вирівняно."
+  },
+  {
+    "id": 2226,
+    "term": "Science Center Gift Shop",
+    "before": "Сувенірна крамниця Наукового центру",
+    "canon": "Сувенірна крамниця Наукового центру",
+    "action": "keep",
+    "note": "Мапа; CELL/LCTN «Сувенірний магазин» вирівняно."
+  },
+  {
+    "id": 2229,
+    "term": "Sentinel Site",
+    "before": "Об'єкт «Сентінел»",
+    "canon": "Об'єкт «Сентінел»",
+    "action": "keep",
+    "note": "Override «Об'єкт «Сентінел» Прескотт», термінали й квест так само; LCTN, CELL і репліка «Пост Сентінелів» вирівняно."
+  },
+  {
+    "id": 2230,
+    "term": "Shaw High School",
+    "before": "Школа Шоу",
+    "canon": "Школа Шоу",
+    "action": "keep",
+    "note": "Мапа — «Школа Шоу» (High School; «Середня школа» зайнята під Malden Middle School); CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2233,
+    "term": "Skylanes Flight 1981",
+    "before": "Рейс 1981 «Скайлейнс»",
+    "canon": "Рейс 1981 «Скайлейнс»",
+    "action": "keep",
+    "note": "Мапа, записка, квест — «Рейс 1981 «Скайлейнс»»; LCTN вирівняно."
+  },
+  {
+    "id": 2234,
+    "term": "Slocum's Joe Corporate HQ",
+    "before": "Штаб-квартира «Слокумс Джо»",
+    "canon": "Штаб-квартира «Слокамс Джо»",
+    "action": "update",
+    "note": "Override: Slocum's Joe → «Слокамс Джо» (Headquarters/HQ так само); LCTN, мапу й MESG вирівняно."
+  },
+  {
+    "id": 2237,
+    "term": "South Boston HighSchool",
+    "before": "Школа Південного Бостона",
+    "canon": "Школа Південного Бостона",
+    "action": "keep",
+    "note": "Як «Школа Шоу»; LCTN вирівняно."
+  },
+  {
+    "id": 2246,
+    "term": "Super Duper Mart",
+    "before": "Супер-Дупер-Март",
+    "canon": "Супер-Дупер-Март",
+    "action": "keep",
+    "note": "Мапа, діалог, MESG — «Супер-Дупер-Март»; CELL/LCTN і 2 репліки без другого дефіса вирівняно."
+  },
+  {
+    "id": 2249,
+    "term": "Taffington Boathouse",
+    "before": "Елінг Таффінгтона",
+    "canon": "Елінг Таффінгтона",
+    "action": "keep",
+    "note": "Мапа і діалоги Ядер-Світу — «Елінг Таффінгтона»; LCTN вирівняно."
+  },
+  {
+    "id": 2253,
+    "term": "The Boylston Club",
+    "before": "Клуб «Бойлстон»",
+    "canon": "Клуб «Бойлстон»",
+    "action": "keep",
+    "note": "Мапа й термінали — Клуб «Бойлстон»; CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2260,
+    "term": "The Nucleus",
+    "before": "Ядро",
+    "canon": "Нуклеус",
+    "action": "update",
+    "note": "Override і рішення: Нуклеус (не «Ядро»); CELL/LCTN/мапа вже так, 33 репліки Фар-Гарбора з «Ядро/Ядра/Ядрі» вирівняно."
+  },
+  {
+    "id": 2267,
+    "term": "Ticker Tape Lounge",
+    "before": "Лаунж «Тікер-Тейп»",
+    "canon": "Лаунж «Тікер-Тейп»",
+    "action": "keep",
+    "note": "Мапа — дефіс у «Тікер-Тейп»; CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2271,
+    "term": "USAF Satellite Station Olivia",
+    "before": "Супутникова станція ВПС США «Олівія»",
+    "canon": "Супутникова станція ВПС США «Олівія»",
+    "action": "keep",
+    "note": "Мапа, квест, робот — «Супутникова станція ВПС США «Олівія»»; CELL/LCTN/TERM вирівняно."
+  },
+  {
+    "id": 2276,
+    "term": "Valentine Detective Agency",
+    "before": "Детективне агентство Валентайна",
+    "canon": "Детективне агентство Валентайна",
+    "action": "keep",
+    "note": "Квест і діалог — «Детективне агентство Валентайна»; CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2283,
+    "term": "Vault-Tec Office",
+    "before": "Офіс Волт-Тек",
+    "canon": "Офіс Волт-Тек",
+    "action": "keep",
+    "note": "names/override: Волт-Тек без лапок; LCTN вирівняно."
+  },
+  {
+    "id": 2291,
+    "term": "Warren Theater",
+    "before": "Театр «Воррен»",
+    "canon": "Театр «Воррен»",
+    "action": "keep",
+    "note": "Мапа — Театр «Воррен»; CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2292,
+    "term": "Warwick Homestead",
+    "before": "Садиба Ворвіків",
+    "canon": "Садиба Ворвіків",
+    "action": "keep",
+    "note": "Мапа, квести, ≈20 реплік — «Садиба Ворвіків»; LCTN вирівняно."
+  },
+  {
+    "id": 2295,
+    "term": "Wattz Used Electronics",
+    "before": "Вживана електроніка «Воттц»",
+    "canon": "Вживана електроніка «Ваттц»",
+    "action": "update",
+    "note": "Корпус послідовно «Ваттц» (≈20 рядків, names: Wattz Electronics, мапа); «Воттц» ніде не вжито."
+  },
+  {
+    "id": 2297,
+    "term": "Weatherby Investment Trust",
+    "before": "Інвестиційний траст «Везербі»",
+    "canon": "Інвестиційний траст «Везербі»",
+    "action": "keep",
+    "note": "Мапа й override («Везербі» у лапках); CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2300,
+    "term": "Westing Estate",
+    "before": "Маєток Вестінг",
+    "canon": "Маєток Вестінг",
+    "action": "keep",
+    "note": "Мапа й діалоги — «маєток Вестінг»; LCTN «Вестінг-Естейт» вирівняно."
+  },
+  {
+    "id": 2301,
+    "term": "Weston Water Treatment Plant",
+    "before": "Водоочисна станція Вестон",
+    "canon": "Водоочисна станція Вестон",
+    "action": "keep",
+    "note": "Мапа, квести, MESG — «Водоочисна станція Вестон»; CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2304,
+    "term": "Wilson Atomatoys Corporate HQ",
+    "before": "Штаб-квартира «Вілсон Атоматойз»",
+    "canon": "Штаб-квартира «Вілсон Атоматойз»",
+    "action": "keep",
+    "note": "Мапа, термінали, MESG — без «корпорації»; CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2308,
+    "term": "Yangtze",
+    "before": "«Янцзи»",
+    "canon": "«Янцзи»",
+    "action": "keep",
+    "note": "Назва човна в лапках у ≈30 репліках і терміналах; CELL/LCTN вирівняно."
+  },
+  {
+    "id": 2320,
+    "term": "Alan Binet",
+    "before": "Алан Біне",
+    "canon": "Алан Біне",
+    "action": "keep",
+    "note": "Override «Алан Біне»; рядок NPC_ «Бінет» лишено проходу Біне."
+  },
+  {
+    "id": 2323,
+    "term": "Alice Thompson",
+    "before": "Еліс Томпсон",
+    "canon": "Еліс Томпсон",
+    "action": "keep",
+    "note": "Канон names.json; NPC_ «Аліса» — русифікована форма, виправити."
+  },
+  {
+    "id": 2326,
+    "term": "Allie Filmore",
+    "before": "Еллі Філмор",
+    "canon": "Еллі Філмор",
+    "action": "keep",
+    "note": "Діалоги й квести вже вживають «Еллі Філмор»; виправити лише NPC_."
+  },
+  {
+    "id": 2331,
+    "term": "Anise Ciroletti",
+    "before": "Аніс Чіролетті",
+    "canon": "Аніс Чіролетті",
+    "action": "keep",
+    "note": "Термінал і репліка вже «Чіролетті»; NPC_ «Сіролетті» вирівняти."
+  },
+  {
+    "id": 2339,
+    "term": "Ashes",
+    "before": "Ешес",
+    "canon": "Ешес",
+    "action": "keep",
+    "note": "Діалоги (34 рядки) — «Ешес»; NPC_ «Ешс» — одрук."
+  },
+  {
+    "id": 2348,
+    "term": "Bean",
+    "before": "Бін",
+    "canon": "Бін",
+    "action": "keep",
+    "note": "Точний збіг лише один — NPC_ (Містер Помічник у «Слокамс Джо»), тож це ім'я, а не слово; «Квасоля» → «Бін»."
+  },
+  {
+    "id": 2350,
+    "term": "Beatrice Bell",
+    "before": "Беатріс Белл",
+    "canon": "Беатріс Белл",
+    "action": "keep",
+    "note": "Канон names.json; NPC_ «Біатріс» вирівняти."
+  },
+  {
+    "id": 2367,
+    "term": "Bob's Your Uncle",
+    "before": "Боб-і-готово",
+    "canon": "Боб-і-готово",
+    "action": "keep",
+    "note": "Ім'я робогонщика; репліка вже «Боб-і-готово», NPC_ «Боб — і готово» вирівняти."
+  },
+  {
+    "id": 2387,
+    "term": "Brother Henri",
+    "before": "Брат Анрі",
+    "canon": "Брат Анрі",
+    "action": "keep",
+    "note": "Записки звертаються «Брате Анрі»; NPC_ «Брат Генрі» вирівняти."
+  },
+  {
+    "id": 2390,
+    "term": "Brother Matthew",
+    "before": "Брат Метью",
+    "canon": "Брат Метью",
+    "action": "keep",
+    "note": "Канон names.json (Matthew → Метью); NPC_ «Меттью» вирівняти."
+  },
+  {
+    "id": 2396,
+    "term": "Bull",
+    "before": "Булл",
+    "canon": "Булл",
+    "action": "keep",
+    "note": "Діалоги MS14 і SHRT — «Булл»; FULL «Бул» — одрук. Більшість точних збігів — NPC, тому запис лишається."
+  },
+  {
+    "id": 2398,
+    "term": "Buzensky",
+    "before": "Бузенскі",
+    "canon": "Бузенскі",
+    "action": "keep",
+    "note": "Голозапис («мене звати Джефф Бузенскі») — «Бузенскі»; NPC_ «Бузенський» вирівняти."
+  },
+  {
+    "id": 2407,
+    "term": "Captain Zao",
+    "before": "Капітан Цзао",
+    "canon": "Капітан Цзао",
+    "action": "keep",
+    "note": "Квести й діалоги — «капітан Цзао»; NPC_ «Зао» вирівняти."
+  },
+  {
+    "id": 2425,
+    "term": "Clarabell",
+    "before": "Кларабелл",
+    "canon": "Кларабелл",
+    "action": "keep",
+    "note": "Діалоги — «Кларабелл»; NPC_ «Кларабел» вирівняти."
+  },
+  {
+    "id": 2426,
+    "term": "Clarence Codman",
+    "before": "Кларенс Кодман",
+    "canon": "Кларенс Кодман",
+    "action": "keep",
+    "note": "Канон names.json; NPC_ «Клеренс» вирівняти."
+  },
+  {
+    "id": 2453,
+    "term": "Dalen",
+    "before": "Дален",
+    "canon": "Дален",
+    "action": "keep",
+    "note": "Термінал DN011 — «Дален»; NPC_ «Делен» вирівняти."
+  },
+  {
+    "id": 2458,
+    "term": "Dara Hubbell",
+    "before": "Дара Габбелл",
+    "canon": "Дара Габбелл",
+    "action": "keep",
+    "note": "h → г (Hubbell → Габбелл); NPC_ «Хаббелл» вирівняти."
+  },
+  {
+    "id": 2468,
+    "term": "Deirdre",
+    "before": "Дірдре",
+    "canon": "Дірдре",
+    "action": "keep",
+    "note": "Рішення ITEM_NOTES (Deirdre → Дірдре); рядки корпусу охоплені правилом — не правимо тут."
+  },
+  {
+    "id": 2474,
+    "term": "Doc Anderson",
+    "before": "Док Андерсон",
+    "canon": "Док Андерсон",
+    "action": "keep",
+    "note": "Діалоги кажуть «Док Андерсон» (вона жінка, «Док» нейтральне); NPC_ «Доктор Андерсон» вирівняти."
+  },
+  {
+    "id": 2477,
+    "term": "Doc Weathers",
+    "before": "Док Везерс",
+    "canon": "Док Везерс",
+    "action": "keep",
+    "note": "Канон names.json і одна репліка — «Везерс»; NPC_ і дві репліки «Доку Візерсе» вирівняти до «Доку Везерсе»."
+  },
+  {
+    "id": 2480,
+    "term": "Doctor Patricia",
+    "before": "Докторка Патриція",
+    "canon": "Докторка Патриція",
+    "action": "keep",
+    "note": "SHRT і діалоги — «Патриція»; FULL «Патріція» вирівняти."
+  },
+  {
+    "id": 2492,
+    "term": "Dr. Roslyn Chambers",
+    "before": "Докторка Розлін Чемберс",
+    "canon": "Докторка Розлін Чемберс",
+    "action": "keep",
+    "note": "Канон names.json; NPC_ «Рослін» вирівняти."
+  },
+  {
+    "id": 2494,
+    "term": "Drummer Boy",
+    "before": "Барабанщик",
+    "canon": "Барабанщик",
+    "action": "keep",
+    "note": "Підземка в діалогах і квестах — «Барабанщик» (DECISIONS: Drummer Boy = «Барабанщик»); NPC_ вирівняти."
+  },
+  {
+    "id": 2502,
+    "term": "Eleanor",
+    "before": "Елеанор",
+    "canon": "Елеанор",
+    "action": "keep",
+    "note": "Записка й скриня — «Елеанор»; NPC_ «Елеонора» вирівняти."
+  },
+  {
+    "id": 2534,
+    "term": "Fusion's Folly",
+    "before": "Атомна примха",
+    "canon": "Атомна примха",
+    "action": "keep",
+    "note": "Термінали — «Атомної примхи»; NPC_ «Атомне безумство» вирівняти."
+  },
+  {
+    "id": 2535,
+    "term": "Gabriel",
+    "before": "Гейбріел",
+    "canon": "Гейбріел",
+    "action": "keep",
+    "note": "Діалоги й термінал — «Гейбріел»; NPC_ «Габріель» вирівняти."
+  },
+  {
+    "id": 2540,
+    "term": "General McGann",
+    "before": "Генерал Макганн",
+    "canon": "Генерал Макганн",
+    "action": "keep",
+    "note": "Термінал і репліка — «Макганн»; NPC_ «Макган» вирівняти."
+  },
+  {
+    "id": 2546,
+    "term": "Gouger",
+    "before": "Гауджер",
+    "canon": "Гауджер",
+    "action": "keep",
+    "note": "Обидва точні збіги — NPC_ (кличка рейдера MS14, SHRT уже «Гауджер»); FULL «Різник» вирівняти."
+  },
+  {
+    "id": 2549,
+    "term": "Green",
+    "before": "Грін",
+    "canon": "Зелений",
+    "action": "delete",
+    "note": "Точні збіги — колір (очі, косметика, фарба, неон); глосарійний запис «Грін» шкідливий. NPC_ EncDeathclaw07 «Green» — теж колірний варіант, не чіпаємо."
+  },
+  {
+    "id": 2550,
+    "term": "Gruel",
+    "before": "Груел",
+    "canon": "Груел",
+    "action": "keep",
+    "note": "Квест і записки — «Груел» (DECISIONS: Gruel → Груел); NPC_ «Грюел» вирівняти."
+  },
+  {
+    "id": 2555,
+    "term": "Hammer",
+    "before": "Геммер",
+    "canon": "Геммер",
+    "action": "delete",
+    "note": "«Hammer» у корпусі переважно предмет (молоток/молот, 14 рядків); запис прибрати, а NPC_ супермутанта DN150 вирівняти до «Геммер», як у голозаписі й репліках."
+  },
+  {
+    "id": 2566,
+    "term": "Hugo",
+    "before": "Г'юго",
+    "canon": "Г'юго",
+    "action": "keep",
+    "note": "Нотатка й локація — «Г'юго»; NPC_ «Гуго» вирівняти."
+  },
+  {
+    "id": 2569,
+    "term": "Initiate Clarke",
+    "before": "Новобранець Кларк",
+    "canon": "Новобранець Кларк",
+    "action": "keep",
+    "note": "Initiate → новобранець (рішення); NPC_ «Початківець Кларк» вирівняти."
+  },
+  {
+    "id": 2570,
+    "term": "Initiate Dresden",
+    "before": "Новобранець Дрезден",
+    "canon": "Новобранець Дрезден",
+    "action": "keep",
+    "note": "Initiate → новобранець (рішення); NPC_ вирівняти."
+  },
+  {
+    "id": 2589,
+    "term": "Jesse McDaniel",
+    "before": "Джессі Макденіел",
+    "canon": "Джессі Макденіел",
+    "action": "keep",
+    "note": "Канон names.json (McDaniel → Макденіел); NPC_ вирівняти."
+  },
+  {
+    "id": 2611,
+    "term": "Katelyn Alden",
+    "before": "Кейтлін Олден",
+    "canon": "Кейтлін Олден",
+    "action": "keep",
+    "note": "Канон names.json (Alden → Олден); NPC_ вирівняти."
+  },
+  {
+    "id": 2620,
+    "term": "Kendell Alston",
+    "before": "Кенделл Олстон",
+    "canon": "Кендалл Алстон",
+    "action": "update",
+    "note": "Змістовні рядки вже мають «Журнал Кендалла» і «Тіана Алстон» (сестра чи родичка, MESG); NPC_ збігається — глосарій вирівняти до корпусу."
+  },
+  {
+    "id": 2640,
+    "term": "Lane",
+    "before": "Лейн",
+    "canon": "Лейн",
+    "action": "keep",
+    "note": "Єдиний точний збіг — NPC_ (Містер Помічник у кегельбані, поруч Страйк/Спер/Кінгпін — транслітерація); «Доріжка» → «Лейн»."
+  },
+  {
+    "id": 2647,
+    "term": "Liam Binet",
+    "before": "Ліам Біне",
+    "canon": "Ліам Біне",
+    "action": "keep",
+    "note": "Override names_overrides; рядки корпусу охоплені правилом Біне — не правимо тут."
+  },
+  {
+    "id": 2653,
+    "term": "Lucky",
+    "before": "Лакі",
+    "canon": "Фартовий",
+    "action": "delete",
+    "note": "Точні збіги переважно легендарний префікс «Фартовий» (5 з 7); ім'я пса і трупа в Гаунтлеті вже «Лакі»."
+  },
+  {
+    "id": 2669,
+    "term": "Major Jefferies",
+    "before": "Майор Джефферіс",
+    "canon": "Майор Джеффріс",
+    "action": "update",
+    "note": "Jefferies вимовляється «Джеффріс»; так у FULL×2, SHRT і репліці «Джеффрісе!»; одну репліку «Джефферіса» вирівняти."
+  },
+  {
+    "id": 2671,
+    "term": "Malcom Latimer",
+    "before": "Малком Латімер",
+    "canon": "Малком Латімер",
+    "action": "keep",
+    "note": "Override names_overrides; NPC_ «Малколм» вирівняти."
+  },
+  {
+    "id": 2674,
+    "term": "Manta Man",
+    "before": "Манта-Мен",
+    "canon": "Манта-Мен",
+    "action": "keep",
+    "note": "Діалоги й квести — «Манта-Мен»; NPC_ без дефіса вирівняти."
+  },
+  {
+    "id": 2680,
+    "term": "Mark Falcone",
+    "before": "Марк Фальконе",
+    "canon": "Марк Фальконе",
+    "action": "keep",
+    "note": "Канон names.json (італійське Falcone); NPC_ вирівняти."
+  },
+  {
+    "id": 2688,
+    "term": "Maurice Turner",
+    "before": "Моріс Тернер",
+    "canon": "Моріс Тернер",
+    "action": "keep",
+    "note": "Канон names.json; NPC_ «Морис» вирівняти."
+  },
+  {
+    "id": 2696,
+    "term": "McDonnall",
+    "before": "Макдоннелл",
+    "canon": "Макдоннелл",
+    "action": "keep",
+    "note": "Канон names.json; NPC_ «Макдонналл» вирівняти."
+  },
+  {
+    "id": 2698,
+    "term": "Med",
+    "before": "Мед",
+    "canon": "Середній",
+    "action": "delete",
+    "note": "«Med» тут — мітка розміру браміллуфа (Small/Med/Lg), не ім'я; «Середній» у корпусі правильний, запис «Мед» прибрати."
+  },
+  {
+    "id": 2712,
+    "term": "Mistress of Mysterious",
+    "before": "Володарка Таємниць",
+    "canon": "Володарка Таємниць",
+    "action": "keep",
+    "note": "Шість реплік MS04 — «Володарка Таємниць»; NPC_ «Повелителька таємниць» і два листи-термінали з «Господинею Таємниць» вирівняти."
+  },
+  {
+    "id": 2720,
+    "term": "Mr Frothy Chef",
+    "before": "Містер Фроті — кухар",
+    "canon": "Містер Фроті — кухар",
+    "action": "keep",
+    "note": "Канон names.json; NPC_ «Містер Фроті Шеф» вирівняти."
+  },
+  {
+    "id": 2721,
+    "term": "Mr Frothy Waiter",
+    "before": "Містер Фроті — офіціант",
+    "canon": "Містер Фроті — офіціант",
+    "action": "keep",
+    "note": "Канон names.json; NPC_ вирівняти."
+  },
+  {
+    "id": 2724,
+    "term": "Mr. Cofran",
+    "before": "Містер Кофран",
+    "canon": "Містер Кофран",
+    "action": "keep",
+    "note": "Mr. → Містер (правило); термінал уже «Містер Кофран», NPC_ «Пан» вирівняти."
+  },
+  {
+    "id": 2725,
+    "term": "Mr. DiPietro",
+    "before": "Містер ДіП'єтро",
+    "canon": "Містер ДіП'єтро",
+    "action": "keep",
+    "note": "Mr. → Містер; NPC_ «Пан» вирівняти."
+  },
+  {
+    "id": 2729,
+    "term": "Mr. Russell",
+    "before": "Містер Расселл",
+    "canon": "Містер Расселл",
+    "action": "keep",
+    "note": "Канон names.json і термінал — «Расселл» (подвоєння у власних назвах); NPC_ вирівняти."
+  },
+  {
+    "id": 2734,
+    "term": "Mrs. Cofran",
+    "before": "Місіс Кофран",
+    "canon": "Місіс Кофран",
+    "action": "keep",
+    "note": "Mrs. → Місіс; NPC_ «Пані» вирівняти."
+  },
+  {
+    "id": 2740,
+    "term": "N.I.R.A.",
+    "before": "N.I.R.A.",
+    "canon": "НІРА",
+    "action": "update",
+    "note": "Override names_overrides (N.I.R.A. → НІРА); корпус уже скрізь «НІРА»."
+  },
+  {
+    "id": 2753,
+    "term": "Ol' Girl",
+    "before": "Старенька",
+    "canon": "Старенька",
+    "action": "keep",
+    "note": "Канон names.json (брамін Лукаса); NPC_ «Стара подружка» вирівняти."
+  },
+  {
+    "id": 2756,
+    "term": "Old Rusty",
+    "before": "Старий Расті",
+    "canon": "Старий Расті",
+    "action": "keep",
+    "note": "Рішення DECISIONS (Old Rusty → Старий Расті) і 18 реплік; NPC_ «Расти» вирівняти."
+  },
+  {
+    "id": 2771,
+    "term": "Peepers",
+    "before": "Піперс",
+    "canon": "Робооко «Піперс»",
+    "action": "update",
+    "note": "Відоме рішення: Peepers → Робооко «Піперс»; рядок m33 «Піперс» вирівняти."
+  },
+  {
+    "id": 2773,
+    "term": "Penny Fitzgerald",
+    "before": "Пенні Фіцджеральд",
+    "canon": "Пенні Фіцджеральд",
+    "action": "keep",
+    "note": "Рішення Fitzgerald → Фіцджеральд; FULL «Фітцджеральд» вирівняти."
+  },
+  {
+    "id": 2781,
+    "term": "Phyllis Daily",
+    "before": "Філліс Дейлі",
+    "canon": "Філліс Дейлі",
+    "action": "keep",
+    "note": "Записки й листи — «Філліс»; NPC_ «Філіс» вирівняти."
+  },
+  {
+    "id": 2790,
+    "term": "Professor Goodfeels",
+    "before": "Професор Гудфілз",
+    "canon": "Професор Гудфілз",
+    "action": "keep",
+    "note": "Канон names.json; NPC_ «Гудфілс» вирівняти."
+  },
+  {
+    "id": 2795,
+    "term": "Rags",
+    "before": "Регз",
+    "canon": "Регз",
+    "action": "keep",
+    "note": "Єдиний точний збіг — NPC_ (бос-гуль); канон names.json, «Регс» вирівняти."
+  },
+  {
+    "id": 2797,
+    "term": "Red",
+    "before": "Ред",
+    "canon": "Червоний",
+    "action": "delete",
+    "note": "Точні збіги — колір (12 з 12, NPC_ EncDeathclaw07 теж колірний варіант); запис «Ред» прибрати."
+  },
+  {
+    "id": 2801,
+    "term": "Regi Blattaria",
+    "before": "Реджі Блаттарія",
+    "canon": "Реджі Блаттарія",
+    "action": "keep",
+    "note": "Канон names.json; NPC_ «Регі» вирівняти."
+  },
+  {
+    "id": 2809,
+    "term": "Ricky Braxton",
+    "before": "Рікі Брекстон",
+    "canon": "Рікі Брекстон",
+    "action": "keep",
+    "note": "Ricky → Рікі (ck — не подвоєння); NPC_ вирівняти."
+  },
+  {
+    "id": 2810,
+    "term": "Ricky Dalton",
+    "before": "Рікі Далтон",
+    "canon": "Рікі Далтон",
+    "action": "keep",
+    "note": "Репліка й квест — «Рікі Далтон»; FULL, SHRT і локацію «Естакада Ріккі Далтона» вирівняти."
+  },
+  {
+    "id": 2815,
+    "term": "Rolanda Hooper",
+    "before": "Роланда Гупер",
+    "canon": "Роланда Гупер",
+    "action": "keep",
+    "note": "h → г (Hooper → Гупер); NPC_ вирівняти."
+  },
+  {
+    "id": 2827,
+    "term": "Russell Sutton",
+    "before": "Расселл Саттон",
+    "canon": "Расселл Саттон",
+    "action": "keep",
+    "note": "Канон names.json, узгоджено з «Містер Расселл»; NPC_ і записки DN132 («Рассела», «Рассел») вирівняти."
+  },
+  {
+    "id": 2828,
+    "term": "Rusty",
+    "before": "Расті",
+    "canon": "Расті",
+    "action": "keep",
+    "note": "Обидва точні збіги — NPC_ (Расті Бертон, Старий Расті); FULL «Расти» вирівняти."
+  },
+  {
+    "id": 2842,
+    "term": "Scabbard",
+    "before": "Скаббард",
+    "canon": "Скаббард",
+    "action": "keep",
+    "note": "Позивний Братерства, SHRT/термінали «Скаббард»; рядки корпусу охоплені правилом — не правимо тут (NPC_ «Піхви» і репліка «Прийнято, Піхви» лишаються на той прохід)."
+  },
+  {
+    "id": 2875,
+    "term": "Slough",
+    "before": "Слау",
+    "canon": "Слау",
+    "action": "keep",
+    "note": "Репліка й термінал — «Слау»; NPC_ «Слоу» вирівняти."
+  },
+  {
+    "id": 2886,
+    "term": "Sparks",
+    "before": "Спаркс",
+    "canon": "Спаркс",
+    "action": "keep",
+    "note": "Обидва точні збіги — NPC_ (робот Ади/Механіста), 17 реплік «Спаркс»; «Іскри» вирівняти."
+  },
+  {
+    "id": 2894,
+    "term": "Stash",
+    "before": "Стеш",
+    "canon": "Стеш",
+    "action": "keep",
+    "note": "Точний збіг — NPC_ (торговка хімією), діалоги й квести «Стеш» (DECISIONS); «Заначка» вирівняти."
+  },
+  {
+    "id": 2897,
+    "term": "Strike",
+    "before": "Страйк",
+    "canon": "Удар",
+    "action": "delete",
+    "note": "Точні збіги переважно GMST «Удар»; Містер Помічник у кегельбані вже «Страйк»."
+  },
+  {
+    "id": 2901,
+    "term": "Sully Mathis",
+    "before": "Саллі Матіс",
+    "canon": "Саллі Матіс",
+    "action": "keep",
+    "note": "Квестові цілі — «Саллі Матісом»; NPC_ «Метіс» вирівняти."
+  },
+  {
+    "id": 2911,
+    "term": "Talia McGovern",
+    "before": "Талія Макговерн",
+    "canon": "Талія Макговерн",
+    "action": "keep",
+    "note": "SHRT і канон без «ґ»; FULL «Макґоверн» вирівняти."
+  },
+  {
+    "id": 2918,
+    "term": "Tenpin",
+    "before": "Тенпін",
+    "canon": "Тенпін",
+    "action": "keep",
+    "note": "Єдиний точний збіг — NPC_ (Містер Помічник у кегельбані, як Лейн/Страйк/Спер); «Кегля для боулінгу» → «Тенпін»."
+  },
+  {
+    "id": 2921,
+    "term": "The Archemist",
+    "before": "Алхімік",
+    "canon": "Алхімікиня",
+    "action": "update",
+    "note": "Override names_overrides (Archemist → Алхімікиня), персонаж жіночий; NPC_ уже так, п'ять реплік з «Алхімік» вирівняти."
+  },
+  {
+    "id": 2922,
+    "term": "The Boston Blaster",
+    "before": "Бостонський Бластер",
+    "canon": "Бостонський Бластер",
+    "action": "keep",
+    "note": "Канон names.json; NPC_ «Бостонський розбивач» вирівняти."
+  },
+  {
+    "id": 2925,
+    "term": "The Giddyup Kid",
+    "before": "Малюк Гідді-ап",
+    "canon": "Жвавий Малюк",
+    "action": "update",
+    "note": "Override names_overrides (Giddyup Kid → Жвавий Малюк); корпус уже так."
+  },
+  {
+    "id": 2938,
+    "term": "Tommy Whispers",
+    "before": "Томмі Шепіт",
+    "canon": "Томмі Шепіт",
+    "action": "keep",
+    "note": "Діалоги Підземки — «Томмі Шепіт»; NPC_ «Вісперс» вирівняти."
+  },
+  {
+    "id": 2965,
+    "term": "Whiplash",
+    "before": "Віплеш",
+    "canon": "Віплеш",
+    "action": "keep",
+    "note": "Єдиний точний збіг — NPC_ (рейдер DN147), тож це кличка; «Хлист» → «Віплеш» за правилом транслітерації."
+  },
+  {
+    "id": 2971,
+    "term": "Wire",
+    "before": "Вайр",
+    "canon": "Дріт",
+    "action": "delete",
+    "note": "Точні збіги переважно «Дріт» (3 з 4); бос рейдерів уже «Вайр» і в терміналах."
+  },
+  {
+    "id": 2983,
+    "term": "Zealot Theil",
+    "before": "Фанатик Тейл",
+    "canon": "Фанатичка Тейл",
+    "action": "update",
+    "note": "Override names_overrides, персонаж жіночий; NPC_ уже так, репліки «фанатик/Фанатику Тейл» вирівняти (кличний: «фанатичко»)."
+  },
+  {
+    "id": 2991,
+    "term": "Albino Mirelurk Hunter",
+    "before": "Болотник-ловець-альбінос",
+    "canon": "Болотник-ловець-альбінос",
+    "action": "keep",
+    "note": "Рішення: Mirelurk Hunter → Болотник-ловець, Albino → «X-альбінос»; NPC_ і легендарні варіанти вирівняти."
+  },
+  {
+    "id": 2996,
+    "term": "Alien",
+    "before": "Прибулець",
+    "canon": "Прибулець",
+    "action": "keep",
+    "note": "Відоме рішення Alien → прибулець; SHRT уже так, FULL «Інопланетянин» вирівняти (загальне слово «інопланетяни» в розмовах Тінкера Тома — не ім'я, не чіпаємо)."
+  },
+  {
+    "id": 2997,
+    "term": "Alpha Albino Mongrel",
+    "before": "Альфа дикий пес-альбінос",
+    "canon": "Альфа-дикий пес-альбінос",
+    "action": "update",
+    "note": "Усі альфа-істоти в корпусі пишуться «Альфа-…» (Альфа-кіготь смерті, Альфа-краб-самітник); глосарій вирівняти до корпусу."
+  },
+  {
+    "id": 2999,
+    "term": "Alpha Feral Mongrel",
+    "before": "Альфа здичавілий пес",
+    "canon": "Альфа-здичавілий пес",
+    "action": "update",
+    "note": "Feral Mongrel → здичавілий пес (рішення) + префікс «Альфа-», як у корпусі; NPC_ «…здичавілий дикий пес» вирівняти."
+  },
+  {
+    "id": 3000,
+    "term": "Alpha Glowing Mongrel",
+    "before": "Альфа сяючий дикий пес",
+    "canon": "Альфа-сяючий дикий пес",
+    "action": "update",
+    "note": "Префікс «Альфа-», як у всіх альфа-істотах корпусу; рядок уже такий."
+  },
+  {
+    "id": 3002,
+    "term": "Alpha Rabid Mongrel",
+    "before": "Альфа скажений дикий пес",
+    "canon": "Альфа-скажений дикий пес",
+    "action": "update",
+    "note": "Префікс «Альфа-», як у всіх альфа-істотах корпусу; рядок уже такий."
+  },
+  {
+    "id": 3003,
+    "term": "Alpha Vicious Mongrel",
+    "before": "Альфа лютий дикий пес",
+    "canon": "Альфа-лютий дикий пес",
+    "action": "update",
+    "note": "Префікс «Альфа-», як у всіх альфа-істотах корпусу; рядок уже такий."
+  },
+  {
+    "id": 3004,
+    "term": "Alpha Wild Mongrel",
+    "before": "Альфа дикий пес",
+    "canon": "Альфа-дикий пес",
+    "action": "update",
+    "note": "Префікс «Альфа-», як у всіх альфа-істотах корпусу; рядок уже такий."
+  },
+  {
+    "id": 3006,
+    "term": "Animatronic Alien",
+    "before": "Аніматронний прибулець",
+    "canon": "Аніматронний прибулець",
+    "action": "keep",
+    "note": "Ефект і бластер уже «аніматронного прибульця»; NPC_ «Аніматронічний» вирівняти."
+  },
+  {
+    "id": 3017,
+    "term": "Assistant Manager Handy",
+    "before": "Містер Помічник — заступник менеджера",
+    "canon": "Містер Помічник — заступник менеджера",
+    "action": "keep",
+    "note": "Канон names.json; NPC_ вирівняти."
+  },
+  {
+    "id": 3031,
+    "term": "Brahmiluff Longhorn",
+    "before": "Довгорогий браміллуф",
+    "canon": "Довгорогий браміллуф",
+    "action": "keep",
+    "note": "Глосарій зрозуміліший за кальку «Лонгхорн», змістовних рядків немає; NPC_ вирівняти."
+  },
+  {
+    "id": 3032,
+    "term": "Brahmiluff Shorthorn",
+    "before": "Короткорогий браміллуф",
+    "canon": "Короткорогий браміллуф",
+    "action": "keep",
+    "note": "Пара до «Довгорогий браміллуф»; NPC_ «Шортхорн» вирівняти."
+  },
+  {
+    "id": 3039,
+    "term": "Brotherhood Lancer-Initiate",
+    "before": "Пілот-новобранець Братерства сталі",
+    "canon": "Пілот-новобранець Братерства сталі",
+    "action": "keep",
+    "note": "Lancer → Пілот, Initiate → новобранець (рішення); NPC_ вирівняти."
+  },
+  {
+    "id": 3042,
+    "term": "Brotherhood Mess Officer",
+    "before": "Начальник їдальні Братерства сталі",
+    "canon": "Начальник їдальні Братерства сталі",
+    "action": "keep",
+    "note": "Канон names.json; NPC_ «Офіцер їдальні» вирівняти."
+  },
+  {
+    "id": 3043,
+    "term": "Brotherhood Mr Gutsy",
+    "before": "Містер Сміливець Братерства сталі",
+    "canon": "Містер Сміливець Братерства сталі",
+    "action": "keep",
+    "note": "Як усі NPC Братерства — «…Братерства сталі»; NPC_ вирівняти."
+  },
+  {
+    "id": 3046,
+    "term": "Brotherhood Scribe Initiate",
+    "before": "Писар-новобранець Братерства сталі",
+    "canon": "Писар-новобранець Братерства сталі",
+    "action": "keep",
+    "note": "ITEM_NOTES: Initiate Scribe → Писар-новобранець; NPC_ «Початківець-писар» вирівняти."
+  },
+  {
+    "id": 3048,
+    "term": "Brotherhood Soldier Initiate",
+    "before": "Солдат-новобранець Братерства сталі",
+    "canon": "Солдат-новобранець Братерства сталі",
+    "action": "keep",
+    "note": "Initiate → новобранець; 9 NPC_ «Солдат-початківець» вирівняти."
+  },
+  {
+    "id": 3052,
+    "term": "Cannery Robot",
+    "before": "Робот консервного заводу",
+    "canon": "Робот консервного заводу",
+    "action": "keep",
+    "note": "Канон names.json, змістовних рядків немає; NPC_ «Робот-консервник» вирівняти."
+  },
+  {
+    "id": 3054,
+    "term": "Captured Synth",
+    "before": "Полонений синт",
+    "canon": "Полонений синт",
+    "action": "keep",
+    "note": "Квестова ціль уже «полоненому синту»; NPC_ «Захоплений» вирівняти."
+  },
+  {
+    "id": 3055,
+    "term": "Caravan Guard",
+    "before": "Охоронець каравану",
+    "canon": "Охоронець каравану",
+    "action": "keep",
+    "note": "Гендерний клас: у глосарії загальна форма; NPC_ «Охоронниця каравану» — жіночі персонажі, не правити."
+  },
+  {
+    "id": 3056,
+    "term": "Caravan Prisoner",
+    "before": "Бранець каравану",
+    "canon": "Бранець каравану",
+    "action": "keep",
+    "note": "Pack Captive → Бранець/Бранка (прецедент ITEM_NOTES); чоловічий рядок «В'язень» → «Бранець каравану», жіночий (FFBK03PrisonerFemale) → «Бранка каравану»."
+  },
+  {
+    "id": 3061,
+    "term": "Cave Cricket Piercer",
+    "before": "Печерний цвіркун-проколювач",
+    "canon": "Печерний цвіркун-проколювач",
+    "action": "keep",
+    "note": "Канон names.json; NPC_ і легендарний варіант «пронизувач» вирівняти."
+  },
+  {
+    "id": 3064,
+    "term": "Charred Painted Ghoul",
+    "before": "Обвуглений розмальований гуль",
+    "canon": "Обвуглений розмальований гуль",
+    "action": "keep",
+    "note": "Узгоджено з «Обвуглений дикий гуль» у корпусі; NPC_ «Обгорілий» вирівняти."
+  },
+  {
+    "id": 3065,
+    "term": "Chem Lab Worker",
+    "before": "Працівник хімлабораторії",
+    "canon": "Працівник хімлабораторії",
+    "action": "keep",
+    "note": "Канон names.json; 4 NPC_ (усі чоловіки) вирівняти."
+  },
+  {
+    "id": 3066,
+    "term": "Chems Vendor",
+    "before": "Торговка хімією",
+    "canon": "Торговець хімією",
+    "action": "update",
+    "note": "Гендерний клас: у глосарії загальна чоловіча форма; NPC_ REMerchant04 — жінка, «Торговка хімікатами» не правимо."
+  },
+  {
+    "id": 3075,
+    "term": "Combat Sentry Prototype MKIV",
+    "before": "Прототип бойового робота-охоронця MKIV",
+    "canon": "Прототип бойового робота-охоронця MKIV",
+    "action": "keep",
+    "note": "Термінал уже вживає цю форму; NPC_ вирівняти."
+  },
+  {
+    "id": 3076,
+    "term": "Commander Astro-Gutsy",
+    "before": "Командир Астро-Сміливець",
+    "canon": "Командир Астро-Сміливець",
+    "action": "keep",
+    "note": "Узгоджено з «Командир Стрільців» (Gunner Commander); NPC_ «Командор» вирівняти."
+  },
+  {
+    "id": 3094,
+    "term": "Disciple Butcher",
+    "before": "Учениця-різничка",
+    "canon": "Різник Учениць",
+    "action": "update",
+    "note": "ITEM_NOTES §81 and all corpus rows use «<ранг> Учениць»"
+  },
+  {
+    "id": 3095,
+    "term": "Disciple Pillager",
+    "before": "Учениця-грабіжниця",
+    "canon": "Грабіжник Учениць",
+    "action": "update",
+    "note": "ITEM_NOTES §81 and all corpus rows use «<ранг> Учениць»"
+  },
+  {
+    "id": 3096,
+    "term": "Disciple Scavver",
+    "before": "Учениця-сміттярка",
+    "canon": "Сміттяр Учениць",
+    "action": "update",
+    "note": "ITEM_NOTES §81 and all corpus rows use «<ранг> Учениць»"
+  },
+  {
+    "id": 3097,
+    "term": "Disciple Survivalist",
+    "before": "Учениця-виживальниця",
+    "canon": "Виживальник Учениць",
+    "action": "update",
+    "note": "ITEM_NOTES §81 and all corpus rows use «<ранг> Учениць»"
+  },
+  {
+    "id": 3098,
+    "term": "Disciple Tormentor",
+    "before": "Учениця-мучителька",
+    "canon": "Мучитель Учениць",
+    "action": "update",
+    "note": "ITEM_NOTES §81 and all corpus rows use «<ранг> Учениць»"
+  },
+  {
+    "id": 3099,
+    "term": "Disciple Veteran",
+    "before": "Учениця-ветеранка",
+    "canon": "Ветеран Учениць",
+    "action": "update",
+    "note": "ITEM_NOTES §81 and all corpus rows use «<ранг> Учениць»"
+  },
+  {
+    "id": 3100,
+    "term": "Disciple Waster",
+    "before": "Учениця-покидьок",
+    "canon": "Пустошник Учениць",
+    "action": "update",
+    "note": "ITEM_NOTES §81 and all corpus rows use «<ранг> Учениць»"
+  },
+  {
+    "id": 3103,
+    "term": "DuelBot",
+    "before": "Дуельбот",
+    "canon": "Дуельбот",
+    "action": "keep",
+    "note": "Канон names.json (за зразком Хламобот/Брухтобот); NPC_ «Робот-дуель» вирівняти."
+  },
+  {
+    "id": 3111,
+    "term": "Feral Ghoul Roamer",
+    "before": "Дикий гуль-блукач",
+    "canon": "Дикий гуль-блукач",
+    "action": "keep",
+    "note": "Канон names.json («мандрівник» ближче до Wanderer/Strider); NPC_ і легендарні варіанти вирівняти."
+  },
+  {
+    "id": 3112,
+    "term": "Feral Ghoul Stalker",
+    "before": "Дикий гуль-слідопит",
+    "canon": "Дикий гуль-слідопит",
+    "action": "keep",
+    "note": "ITEM_NOTES: Stalker → слідопит (Радскорпіон-слідопит); NPC_ і легендарні варіанти вирівняти."
+  },
+  {
+    "id": 3113,
+    "term": "Feral Mongrel",
+    "before": "Здичавілий пес",
+    "canon": "Здичавілий пес",
+    "action": "keep",
+    "note": "Відоме рішення Feral Mongrel → здичавілий пес; NPC_ і легендарний варіант вирівняти."
+  },
+  {
+    "id": 3115,
+    "term": "Festering Bloatfly",
+    "before": "Гнійний дутень",
+    "canon": "Гнійний дутень",
+    "action": "keep",
+    "note": "Канон names.json (festering = гнійний; «гнилий» — це Rotting); NPC_ і легендарні варіанти вирівняти."
+  },
+  {
+    "id": 3131,
+    "term": "Gangrenous Feral Ghoul",
+    "before": "Гангренозний дикий гуль",
+    "canon": "Гангренозний дикий гуль",
+    "action": "keep",
+    "note": "Канон names.json, відрізняється від Rotting/Festering; NPC_ «Гнійний» і легендарні варіанти вирівняти."
+  },
+  {
+    "id": 3152,
+    "term": "Glowing Mirelurk Hunter",
+    "before": "Сяючий болотник-ловець",
+    "canon": "Сяючий болотник-ловець",
+    "action": "keep",
+    "note": "Рішення Mirelurk Hunter → Болотник-ловець; m66 уже так, m33 і легендарні варіанти вирівняти."
+  },
+  {
+    "id": 3167,
+    "term": "Guard Gutsy",
+    "before": "Сміливець-охоронець",
+    "canon": "Сміливець-охоронець",
+    "action": "keep",
+    "note": "Канон names.json; NPC_ «Охоронець Сміливець» вирівняти."
+  },
+  {
+    "id": 3173,
+    "term": "Gunner Brigadier",
+    "before": "Бригадир Стрільців",
+    "canon": "Бригадний генерал Стрільців",
+    "action": "update",
+    "note": "Gunner Brigadier — найвище військове звання Стрільців; «бригадир» сучасною мовою — керівник бригади робітників. Корпус уже так."
+  },
+  {
+    "id": 3176,
+    "term": "Gunner Colonel Gutsy",
+    "before": "Полковник Сміливець Стрільців",
+    "canon": "Полковник Сміливець Стрільців",
+    "action": "keep",
+    "note": "Як «Містер Помічник Стрільців», «Штурмотрон Стрільців» — без «зі»; NPC_ вирівняти."
+  },
+  {
+    "id": 3178,
+    "term": "Gunner Conscript",
+    "before": "Призовник Стрільців",
+    "canon": "Призовник Стрільців",
+    "action": "keep",
+    "note": "Канон names.json; «новобранець» зайнятий за Initiate Братерства; NPC_ вирівняти."
+  },
+  {
+    "id": 3181,
+    "term": "Gunner Lt. Gutsy",
+    "before": "Лейтенант Сміливець Стрільців",
+    "canon": "Лейтенант Сміливець Стрільців",
+    "action": "keep",
+    "note": "Без «зі», як інші NPC Стрільців; NPC_ вирівняти."
+  },
+  {
+    "id": 3183,
+    "term": "Gunner Major Gutsy",
+    "before": "Майор Сміливець Стрільців",
+    "canon": "Майор Сміливець Стрільців",
+    "action": "keep",
+    "note": "Без «зі», як інші NPC Стрільців; NPC_ вирівняти."
+  },
+  {
+    "id": 3186,
+    "term": "Gunner Mr. Gutsy",
+    "before": "Містер Сміливець Стрільців",
+    "canon": "Містер Сміливець Стрільців",
+    "action": "keep",
+    "note": "Без «зі», як інші NPC Стрільців; NPC_ вирівняти."
+  },
+  {
+    "id": 3198,
+    "term": "Hired Gun",
+    "before": "Найманий стрілець",
+    "canon": "Найманий стрілець",
+    "action": "keep",
+    "note": "Канон names.json; «Найманець» уже зайнятий за Mercenary (ITEM_NOTES); NPC_ вирівняти."
+  },
+  {
+    "id": 3205,
+    "term": "Institute Agent",
+    "before": "Агент Інституту",
+    "canon": "Агент Інституту",
+    "action": "keep",
+    "note": "Гендерний клас: у глосарії загальна форма; NPC_ «Агентка Інституту» — жінка, не правити."
+  },
+  {
+    "id": 3222,
+    "term": "Lookout",
+    "before": "Дозорець",
+    "canon": "Дозорець",
+    "action": "keep",
+    "note": "SHRT і репліки («Дозорцю») — «Дозорець»; FULL «Спостерігач» вирівняти."
+  },
+  {
+    "id": 3233,
+    "term": "Merchant",
+    "before": "Торговка",
+    "canon": "Торговець",
+    "action": "update",
+    "note": "Гендерний клас: у глосарії загальна чоловіча форма (FACT-рядки вже «Торговець»); NPC_ BoS101POI_Merchant — жінка, «Торговка» лишається."
+  },
+  {
+    "id": 3234,
+    "term": "Mirelurk Deep King",
+    "before": "Глибинний король болотників",
+    "canon": "Глибинний король болотників",
+    "action": "keep",
+    "note": "Канон names.json; NPC_ і легендарні варіанти «Глибоководний» вирівняти."
+  },
+  {
+    "id": 3236,
+    "term": "Mirelurk Killclaw",
+    "before": "Болотник-убивця",
+    "canon": "Болотник-убивця",
+    "action": "keep",
+    "note": "Канон names.json (милозвучність після приголосного: «болотник-убивця»); NPC_ і легендарні варіанти вирівняти."
+  },
+  {
+    "id": 3242,
+    "term": "Moonshiner",
+    "before": "Самогонник",
+    "canon": "Самогонник",
+    "action": "keep",
+    "note": "«Самогонщик» — русизм; табір уже «самогонника»; NPC_ вирівняти."
+  },
+  {
+    "id": 3244,
+    "term": "Mr Handy Greeter",
+    "before": "Містер Помічник-зустрічальник",
+    "canon": "Містер Помічник-привітальник",
+    "action": "update",
+    "note": "Узгоджено з NPC «Greeter» → «Привітальник» у корпусі; «зустрічальник» — штучне слово. Корпус уже так."
+  },
+  {
+    "id": 3259,
+    "term": "Nukalurk",
+    "before": "Ядер-болотник",
+    "canon": "Ядер-болотник",
+    "action": "keep",
+    "note": "Override names_overrides; рядки корпусу охоплені правилом ядер-болотника — не правимо тут."
+  },
+  {
+    "id": 3260,
+    "term": "Nukalurk Hunter",
+    "before": "Ядер-болотник-ловець",
+    "canon": "Ядер-болотник-ловець",
+    "action": "keep",
+    "note": "Похідне від Nukalurk → Ядер-болотник; рядки корпусу охоплені правилом — не правимо тут."
+  },
+  {
+    "id": 3261,
+    "term": "Nukalurk King",
+    "before": "Король ядер-болотників",
+    "canon": "Король ядер-болотників",
+    "action": "keep",
+    "note": "Похідне від Nukalurk → Ядер-болотник; рядки корпусу охоплені правилом — не правимо тут."
+  },
+  {
+    "id": 3262,
+    "term": "Nukalurk Queen",
+    "before": "Королева ядер-болотників",
+    "canon": "Королева ядер-болотників",
+    "action": "keep",
+    "note": "Квестова ціль уже так; рядки корпусу охоплені правилом ядер-болотника — не правимо тут."
+  },
+  {
+    "id": 3263,
+    "term": "Nukalurk Spawn",
+    "before": "Ядер-болотник-приплід",
+    "canon": "Ядер-болотник-приплід",
+    "action": "keep",
+    "note": "Похідне від Nukalurk → Ядер-болотник; рядки корпусу охоплені правилом — не правимо тут."
+  },
+  {
+    "id": 3269,
+    "term": "Nurse Handy",
+    "before": "Містер Помічник-медбрат",
+    "canon": "Містер Помічник-медбрат",
+    "action": "keep",
+    "note": "Канон names.json; 4 NPC_ «Медбрат Містер Помічник» вирівняти."
+  },
+  {
+    "id": 3279,
+    "term": "Operator Waster",
+    "before": "Оператор-покидьок",
+    "canon": "Оператор-пустошник",
+    "action": "update",
+    "note": "ITEM_NOTES: Waster → пустошник, «Оператор-<ранг>»; корпус уже так."
+  },
+  {
+    "id": 3283,
+    "term": "Pack Brahmiluff",
+    "before": "Браміллуф Зграї",
+    "canon": "В'ючний браміллуф",
+    "action": "update",
+    "note": "ITEM_NOTES: Pack brahmiluff → В'ючний браміллуф (як «В'ючний брамін»); корпус уже так."
+  },
+  {
+    "id": 3298,
+    "term": "Pack Waster",
+    "before": "Покидьок Зграї",
+    "canon": "Пустошник Зграї",
+    "action": "update",
+    "note": "ITEM_NOTES: Waster → пустошник, «<ранг> Зграї»; корпус уже так."
+  },
+  {
+    "id": 3308,
+    "term": "Prime Scribe",
+    "before": "Перший писар",
+    "canon": "Перший писар",
+    "action": "keep",
+    "note": "Глосарій уже має Head Scribe → «Головний писар», тож Prime Scribe лишаємо «Перший писар»; 5 NPC_ вирівняти."
+  },
+  {
+    "id": 3315,
+    "term": "Protectron Sheriff",
+    "before": "Протектрон-шериф",
+    "canon": "Протектрон-шериф",
+    "action": "keep",
+    "note": "Як інші протектрони («Протектрон-<роль>»); NPC_ «Шериф-протектрон» вирівняти."
+  },
+  {
+    "id": 3316,
+    "term": "Protectron Steward",
+    "before": "Протектрон-стюард",
+    "canon": "Протектрон-стюард",
+    "action": "keep",
+    "note": "Канон names.json; NPC_ «Протектрон-управитель» вирівняти."
+  },
+  {
+    "id": 3337,
+    "term": "Radstag Doe",
+    "before": "Рад-олениця",
+    "canon": "Рад-олениця",
+    "action": "keep",
+    "note": "ITEM_NOTES: Radstag doe → Рад-олениця; NPC_ «Самка рад-оленя» вирівняти; контейнер «Туша рад-олениці» — свідомий опис підвішеної туші, лишаємо."
+  },
+  {
+    "id": 3340,
+    "term": "Raider Scavver",
+    "before": "Рейдер-сміттяр",
+    "canon": "Рейдер-сміттяр",
+    "action": "keep",
+    "note": "ITEM_NOTES: Scavver → сміттяр («мародер» → виправити); NPC_ вирівняти."
+  },
+  {
+    "id": 3341,
+    "term": "Raider Scum",
+    "before": "Рейдер-шваль",
+    "canon": "Рейдер-покидьок",
+    "action": "update",
+    "note": "Після рішення Waster → пустошник «покидьок» звільнився для Scum (корпус уже так); «рейдер-шваль» звучить незграбно."
+  },
+  {
+    "id": 3344,
+    "term": "Raider Waster",
+    "before": "Рейдер-покидьок",
+    "canon": "Рейдер-пустошник",
+    "action": "update",
+    "note": "ITEM_NOTES: Waster → пустошник; корпус уже так."
+  },
+  {
+    "id": 3346,
+    "term": "Railroad Heavy",
+    "before": "Бойовик Підземки",
+    "canon": "Силовик Підземки",
+    "action": "update",
+    "note": "DECISIONS: Railroad heavy → «Силовик»; NPC_ «Важкий боєць Підземки» вирівняти."
+  },
+  {
+    "id": 3352,
+    "term": "Rotting Feral Ghoul",
+    "before": "Гниючий дикий гуль",
+    "canon": "Гнилий дикий гуль",
+    "action": "update",
+    "note": "STYLE: уникати дієприкметників на -учий/-ючий; корпус уже «Гнилий» (і легендарні варіанти)."
+  },
+  {
+    "id": 3356,
+    "term": "Scavenger",
+    "before": "Збирач",
+    "canon": "Збирач",
+    "action": "keep",
+    "note": "DECISIONS: Scavenger → збирачі; SHRT, MESG і репліки вже «збирач»; FULL «Шукач» і одну репліку з «мародерами» вирівняти."
+  },
+  {
+    "id": 3362,
+    "term": "Sentry Bot Ripper",
+    "before": "Робот-охоронець «Потрошитель»",
+    "canon": "Робот-охоронець «Патрач»",
+    "action": "update",
+    "note": "Відоме рішення й override (Ripper → «Патрач»); корпус уже так."
+  },
+  {
+    "id": 3371,
+    "term": "Shotgun Turret",
+    "before": "Дробовикова турель",
+    "canon": "Дробова турель",
+    "action": "update",
+    "note": "«Дробова» — природний прикметник від shotgun (дробова рушниця); «дробовикова» незграбне. Корпус уже так."
+  },
+  {
+    "id": 3373,
+    "term": "Silver Shroud Announcer",
+    "before": "Диктор «Срібного Плаща»",
+    "canon": "Диктор «Срібного Плаща»",
+    "action": "keep",
+    "note": "Диктор радіошоу — назва шоу в лапках; NPC_ вирівняти."
+  },
+  {
+    "id": 3382,
+    "term": "Space Sentry Annihilator",
+    "before": "Космічний охоронець-анігілятор",
+    "canon": "Космічний охоронець-анігілятор",
+    "action": "keep",
+    "note": "Annihilator у корпусі — «Анігілятор» (роботи-охоронці, Містер Помічник-анігілятор); 2 NPC_ «знищувач» вирівняти."
+  },
+  {
+    "id": 3384,
+    "term": "Space Sentry Obliterator",
+    "before": "Космічний охоронець-облітератор",
+    "canon": "Космічний охоронець-винищувач",
+    "action": "update",
+    "note": "«Облітератор» — не українське слово; корпус «винищувач» природний. Корпус уже так."
+  },
+  {
+    "id": 3387,
+    "term": "Stingwing Skimmer",
+    "before": "Жалокрил-ковзун",
+    "canon": "Жалокрил-ковзун",
+    "action": "keep",
+    "note": "Канон names.json (skimmer — ковзає над водою); NPC_ і легендарні «плавунець» вирівняти."
+  },
+  {
+    "id": 3394,
+    "term": "Super Mutant Primus",
+    "before": "Супермутант-примус",
+    "canon": "Супермутант-примус",
+    "action": "keep",
+    "note": "Як інші ранги супермутантів («Супермутант-громила», «-майстер»); NPC_ і легендарний варіант вирівняти."
+  },
+  {
+    "id": 3395,
+    "term": "Super Mutant Skirmisher",
+    "before": "Супермутант-застрільник",
+    "canon": "Супермутант-застрільник",
+    "action": "keep",
+    "note": "Skirmisher = застрільник (військовий термін); NPC_ і легендарний «розвідник» вирівняти."
+  },
+  {
+    "id": 3397,
+    "term": "SuperMutant Skirmisher",
+    "before": "Супермутант-застрільник",
+    "canon": "Супермутант-застрільник",
+    "action": "keep",
+    "note": "Дублікат Super Mutant Skirmisher; NPC_ вирівняти."
+  },
+  {
+    "id": 3401,
+    "term": "Synth Leader",
+    "before": "Ватажок синтів",
+    "canon": "Ватажок синтів",
+    "action": "keep",
+    "note": "Канон names.json, змістовних рядків немає; 4 NPC_ «Лідер синтів» вирівняти."
+  },
+  {
+    "id": 3402,
+    "term": "Synth Patroller",
+    "before": "Синт-патрульний",
+    "canon": "Синт-патрульний",
+    "action": "keep",
+    "note": "Як інші класи синтів («Синт-шукач», «Синт-солдат»); NPC_ і легендарні варіанти вирівняти."
+  },
+  {
+    "id": 3405,
+    "term": "Synth Strider",
+    "before": "Синт-ходак",
+    "canon": "Синт-мандрівник",
+    "action": "update",
+    "note": "Усі 11 рядків (9 NPC_ + 2 легендарні, і names.json для Legendary) — «мандрівник»; «ходак» архаїчне. Корпус уже так."
+  },
+  {
+    "id": 3410,
+    "term": "Ticket Taker",
+    "before": "Білетер",
+    "canon": "Контролер",
+    "action": "update",
+    "note": "ITEM_NOTES: Ticket Taker → Контролер; корпус уже так."
+  },
+  {
+    "id": 3413,
+    "term": "TrashBot",
+    "before": "Сміттєбот",
+    "canon": "Хламобот",
+    "action": "update",
+    "note": "Відоме рішення TrashBot → Хламобот; корпус (17 рядків) уже так."
+  },
+  {
+    "id": 3414,
+    "term": "Trashbot",
+    "before": "Сміттєбот",
+    "canon": "Хламобот",
+    "action": "update",
+    "note": "Відоме рішення Trashbot → Хламобот; корпус уже так, включно з MGEF/ENCH."
+  },
+  {
+    "id": 3417,
+    "term": "Utility Protectron",
+    "before": "Службовий протектрон",
+    "canon": "Службовий протектрон",
+    "action": "keep",
+    "note": "Канон names.json («утилітарний» — калька); NPC_ вирівняти."
+  },
+  {
+    "id": 3418,
+    "term": "Vampiric Bloodbug",
+    "before": "Гнус-вампір",
+    "canon": "Гнус-вампір",
+    "action": "keep",
+    "note": "Канон names.json; NPC_ і легендарні «Вампірський гнус» вирівняти."
+  },
+  {
+    "id": 3434,
+    "term": "Waitron",
+    "before": "Офіціантрон",
+    "canon": "Офіціантрон",
+    "action": "keep",
+    "note": "Репліки закусочної вже «Офіціантрон»; NPC_ «Офіціант Містер Помічник» вирівняти."
+  },
+  {
+    "id": 3437,
+    "term": "Withered Feral Ghoul",
+    "before": "Висохлий дикий гуль",
+    "canon": "Висохлий дикий гуль",
+    "action": "keep",
+    "note": "Канон names.json («зів'ялий» — про рослини); NPC_ і легендарні варіанти вирівняти."
+  }
+]
