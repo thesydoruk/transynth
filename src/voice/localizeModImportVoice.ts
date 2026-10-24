@@ -20,11 +20,13 @@ import { ensureDependencyHealthy } from '../pipeline/waitForHealthy';
 import { checkTtsHealth } from '../tts/ttsClient';
 import { resolveTtsBaseUrl, type TtsReferenceMode } from './voiceToolPaths';
 import { loadVoiceProjectSettings } from './voiceProjectSettings';
+import type { VoiceResynthParams } from './voiceResynth';
 
 /**
  * Mod-wide voice job scope:
  * - `missing` — only absent or stale takes (default)
  * - `all` — force-regenerate every synthesizable line
+ * - `low-similarity` — re-synthesize stamped takes scored below a threshold (`resynth`)
  */
 export type ModVoiceGenerateScope = VoiceJobScope;
 
@@ -39,6 +41,8 @@ export type LocalizeModImportVoiceOptions = {
   dryRun?: boolean;
   force?: boolean;
   scope?: ModVoiceGenerateScope;
+  /** Required with `scope: 'low-similarity'`. */
+  resynth?: VoiceResynthParams;
   referenceMode?: TtsReferenceMode;
   /** Restrict synthesis to these `FORMID6:variant` keys. */
   onlyKeys?: ReadonlySet<string>;
@@ -93,6 +97,9 @@ export const localizeModImportVoice = async (
   ensureDir(localizeDir);
 
   const scope = options.scope ?? 'missing';
+  if (scope === 'low-similarity' && !options.resynth) {
+    throw new Error('Voice localize: scope "low-similarity" needs resynth params');
+  }
   const sink = { written: [] as string[], skipped: [] as string[], warnings: [] as string[] };
 
   if (!plugin.voice) {
@@ -115,6 +122,7 @@ export const localizeModImportVoice = async (
     // `all` always force-regenerates; an explicit `force` still wins for either scope.
     force: options.force ?? scope === 'all',
     dryRun: options.dryRun ?? false,
+    resynth: scope === 'low-similarity' ? options.resynth : undefined,
     limit: options.limit,
     onlyKeys: options.onlyKeys,
     speakerKey: options.speakerKey?.trim() || undefined,
@@ -138,6 +146,7 @@ export const localizeModImportVoice = async (
   log.info(
     `Voice localize "${mod.modName}" → ${localizeDir} (mod id=${mod.modId}, ${srcLang}→${tgtLang}, ` +
       `TTS=${ttsBaseUrl}, refMode=${request.referenceMode}, scope=${scope}, force=${request.force}` +
+      `${request.resynth ? `, resynth=${JSON.stringify(request.resynth)}` : ''}` +
       `${request.speakerKey ? `, speaker=${request.speakerKey}` : ''})`,
   );
 

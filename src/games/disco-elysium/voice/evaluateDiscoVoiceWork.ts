@@ -14,10 +14,8 @@ import {
   type PrepareVoiceTtsTextResult,
 } from '../../../voice/prepareVoiceTtsText';
 import { lookupVoiceSynthesisVersion } from '../../../voice/voiceSynthesisState';
-import {
-  isVoiceSynthesisCurrent,
-  voiceTtsPayloadVersionFromPrepared,
-} from '../../../voice/voiceTtsPayloadVersion';
+import { voiceTtsPayloadVersionFromPrepared } from '../../../voice/voiceTtsPayloadVersion';
+import { voiceTakeNeedsWork, type VoiceResynthContext } from '../../../voice/voiceResynth';
 import { discoSpeakerKeyFromStem, discoVoiceSpeakerKey } from './discoverDiscoVoiceFiles';
 import { resolveDiscoSpokenRowText } from './resolveDiscoSpokenRow';
 import { outputLocalizedWavRelPath } from './voicePaths';
@@ -34,14 +32,16 @@ export type DiscoVoiceWorkFilter = {
   localizeDir: string;
   storedVersions: Map<string, string>;
   forceAll: boolean;
+  /** Set for a `low-similarity` job. */
+  resynth?: VoiceResynthContext;
   /** Count / progress use cache-only ASR so they stay cheap and stay in sync. */
   transcribe: boolean;
 };
 
 /**
- * Same eligibility as the job total: synthesizable, and (unless force-all)
- * missing or stale. Shared by the pre-pass count and the synthesis loop so
- * progress does not increment for clips that are already current.
+ * Same eligibility as the job total: synthesizable, and due in the job's scope
+ * (see `voiceTakeNeedsWork`). Shared by the pre-pass count and the synthesis
+ * loop so progress does not increment for clips the job leaves alone.
  */
 export const evaluateDiscoVoiceWork = async (
   entry: VoiceFileEntry,
@@ -68,18 +68,23 @@ export const evaluateDiscoVoiceWork = async (
     markup: DISCO_VOICE_MARKUP,
   });
   if (prepared.action !== 'synthesize') return null;
-  if (!filter.forceAll) {
-    const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, filter.tgtLang);
-    const wavDest = toDiskPath(filter.localizeDir, outputLocalizedWavRelPath(entry));
-    const storedVersion = lookupVoiceSynthesisVersion(
+  const speakerKey = discoVoiceSpeakerKey(entry);
+  const wavDest = toDiskPath(filter.localizeDir, outputLocalizedWavRelPath(entry));
+  const due = voiceTakeNeedsWork({
+    force: filter.forceAll,
+    resynth: filter.resynth,
+    speakerKey,
+    lineKey: entry.lineKey,
+    variant: entry.variant,
+    storedVersion: lookupVoiceSynthesisVersion(
       filter.storedVersions,
-      discoVoiceSpeakerKey(entry),
+      speakerKey,
       entry.lineKey,
       entry.variant,
-    );
-    if (isVoiceSynthesisCurrent(storedVersion, payloadVersion, fs.existsSync(wavDest))) {
-      return null;
-    }
-  }
+    ),
+    payloadVersion: voiceTtsPayloadVersionFromPrepared(prepared, filter.tgtLang),
+    fileExists: fs.existsSync(wavDest),
+  });
+  if (!due) return null;
   return { row, prepared };
 };

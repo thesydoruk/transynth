@@ -26,6 +26,7 @@ export interface ModAiControlsProps {
   onGenderDetectStop: () => void;
   onVoiceMissing: () => void;
   onVoiceAll: () => void;
+  onVoiceLowSimilarity: () => void;
   onVoiceStop: () => void;
   /** Compact layout for mod list rows. */
   compact?: boolean;
@@ -179,6 +180,7 @@ export const ModAiControls = ({
   onGenderDetectStop,
   onVoiceMissing,
   onVoiceAll,
+  onVoiceLowSimilarity,
   onVoiceStop,
   compact = false,
   variant = 'bar',
@@ -201,6 +203,7 @@ export const ModAiControls = ({
   const voiceMenuItems: CircularProgressButtonMenuItem[] = [
     { label: t('modEditor.aiVoiceGenerateMissing'), onClick: onVoiceMissing },
     { label: t('modEditor.aiVoiceGenerateAll'), onClick: onVoiceAll },
+    { label: t('modEditor.aiVoiceGenerateLowSimilarity'), onClick: onVoiceLowSimilarity },
   ];
 
   const translateRunningLabel =

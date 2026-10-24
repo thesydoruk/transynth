@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Mod, ModImportJob } from '../../api';
 import { getModAiJob } from '../../modAiJobsStore';
@@ -9,6 +10,7 @@ import {
 import { toggleModAiVoice, stopModAiVoice } from '../../modAiVoiceRunner';
 import { startModAiSkipDetect, stopModAiSkipDetect } from '../../modAiSkipDetectRunner';
 import { toggleModAiGenderDetect, stopModAiGenderDetect } from '../../modAiGenderDetectRunner';
+import { VoiceResynthDialog } from '../../components/VoiceResynthDialog';
 import { ModWorkspaceRow } from './ModWorkspaceRow';
 import type { ModExportAction } from './modsShared';
 import { formatModDisplayName, groupModVersions } from './modVersions';
@@ -44,6 +46,7 @@ type ModWorkspaceListProps = {
 export const ModWorkspaceList = (props: ModWorkspaceListProps) => {
   const { t } = useTranslation();
   const groups = groupModVersions(props.mods);
+  const [resynthModId, setResynthModId] = useState<number | null>(null);
 
   const renderRow = (mod: Mod, nested: boolean) => {
     const importJob = props.importJobByModId.get(mod.id) ?? null;
@@ -126,6 +129,7 @@ export const ModWorkspaceList = (props: ModWorkspaceListProps) => {
             'all',
           )
         }
+        onAiVoiceLowSimilarity={() => setResynthModId(mod.id)}
         onAiVoiceStop={() => void stopModAiVoice(mod.id, getModAiJob(mod.id, 'voice').jobId)}
         onClearRows={() => props.onClearRows(mod.id, displayName)}
         onDeleteAll={() =>
@@ -142,17 +146,41 @@ export const ModWorkspaceList = (props: ModWorkspaceListProps) => {
     );
   };
 
-  return groups.map((group) => (
-    <div key={`family-${group.current.id}`} className={pageS.versionGroup}>
-      {renderRow(group.current, false)}
-      {group.previous.length > 0 && (
-        <details className={pageS.previousVersions}>
-          <summary>{t('mods.previousVersions', { count: group.previous.length })}</summary>
-          <div className={pageS.previousList}>
-            {group.previous.map((mod) => renderRow(mod, true))}
-          </div>
-        </details>
-      )}
-    </div>
-  ));
+  return (
+    <>
+      {groups.map((group) => (
+        <div key={`family-${group.current.id}`} className={pageS.versionGroup}>
+          {renderRow(group.current, false)}
+          {group.previous.length > 0 && (
+            <details className={pageS.previousVersions}>
+              <summary>{t('mods.previousVersions', { count: group.previous.length })}</summary>
+              <div className={pageS.previousList}>
+                {group.previous.map((mod) => renderRow(mod, true))}
+              </div>
+            </details>
+          )}
+        </div>
+      ))}
+      <VoiceResynthDialog
+        open={resynthModId != null}
+        onClose={() => setResynthModId(null)}
+        modId={resynthModId ?? 0}
+        srcLang={props.srcLang}
+        targetLang={props.targetLang}
+        onStart={(params) => {
+          if (resynthModId == null) return;
+          toggleModAiVoice(
+            resynthModId,
+            props.srcLang,
+            props.targetLang,
+            getModAiJob(resynthModId, 'voice'),
+            'low-similarity',
+            undefined,
+            params,
+          );
+          setResynthModId(null);
+        }}
+      />
+    </>
+  );
 };

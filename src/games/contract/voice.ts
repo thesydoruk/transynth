@@ -6,9 +6,15 @@ import type { TtsReferenceMode } from '../../voice/voiceToolPaths';
 import type { TtsSynthesisParams } from '../../tts/ttsClient';
 import type { VoiceLineCatalog, VoiceLineCatalogError } from '../../voice/lineCatalog';
 import type { VoiceGenerateLineResult } from '../../web/voice/preview/types';
+import type { VoiceResynthParams } from '../../voice/voiceResynth';
 
-/** Which lines a mod-wide voice job touches. */
-export type VoiceJobScope = 'all' | 'missing';
+/**
+ * Which lines a mod-wide voice job touches:
+ * - `missing` — absent or stale takes
+ * - `all` — every synthesizable line
+ * - `low-similarity` — stamped takes whose clone score is below the job's threshold
+ */
+export type VoiceJobScope = 'all' | 'missing' | 'low-similarity';
 
 /** Everything a mod-wide voice job needs, already resolved from the job options. */
 export type VoiceLocalizeRequest = {
@@ -27,6 +33,8 @@ export type VoiceLocalizeRequest = {
   scope: VoiceJobScope;
   force: boolean;
   dryRun: boolean;
+  /** Set for `low-similarity`: which takes qualify and how their replacement is judged. */
+  resynth?: VoiceResynthParams;
   limit?: number;
   /** Restrict synthesis to these `FORMID6:variant` keys. */
   onlyKeys?: ReadonlySet<string>;

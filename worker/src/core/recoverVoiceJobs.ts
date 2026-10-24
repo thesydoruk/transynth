@@ -1,9 +1,11 @@
 /**
  * Resume voice-generate after a worker restart or BullMQ stall.
  *
- * Recovered jobs always run as `scope=missing` without `resetVoice`, so a
- * restart never wipes lines already written. "Regenerate all" wipes once at
- * job start, then continues as missing. Other kinds stay failed on stall.
+ * Recovered jobs run without `resetVoice`, so a restart never wipes lines
+ * already written: "Regenerate all" wipes once at job start, then continues as
+ * missing. A low-similarity job keeps its scope and dialog params, and gets the
+ * first job's id as `runId` so it skips the takes that job already handled.
+ * Other kinds stay failed on stall.
  */
 import type { Job } from 'bullmq';
 import { logJobs } from '../../../src/logging/loggers';
@@ -27,20 +29,34 @@ export type RecoverVoiceJobsDeps = {
 export const isVoiceStallFailure = (err: Error): boolean => STALL_FAIL.test(err.message);
 
 /** Drop the one-shot wipe flag so a resumed job only fills remaining lines. */
-const resumeVoiceGenerateData = (data: JobData): JobData => ({
-  ...data,
-  params: {
-    ...data.params,
-    scope: 'missing',
-    resetVoice: false,
-  },
-});
+const resumeVoiceGenerateData = (data: JobData, oldId: number | null): JobData => {
+  const params = data.params as { scope?: unknown; runId?: unknown };
+  if (params.scope === 'low-similarity') {
+    const runId = typeof params.runId === 'number' ? params.runId : oldId;
+    return {
+      ...data,
+      params: { ...data.params, resetVoice: false, ...(runId != null ? { runId } : {}) },
+    };
+  }
+  return {
+    ...data,
+    params: {
+      ...data.params,
+      scope: 'missing',
+      resetVoice: false,
+    },
+  };
+};
 
-const requeue = async (data: JobData, deps: RecoverVoiceJobsDeps): Promise<number> => {
+const requeue = async (
+  data: JobData,
+  oldId: number | null,
+  deps: RecoverVoiceJobsDeps,
+): Promise<number> => {
   const allocate = deps.allocateJobId ?? allocateJobId;
   const enqueue = deps.enqueueJob ?? enqueueJob;
   const writeSnapshot = deps.writeSnapshot ?? writeJobSnapshot;
-  const payload = data.kind === 'voice-generate' ? resumeVoiceGenerateData(data) : data;
+  const payload = data.kind === 'voice-generate' ? resumeVoiceGenerateData(data, oldId) : data;
   const newId = await allocate();
   await writeSnapshot({
     jobId: newId,
@@ -96,7 +112,7 @@ export const recoverOrphanedVoiceGenerateJobs = async (
     const oldId = fromBullJobId(job.id);
     await dropActiveJob(job);
     await failOldSnapshot(oldId, deps, 'worker restarted');
-    const newId = await requeue(job.data, deps);
+    const newId = await requeue(job.data, oldId, deps);
     log.info('recovered orphaned voice-generate', {
       oldJobId: oldId,
       newJobId: newId,
@@ -120,7 +136,7 @@ export const requeueStalledVoiceGenerate = async (
     const existing = await findUnfinished(['voice-generate'], job.data.modId);
     if (existing) return null;
   }
-  const newId = await requeue(job.data, deps);
+  const newId = await requeue(job.data, fromBullJobId(job.id), deps);
   log.info('requeued stalled voice-generate', {
     oldJobId: fromBullJobId(job.id),
     newJobId: newId,

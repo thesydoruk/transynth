@@ -1,4 +1,4 @@
-import { api, type ModVoiceGenerateScope } from './api';
+import { api, type ModVoiceGenerateScope, type ModVoiceResynthParams } from './api';
 import { getModAiJob, upsertModAiJob, type ModAiJobEntry } from './modAiJobsStore';
 
 const inFlight = new Set<number>();
@@ -46,6 +46,7 @@ export const startModAiVoice = async (
   targetLang: string,
   scope: ModVoiceGenerateScope = 'missing',
   speakerKey?: string,
+  resynth?: ModVoiceResynthParams,
 ): Promise<void> => {
   const entry = getModAiJob(modId, 'voice');
   if (isModVoiceJobActive(entry)) return;
@@ -112,6 +113,7 @@ export const startModAiVoice = async (
       undefined,
       scope,
       scopedSpeaker ?? undefined,
+      resynth,
     );
 
     if (snapshot) {
@@ -176,10 +178,11 @@ export const toggleModAiVoice = (
   entry: ModAiJobEntry = getModAiJob(modId, 'voice'),
   scope: ModVoiceGenerateScope = 'missing',
   speakerKey?: string,
+  resynth?: ModVoiceResynthParams,
 ): void => {
   if (isModVoiceJobActive(entry)) {
     void stopModAiVoice(modId, entry.jobId);
     return;
   }
-  void startModAiVoice(modId, srcLang, targetLang, scope, speakerKey);
+  void startModAiVoice(modId, srcLang, targetLang, scope, speakerKey, resynth);
 };

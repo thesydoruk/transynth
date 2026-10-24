@@ -88,6 +88,7 @@ export const discoVoiceAdapter: GameVoiceAdapter = {
       request.scope,
       request.onlyKeys,
       request.speakerKey,
+      request.resynth,
     ),
 
   localize: (db, request, sink) =>
@@ -104,6 +105,7 @@ export const discoVoiceAdapter: GameVoiceAdapter = {
         referenceMode: request.referenceMode,
         force: request.force,
         scope: request.scope,
+        resynth: request.resynth,
         onlyKeys: request.onlyKeys,
         speakerKey: request.speakerKey,
         limit: request.limit,

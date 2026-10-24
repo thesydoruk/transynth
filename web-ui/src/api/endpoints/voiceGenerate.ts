@@ -4,6 +4,7 @@ import type {
   ModVoiceGenerateJobSnapshot,
   ModVoiceGenerateScope,
   ModVoiceGenerateStreamEvent,
+  ModVoiceResynthParams,
 } from '../types';
 
 export const voiceGenerateEndpoints = {
@@ -15,6 +16,7 @@ export const voiceGenerateEndpoints = {
     signal?: AbortSignal,
     scope: ModVoiceGenerateScope = 'missing',
     speakerKey?: string,
+    resynth?: ModVoiceResynthParams,
   ): Promise<ModVoiceGenerateJobSnapshot | null> {
     const response = await fetch(`${BASE}/api/mods/${modId}/voice-generate`, {
       credentials: 'include',
@@ -25,6 +27,7 @@ export const voiceGenerateEndpoints = {
         targetLang,
         scope,
         ...(speakerKey?.trim() ? { speakerKey: speakerKey.trim() } : {}),
+        ...(scope === 'low-similarity' && resynth ? resynth : {}),
       }),
       signal,
     });
@@ -103,6 +106,12 @@ export const voiceGenerateEndpoints = {
 
   stopMod: (modId: number) =>
     req<{ ok: boolean }>(`/api/mods/${modId}/voice-generate/stop`, { method: 'POST' }),
+
+  lowSimilarityCount: (modId: number, targetLang: string, below: number, speakerKey?: string) => {
+    const q = new URLSearchParams({ targetLang, below: String(below) });
+    if (speakerKey?.trim()) q.set('speakerKey', speakerKey.trim());
+    return req<{ count: number }>(`/api/mods/${modId}/voice-low-similarity-count?${q.toString()}`);
+  },
 
   status: (jobId: number) => req<ModVoiceGenerateJobSnapshot>(`/api/voice-generate/${jobId}`),
 };

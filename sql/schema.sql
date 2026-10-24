@@ -823,6 +823,9 @@ CREATE INDEX IF NOT EXISTS idx_voice_synthesis_state_mod_lang
 
 -- ECAPA cosine of the take vs the clone prompt (Fish Speech X-Voice-Similarity).
 ALTER TABLE voice_synthesis_state ADD COLUMN IF NOT EXISTS voice_similarity DOUBLE PRECISION;
+-- The low-similarity re-synthesis run that last handled this take (written or kept).
+-- A resumed run skips the takes it already handled; any other write clears it.
+ALTER TABLE voice_synthesis_state ADD COLUMN IF NOT EXISTS resynth_run_id INTEGER;
 
 -- ── Voice clips: one row per audio file a mod ships ──────────────────────────
 -- Every game indexes its takes differently — Creation Engine by speaker folder

@@ -19,11 +19,14 @@ import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { stripVoiceNonSpeechBlocks, type PrepareVoiceTtsTextResult } from './prepareVoiceTtsText';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
+import { voiceTtsPayloadVersionFromPrepared } from './voiceTtsPayloadVersion';
 import {
-  isVoiceSynthesisCurrent,
-  voiceTtsPayloadVersionFromPrepared,
-} from './voiceTtsPayloadVersion';
-import { withLiveRetryPolicy } from './voiceProjectSettings';
+  lookupVoiceResynthStamp,
+  settleVoiceResynthTake,
+  voiceLineSynthesisParams,
+  voiceTakeNeedsWork,
+  type VoiceResynthContext,
+} from './voiceResynth';
 import { resolveTtsLanguage, type TtsReferenceMode } from './voiceToolPaths';
 import type { GameId } from '../types';
 
@@ -44,6 +47,8 @@ export type ProcessVoiceLocalizeEntryOptions = {
   synthesis: TtsSynthesisParams;
   tgtLang: string;
   force: boolean;
+  /** Set for a `low-similarity` job: its picks, retry policy and replacement rule. */
+  resynth?: VoiceResynthContext;
   voiceSources: Map<string, VoiceSourceRow>;
   speakerRefCache: Map<string, SpeakerRefCacheEntry>;
   getSiblingEntries: (speakerKey: string, current: VoiceFileEntry) => VoiceFileEntry[];
@@ -53,6 +58,8 @@ export type ProcessVoiceLocalizeEntryOptions = {
 
 export type ProcessVoiceLocalizeEntryResult =
   | { kind: 'written'; relPath: string; voiceSimilarity: number | null }
+  /** A re-synthesis that did not beat the stored take; `voiceSimilarity` is the stored score. */
+  | { kind: 'kept'; relPath: string; reason: string; voiceSimilarity: number | null }
   | { kind: 'skipped'; relPath: string }
   | { kind: 'warning'; message: string };
 
@@ -78,6 +85,7 @@ export const processVoiceLocalizeEntry = async (
     synthesis,
     tgtLang,
     force,
+    resynth,
     voiceSources,
     speakerRefCache,
     getSiblingEntries,
@@ -93,15 +101,22 @@ export const processVoiceLocalizeEntry = async (
     const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
     const versionKey = voiceSynthesisStateKey(speakerKey, entry.lineKey, entry.variant);
     const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
-    const storedVersion = lookupVoiceSynthesisVersion(
-      storedVersions,
+    const due = voiceTakeNeedsWork({
+      force,
+      resynth,
       speakerKey,
-      entry.lineKey,
-      entry.variant,
-    );
-    if (!force && isVoiceSynthesisCurrent(storedVersion, payloadVersion, fs.existsSync(fuzDest))) {
-      return { kind: 'skipped', relPath: prefix + fuzRel };
-    }
+      lineKey: entry.lineKey,
+      variant: entry.variant,
+      storedVersion: lookupVoiceSynthesisVersion(
+        storedVersions,
+        speakerKey,
+        entry.lineKey,
+        entry.variant,
+      ),
+      payloadVersion,
+      fileExists: fs.existsSync(fuzDest),
+    });
+    if (!due) return { kind: 'skipped', relPath: prefix + fuzRel };
 
     workDir = path.join(tempRoot, `${speakerKey}_${entry.lineKey}_${entry.variant}`);
     ensureDir(workDir);
@@ -132,7 +147,7 @@ export const processVoiceLocalizeEntry = async (
       {
         baseUrl: ttsBaseUrl,
         language: resolveTtsLanguage(tgtLang),
-        synthesis: await withLiveRetryPolicy(db, synthesis),
+        synthesis: await voiceLineSynthesisParams(db, synthesis, resynth),
         signal,
       },
     );
@@ -144,6 +159,40 @@ export const processVoiceLocalizeEntry = async (
       entry.fileName,
       prepared.text,
     );
+
+    if (resynth) {
+      const take = {
+        modId,
+        lineKey: entry.lineKey,
+        variant: entry.variant,
+        targetLang: tgtLang,
+        speakerKey,
+      };
+      const settled = await settleVoiceResynthTake(
+        db,
+        resynth,
+        take,
+        { payloadVersion, newSimilarity: tts.voiceSimilarity },
+        () => {
+          ensureDir(path.dirname(fuzDest));
+          fs.writeFileSync(fuzDest, fuzData);
+        },
+      );
+      if (settled.kind === 'kept') {
+        log.info(`Voice ${prefix}${fuzRel} kept (${settled.reason})`);
+        return {
+          kind: 'kept',
+          relPath: prefix + fuzRel,
+          reason: settled.reason,
+          voiceSimilarity:
+            lookupVoiceResynthStamp(resynth, speakerKey, entry.lineKey, entry.variant)
+              ?.voiceSimilarity ?? null,
+        };
+      }
+      storedVersions.set(versionKey, payloadVersion);
+      log.info(`Voice ${prefix}${fuzRel}`);
+      return { kind: 'written', relPath: prefix + fuzRel, voiceSimilarity: tts.voiceSimilarity };
+    }
 
     const baselinePath = fs.existsSync(fuzDest) ? fuzDest : null;
     if (!force && writeIfChanged(fuzDest, fuzData, baselinePath)) {

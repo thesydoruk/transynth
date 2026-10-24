@@ -30,10 +30,12 @@ import {
 } from './prepareVoiceTtsText';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
 import { loadVoiceSynthesisVersionMap, lookupVoiceSynthesisVersion } from './voiceSynthesisState';
+import { voiceTtsPayloadVersionFromPrepared } from './voiceTtsPayloadVersion';
 import {
-  isVoiceSynthesisCurrent,
-  voiceTtsPayloadVersionFromPrepared,
-} from './voiceTtsPayloadVersion';
+  loadVoiceResynthContext,
+  voiceTakeNeedsWork,
+  type VoiceResynthParams,
+} from './voiceResynth';
 import { processVoiceLocalizeEntry, type SpeakerRefCacheEntry } from './processVoiceLocalizeEntry';
 import type { ModVoiceGenerateScope } from './localizeModImportVoice';
 import type { GameId } from '../types';
@@ -60,6 +62,8 @@ export const localizeVoicePackage = async (
     scope: ModVoiceGenerateScope;
     referenceMode: TtsReferenceMode;
     synthesis: TtsSynthesisParams;
+    /** Set for a `low-similarity` job. */
+    resynth?: VoiceResynthParams;
     /** When set, only these `FORMID6:variant` keys are synthesized. */
     onlyKeys?: ReadonlySet<string>;
     /** When set, only voice files under this NPC folder are synthesized. */
@@ -81,6 +85,9 @@ export const localizeVoicePackage = async (
   const storedVersions = options.dryRun
     ? new Map<string, string>()
     : await loadVoiceSynthesisVersionMap(db, modId, tgtLang);
+  const resynth = options.resynth
+    ? await loadVoiceResynthContext(db, modId, tgtLang, options.resynth)
+    : undefined;
 
   if (voiceFiles.length === 0) {
     log.info(`No voice files under ${prefix}${resolveVoiceRootRel(pluginRel)}`);
@@ -139,19 +146,23 @@ export const localizeVoicePackage = async (
       return null;
     }
 
-    const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
-    const storedVersion = lookupVoiceSynthesisVersion(
-      storedVersions,
-      voiceSpeakerKey(entry, voiceRootRel),
-      entry.lineKey,
-      entry.variant,
-    );
-    if (
-      !options.force &&
-      isVoiceSynthesisCurrent(storedVersion, payloadVersion, fs.existsSync(fuzDest))
-    ) {
-      return null;
-    }
+    const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
+    const due = voiceTakeNeedsWork({
+      force: options.force,
+      resynth,
+      speakerKey,
+      lineKey: entry.lineKey,
+      variant: entry.variant,
+      storedVersion: lookupVoiceSynthesisVersion(
+        storedVersions,
+        speakerKey,
+        entry.lineKey,
+        entry.variant,
+      ),
+      payloadVersion: voiceTtsPayloadVersionFromPrepared(prepared, tgtLang),
+      fileExists: fs.existsSync(fuzDest),
+    });
+    if (!due) return null;
 
     if (options.dryRun) {
       log.info(`[dry-run] ${prefix}${fuzRel} ← "${prepared.text.slice(0, 80)}..."`);
@@ -189,6 +200,7 @@ export const localizeVoicePackage = async (
       synthesis: options.synthesis,
       tgtLang,
       force: options.force,
+      resynth,
       voiceSources,
       speakerRefCache,
       getSiblingEntries,
@@ -213,6 +225,14 @@ export const localizeVoicePackage = async (
           finishEligibleStep();
           if (result.kind === 'written') {
             written.push(result.relPath);
+            emitVoiceLive({
+              type: 'line_done',
+              ...live,
+              voiceSimilarity: result.voiceSimilarity,
+            });
+          } else if (result.kind === 'kept') {
+            // The old take stays; the voice tab still sees the line settle.
+            skipped.push(`${result.relPath} (${result.reason})`);
             emitVoiceLive({
               type: 'line_done',
               ...live,

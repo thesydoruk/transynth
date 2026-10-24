@@ -91,6 +91,15 @@ the Mods list) starts a `voice-generate` job:
 
 - **Missing** — only lines that do not yet have a localized take.
 - **All** — regenerate every voiced line for the current language pair.
+- **Low similarity…** — re-synthesize takes whose stored similarity score is
+  below a threshold. Only stamped, scored takes are picked; unscored and missing
+  takes are not included (use **Missing** for those). A small dialog sets four
+  fields: the threshold (default: the `voice.synth_retry_below` project
+  setting), the target similarity (default: not below the threshold), the number
+  of retries (default: `voice.synth_retries`) and **Don't make it worse** (keep
+  the old take when the new one does not score higher). It shows how many takes
+  the threshold picks; from Voice mode it counts and runs for the selected
+  character only. The job resumes correctly after a worker restart.
 
 Progress streams while the job runs. You can stop it from the same control.
 

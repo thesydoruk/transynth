@@ -175,7 +175,15 @@ export type ActiveModAiJob = {
   speakerKey?: string | null;
 };
 
-export type ModVoiceGenerateScope = 'all' | 'missing';
+export type ModVoiceGenerateScope = 'all' | 'missing' | 'low-similarity';
+
+/** Parameters of a `low-similarity` voice job. */
+export type ModVoiceResynthParams = {
+  similarityBelow: number;
+  targetSimilarity: number;
+  retries: number;
+  noWorse: boolean;
+};
 
 export type ModVoiceGenerateJobSnapshot = {
   jobId: number;

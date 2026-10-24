@@ -27,10 +27,8 @@ import {
   loadVoiceSynthesisVersionMap,
   lookupVoiceSynthesisVersion,
 } from '../../../voice/voiceSynthesisState';
-import {
-  isVoiceSynthesisCurrent,
-  voiceTtsPayloadVersionFromPrepared,
-} from '../../../voice/voiceTtsPayloadVersion';
+import { voiceTtsPayloadVersionFromPrepared } from '../../../voice/voiceTtsPayloadVersion';
+import { loadVoiceResynthContext, voiceTakeNeedsWork } from '../../../voice/voiceResynth';
 import type { VoiceLocalizeRequest, VoiceLocalizeSink } from '../../contract';
 
 export const countCreationEngineVoiceWork = async (
@@ -40,6 +38,9 @@ export const countCreationEngineVoiceWork = async (
   const { modId, extractDir, pluginPath, srcLang, tgtLang, scope, onlyKeys } = request;
   const packages = resolveImportPackages(extractDir, tgtLang, pluginPath);
   const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, tgtLang);
+  const resynth = request.resynth
+    ? await loadVoiceResynthContext(db, modId, tgtLang, request.resynth)
+    : undefined;
   const forceAll = scope === 'all';
   const speakerFilter = request.speakerKey?.trim() || '';
   let total = 0;
@@ -67,19 +68,24 @@ export const countCreationEngineVoiceWork = async (
       });
       if (prepared.action !== 'synthesize') continue;
 
-      if (!forceAll) {
-        const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
-        const fuzDest = toDiskPath(pkg.localizeDir, outputLocalizedFuzRelPath(entry));
-        const storedVersion = lookupVoiceSynthesisVersion(
+      const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
+      const fuzDest = toDiskPath(pkg.localizeDir, outputLocalizedFuzRelPath(entry));
+      const due = voiceTakeNeedsWork({
+        force: forceAll,
+        resynth,
+        speakerKey,
+        lineKey: entry.lineKey,
+        variant: entry.variant,
+        storedVersion: lookupVoiceSynthesisVersion(
           storedVersions,
-          voiceSpeakerKey(entry, voiceRootRel),
+          speakerKey,
           entry.lineKey,
           entry.variant,
-        );
-        if (isVoiceSynthesisCurrent(storedVersion, payloadVersion, fs.existsSync(fuzDest))) {
-          continue;
-        }
-      }
+        ),
+        payloadVersion: voiceTtsPayloadVersionFromPrepared(prepared, tgtLang),
+        fileExists: fs.existsSync(fuzDest),
+      });
+      if (!due) continue;
       total += 1;
     }
   }
@@ -109,6 +115,7 @@ export const localizeCreationEngineVoice = async (
         scope: request.scope,
         referenceMode: request.referenceMode,
         synthesis: request.synthesis,
+        resynth: request.resynth,
         onlyKeys: request.onlyKeys,
         speakerKey: request.speakerKey,
         limit: request.limit,

@@ -16,10 +16,12 @@ import {
   loadVoiceSynthesisVersionMap,
   lookupVoiceSynthesisVersion,
 } from '../../../voice/voiceSynthesisState';
+import { voiceTtsPayloadVersionFromPrepared } from '../../../voice/voiceTtsPayloadVersion';
 import {
-  isVoiceSynthesisCurrent,
-  voiceTtsPayloadVersionFromPrepared,
-} from '../../../voice/voiceTtsPayloadVersion';
+  loadVoiceResynthContext,
+  voiceTakeNeedsWork,
+  type VoiceResynthContext,
+} from '../../../voice/voiceResynth';
 import type { VoiceLocalizeRequest, VoiceLocalizeSink } from '../../contract';
 import { readW3SpeechBlock, readW3SpeechIndex, type W3SpeechRow } from '../w3speech';
 import { loadW3VoiceLines, type W3VoiceLine } from './lines';
@@ -34,46 +36,65 @@ type DueCheck = {
   storedVersions: Map<string, string>;
   /** Re-synthesize even lines whose take is current. */
   all: boolean;
+  /** Set for a `low-similarity` job. */
+  resynth?: VoiceResynthContext;
 };
 
 /** Would the job synthesize this line? */
 const isLineDue = (line: W3VoiceLine, check: DueCheck): boolean => {
   const prepared = prepareW3VoiceText(line);
   if (prepared.action !== 'synthesize') return false;
-  if (check.all) return true;
-  const stored = lookupVoiceSynthesisVersion(
-    check.storedVersions,
-    line.speakerKey,
-    String(line.id),
-    W3_VOICE_VARIANT,
-  );
+  const lineKey = String(line.id);
   // The `.wav` is the take; its game blocks are derived from it (see `takes.ts`).
   const wav = w3LocalizedTakePaths(line.container, line.id).wav;
-  return !isVoiceSynthesisCurrent(
-    stored,
-    voiceTtsPayloadVersionFromPrepared(prepared, check.tgtLang),
-    fs.existsSync(path.join(check.localizeDir, wav)),
-  );
+  return voiceTakeNeedsWork({
+    force: check.all,
+    resynth: check.resynth,
+    speakerKey: line.speakerKey,
+    lineKey,
+    variant: W3_VOICE_VARIANT,
+    storedVersion: lookupVoiceSynthesisVersion(
+      check.storedVersions,
+      line.speakerKey,
+      lineKey,
+      W3_VOICE_VARIANT,
+    ),
+    payloadVersion: voiceTtsPayloadVersionFromPrepared(prepared, check.tgtLang),
+    fileExists: fs.existsSync(path.join(check.localizeDir, wav)),
+  });
 };
 
 const loadDueLines = async (
   db: Tx,
   request: Pick<
     VoiceLocalizeRequest,
-    'modId' | 'extractDir' | 'srcLang' | 'tgtLang' | 'onlyKeys' | 'speakerKey'
+    'modId' | 'extractDir' | 'srcLang' | 'tgtLang' | 'onlyKeys' | 'speakerKey' | 'resynth'
   >,
   all: boolean,
-): Promise<{ lines: W3VoiceLine[]; localizeDir: string; storedVersions: Map<string, string> }> => {
+): Promise<{
+  lines: W3VoiceLine[];
+  localizeDir: string;
+  storedVersions: Map<string, string>;
+  resynth: VoiceResynthContext | undefined;
+}> => {
   const localizeDir = modImportLocalizeDir(request.extractDir, request.tgtLang);
   const storedVersions = await loadVoiceSynthesisVersionMap(db, request.modId, request.tgtLang);
+  const resynth = request.resynth
+    ? await loadVoiceResynthContext(db, request.modId, request.tgtLang, request.resynth)
+    : undefined;
   const lines = (
     await loadW3VoiceLines(db, request.modId, request.srcLang, request.tgtLang, {
       translatedOnly: true,
       ...(request.onlyKeys ? { onlyKeys: request.onlyKeys } : {}),
     })
   ).filter((line) => !request.speakerKey || line.speakerKey === request.speakerKey);
-  const check = { localizeDir, tgtLang: request.tgtLang, storedVersions, all };
-  return { lines: lines.filter((line) => isLineDue(line, check)), localizeDir, storedVersions };
+  const check = { localizeDir, tgtLang: request.tgtLang, storedVersions, all, resynth };
+  return {
+    lines: lines.filter((line) => isLineDue(line, check)),
+    localizeDir,
+    storedVersions,
+    resynth,
+  };
 };
 
 export const countW3VoiceWork = async (db: Tx, request: VoiceLocalizeRequest): Promise<number> =>
@@ -110,7 +131,11 @@ export const localizeW3Voice = async (
   request: VoiceLocalizeRequest,
   sink: VoiceLocalizeSink,
 ): Promise<void> => {
-  const { lines, localizeDir, storedVersions } = await loadDueLines(db, request, request.force);
+  const { lines, localizeDir, storedVersions, resynth } = await loadDueLines(
+    db,
+    request,
+    request.force,
+  );
   ensureDir(localizeDir);
   const model = loadW3MimicModel();
   // Every voiced line of the mod, not just the due ones: a speaker's other
@@ -172,11 +197,15 @@ export const localizeW3Voice = async (
         modelPath: model ? w3MimicModelPath() : null,
         reference,
         force: request.force,
+        resynth,
         storedVersions,
         ...(request.signal ? { signal: request.signal } : {}),
       });
       if (result.kind === 'written') {
         sink.written.push(result.relPath);
+        emitVoiceLive({ type: 'line_done', ...live, voiceSimilarity: result.voiceSimilarity });
+      } else if (result.kind === 'kept') {
+        sink.skipped.push(`${result.relPath} (${result.reason})`);
         emitVoiceLive({ type: 'line_done', ...live, voiceSimilarity: result.voiceSimilarity });
       } else {
         if (result.kind === 'skipped') sink.skipped.push(result.relPath);
