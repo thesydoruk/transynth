@@ -20,7 +20,7 @@ const conflictMessage = (role: UkGenderConflict['role'], group: UkGenderConflict
   const forms = group.map((c) => `"${c.form}"`).join(', ');
   const found = group[0]!.found;
   if (group[0]!.expected === 'any') {
-    return `Gender: ${forms} commits to ${found} gender, but the ${ROLE_LABEL[role]} is the player character, whose gender is chosen in game. Rephrase impersonally or use plural «ви».`;
+    return `Gender: ${forms} commits to ${found} gender, but the ${ROLE_LABEL[role]} is the player character, whose gender is chosen in game. Rephrase without a gendered form (present tense, an imperative, a noun, an impersonal clause); a switch to «ви» is not a fix.`;
   }
   return `Gender: ${forms} is ${found}, but the ${ROLE_LABEL[role]} is ${group[0]!.expected}.`;
 };
