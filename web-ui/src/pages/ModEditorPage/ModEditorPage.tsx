@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   toggleModAiTranslate,
   startModAiTranslateTm,
@@ -6,6 +7,7 @@ import {
 import { toggleModAiVoice, stopModAiVoice } from '../../modAiVoiceRunner';
 import { startModAiSkipDetect, stopModAiSkipDetect } from '../../modAiSkipDetectRunner';
 import { toggleModAiGenderDetect, stopModAiGenderDetect } from '../../modAiGenderDetectRunner';
+import { VoiceResynthDialog } from '../../components/VoiceResynthDialog';
 import { EditorToolbar } from './components/EditorToolbar';
 import { DialogsMode } from './components/DialogsMode';
 import { VoiceMode } from './components/VoiceMode';
@@ -42,6 +44,7 @@ export const ModEditorPage = () => {
     contextMenu,
   } = useModEditorPage();
 
+  const [resynthOpen, setResynthOpen] = useState(false);
   const { mod, strings, stats, sigs, suggestions, qaIssues, history, isLoading } = editorQueries;
   const total = strings?.total ?? 0;
   const capabilities = useEditorCapabilities(mod?.game ?? gameId);
@@ -114,7 +117,27 @@ export const ModEditorPage = () => {
         onAiVoiceAll={() =>
           toggleModAiVoice(modId, filter.srcLang, filter.targetLang, aiJobs.voice, 'all')
         }
+        onAiVoiceLowSimilarity={() => setResynthOpen(true)}
         onAiVoiceStop={() => void stopModAiVoice(modId, aiJobs.voice.jobId)}
+      />
+      <VoiceResynthDialog
+        open={resynthOpen}
+        onClose={() => setResynthOpen(false)}
+        modId={modId}
+        srcLang={filter.srcLang}
+        targetLang={filter.targetLang}
+        onStart={(params) => {
+          toggleModAiVoice(
+            modId,
+            filter.srcLang,
+            filter.targetLang,
+            aiJobs.voice,
+            'low-similarity',
+            undefined,
+            params,
+          );
+          setResynthOpen(false);
+        }}
       />
 
       {pageMode === 'dialogs' ? (

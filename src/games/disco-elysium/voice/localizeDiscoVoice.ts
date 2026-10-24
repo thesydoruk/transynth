@@ -16,6 +16,7 @@ import { ensureDir } from '../../../utils/file';
 import { prepareVoiceTtsText } from '../../../voice/prepareVoiceTtsText';
 import type { ModVoiceGenerateScope } from '../../../voice/localizeModImportVoice';
 import { loadVoiceSynthesisVersionMap } from '../../../voice/voiceSynthesisState';
+import { loadVoiceResynthContext, type VoiceResynthParams } from '../../../voice/voiceResynth';
 import type { TtsReferenceMode } from '../../../voice/voiceToolPaths';
 import type { SpeakerRefCacheEntry } from '../../../voice/pickVoiceTtsReference';
 import { discoVoiceSpeakerKey, groupDiscoVoiceFilesBySpeaker } from './discoverDiscoVoiceFiles';
@@ -39,6 +40,8 @@ export type LocalizeDiscoVoiceOptions = {
   referenceMode: TtsReferenceMode;
   force: boolean;
   scope: ModVoiceGenerateScope;
+  /** Set for a `low-similarity` job. */
+  resynth?: VoiceResynthParams;
   onlyKeys?: ReadonlySet<string>;
   speakerKey?: string;
   limit?: number;
@@ -57,8 +60,12 @@ export const countDiscoVoiceLocalizeWork = async (
   scope: ModVoiceGenerateScope = 'missing',
   onlyKeys?: ReadonlySet<string>,
   speakerKey?: string,
+  resynthParams?: VoiceResynthParams,
 ): Promise<number> => {
   const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, tgtLang);
+  const resynth = resynthParams
+    ? await loadVoiceResynthContext(db, modId, tgtLang, resynthParams)
+    : undefined;
   const speakerFilter = speakerKey?.trim() || '';
   const translations = await loadDiscoVoiceTranslations(
     db,
@@ -82,6 +89,7 @@ export const countDiscoVoiceLocalizeWork = async (
     localizeDir,
     storedVersions,
     forceAll: scope === 'all',
+    resynth,
     transcribe: false,
   };
   let total = 0;
@@ -117,6 +125,9 @@ export const localizeDiscoVoicePackage = async (
     shouldCancel,
     signal,
   } = options;
+  const resynth = options.resynth
+    ? await loadVoiceResynthContext(db, modId, tgtLang, options.resynth)
+    : undefined;
 
   const localizeDir = modImportLocalizeDir(extractDir, tgtLang);
   ensureDir(localizeDir);
@@ -150,6 +161,7 @@ export const localizeDiscoVoicePackage = async (
     localizeDir,
     storedVersions,
     forceAll: force,
+    resynth,
     transcribe: false,
   };
   log.info(
@@ -223,6 +235,7 @@ export const localizeDiscoVoicePackage = async (
         synthesis,
         tgtLang,
         force,
+        resynth,
         voiceSources,
         speakerRefCache,
         getSiblingEntries: (key, current) =>
@@ -235,6 +248,13 @@ export const localizeDiscoVoicePackage = async (
       });
       if (result.kind === 'written') {
         written.push(result.relPath);
+        emitVoiceLive({
+          type: 'line_done',
+          ...live,
+          voiceSimilarity: result.voiceSimilarity,
+        });
+      } else if (result.kind === 'kept') {
+        skipped.push(`${result.relPath} (${result.reason})`);
         emitVoiceLive({
           type: 'line_done',
           ...live,

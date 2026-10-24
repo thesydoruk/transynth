@@ -7,9 +7,12 @@ import {
   clearModGeneratedVoice,
   countVoiceLocalizeWork,
   localizeModImportVoice,
+  resolveVoiceResynthParams,
   reuseSynthesizedVoice,
   summarizeVoiceWarnings,
   type ModVoiceGenerateScope,
+  type VoiceResynthJobInput,
+  type VoiceResynthParams,
 } from '../../../../src/voice';
 import { loadModImportPaths } from '../../../../src/import/mod/resolvePaths';
 import { loadVoiceProjectSettings } from '../../../../src/voice/voiceProjectSettings';
@@ -45,7 +48,7 @@ export type ModVoiceGenerateProgressEvent =
 
 export const runModVoiceGenerateJob = async (
   db: Tx,
-  opts: {
+  opts: VoiceResynthJobInput & {
     jobId: number;
     modId: number;
     srcLang: string;
@@ -64,7 +67,14 @@ export const runModVoiceGenerateJob = async (
   const { jobId, modId } = opts;
   const paths = await loadModImportPaths(db, { modId });
   const speakerKey = opts.speakerKey?.trim() || undefined;
-  if (opts.resetVoice) {
+  const voiceSettings = await loadVoiceProjectSettings(db, opts.game);
+  // Re-synthesis keeps its scope across a restart; the run id ties the resumed
+  // job to the takes the first one already handled.
+  const resynth: VoiceResynthParams | undefined =
+    opts.scope === 'low-similarity'
+      ? resolveVoiceResynthParams(opts, jobId, voiceSettings.synthesis)
+      : undefined;
+  if (opts.resetVoice && !resynth) {
     const cleared = await clearModGeneratedVoice(db, {
       modId,
       targetLang: opts.targetLang,
@@ -75,16 +85,16 @@ export const runModVoiceGenerateJob = async (
       `[Voice generate mod #${modId}] job #${jobId} reset existing voice (${cleared.filesRemoved} files, ${cleared.dbRowsRemoved} stamps${speakerKey ? `, speaker=${speakerKey}` : ''})`,
     );
   }
-  // Always missing after an optional wipe so a later worker restart can resume.
-  const scope: ModVoiceGenerateScope = 'missing';
+  // Missing after an optional wipe so a later worker restart can resume.
+  const scope: ModVoiceGenerateScope = resynth ? 'low-similarity' : 'missing';
   let reused = 0;
-  if (!opts.resetVoice) {
+  // A low-similarity job does not borrow takes: a donor may score just as low.
+  if (!opts.resetVoice && !resynth) {
     const voiceReuse = await reuseSynthesizedVoice(db, modId, opts.targetLang, {
       speakerKey,
     });
     reused = voiceReuse.copied;
   }
-  const voiceSettings = await loadVoiceProjectSettings(db, opts.game);
   let total = await countVoiceLocalizeWork(db, {
     modId,
     game: opts.game,
@@ -98,14 +108,14 @@ export const runModVoiceGenerateJob = async (
     scope,
     force: false,
     dryRun: false,
+    resynth,
     speakerKey,
   });
   if (total === 0 && reused === 0) {
-    throw new Error(
-      speakerKey
-        ? `No missing or stale voice lines to synthesize for ${speakerKey}`
-        : 'No missing or stale voice lines to synthesize',
-    );
+    const what = resynth
+      ? `No takes scored below ${resynth.similarityBelow} to re-synthesize`
+      : 'No missing or stale voice lines to synthesize';
+    throw new Error(speakerKey ? `${what} for ${speakerKey}` : what);
   }
   if (total === 0) {
     log.info(
@@ -153,7 +163,7 @@ export const runModVoiceGenerateJob = async (
   });
 
   log.info(
-    `[Voice generate mod #${modId}] job #${jobId} started (${total} lines, scope=${scope}${speakerKey ? `, speaker=${speakerKey}` : ''}, ${opts.srcLang}→${opts.targetLang})`,
+    `[Voice generate mod #${modId}] job #${jobId} started (${total} lines, scope=${scope}${resynth ? `, run=${resynth.runId}, below=${resynth.similarityBelow}, target=${resynth.targetSimilarity}, retries=${resynth.retries}, noWorse=${resynth.noWorse}` : ''}${speakerKey ? `, speaker=${speakerKey}` : ''}, ${opts.srcLang}→${opts.targetLang})`,
   );
   onEvent({ type: 'started', jobId, total });
 
@@ -167,6 +177,7 @@ export const runModVoiceGenerateJob = async (
       shouldCancel: opts.isCancelled,
       signal: opts.signal,
       scope,
+      resynth,
       speakerKey,
       knownTotal: total,
       onProgress: (d, progressTotal) => {

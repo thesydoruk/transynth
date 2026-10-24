@@ -23,12 +23,15 @@ import {
   upsertVoiceSynthesisState,
   voiceSynthesisStateKey,
 } from '../../../voice/voiceSynthesisState';
-import {
-  isVoiceSynthesisCurrent,
-  voiceTtsPayloadVersionFromPrepared,
-} from '../../../voice/voiceTtsPayloadVersion';
+import { voiceTtsPayloadVersionFromPrepared } from '../../../voice/voiceTtsPayloadVersion';
 import { pickVoiceTtsReference } from '../../../voice/pickVoiceTtsReference';
-import { withLiveRetryPolicy } from '../../../voice/voiceProjectSettings';
+import {
+  lookupVoiceResynthStamp,
+  settleVoiceResynthTake,
+  voiceLineSynthesisParams,
+  voiceTakeNeedsWork,
+  type VoiceResynthContext,
+} from '../../../voice/voiceResynth';
 import { resolveTtsLanguage } from '../../../voice/voiceToolPaths';
 import { decodeOpusWemToWav } from '../audio/opusWem';
 import type { MimicModel } from '../mimic/model';
@@ -57,12 +60,16 @@ export type W3LineSynthesisContext = {
   /** Speaker-aware references (see `references.ts`); without it, a line clones from its own take. */
   reference: W3ReferenceContext | null;
   force: boolean;
+  /** Set for a `low-similarity` job: its picks, retry policy and replacement rule. */
+  resynth?: VoiceResynthContext;
   storedVersions: Map<string, string>;
   signal?: AbortSignal;
 };
 
 export type W3LineSynthesisResult =
   | { kind: 'written'; relPath: string; voiceSimilarity: number | null; lipSource: string }
+  /** A re-synthesis that did not beat the stored take; `voiceSimilarity` is the stored score. */
+  | { kind: 'kept'; relPath: string; reason: string; voiceSimilarity: number | null }
   | { kind: 'skipped'; relPath: string; reason: string }
   | { kind: 'warning'; message: string };
 
@@ -137,6 +144,7 @@ export const synthesizeW3LineBuffers = async (
     | 'reference'
     | 'tempRoot'
     | 'signal'
+    | 'resynth'
   >,
 ): Promise<W3LineBuffers> => {
   const workDir = path.join(options.tempRoot, `w3_${line.id}`);
@@ -158,7 +166,7 @@ export const synthesizeW3LineBuffers = async (
       {
         baseUrl: options.ttsBaseUrl,
         language: resolveTtsLanguage(options.tgtLang),
-        synthesis: await withLiveRetryPolicy(options.db, options.synthesis),
+        synthesis: await voiceLineSynthesisParams(options.db, options.synthesis, options.resynth),
         signal: options.signal,
       },
     );
@@ -203,22 +211,71 @@ export const synthesizeW3VoiceLine = async (
     W3_VOICE_VARIANT,
   );
   const wavDest = path.join(ctx.localizeDir, paths.wav);
-  if (!ctx.force && isVoiceSynthesisCurrent(stored, payloadVersion, fs.existsSync(wavDest))) {
-    return { kind: 'skipped', relPath: paths.wav, reason: 'current' };
-  }
+  const due = voiceTakeNeedsWork({
+    force: ctx.force,
+    resynth: ctx.resynth,
+    speakerKey: line.speakerKey,
+    lineKey,
+    variant: W3_VOICE_VARIANT,
+    storedVersion: stored,
+    payloadVersion,
+    fileExists: fs.existsSync(wavDest),
+  });
+  if (!due) return { kind: 'skipped', relPath: paths.wav, reason: 'current' };
 
   try {
     const built = await synthesizeW3LineBuffers(line, original, prepared, ctx);
     const [wavPath, audioPath, lipPath] = [paths.wav, paths.audio, paths.lip].map((rel) =>
       path.join(ctx.localizeDir, rel),
     );
-    ensureDir(path.dirname(wavPath!));
     // The `.wav` first: blocks older than their `.wav` count as stale (see
     // `pack.ts`), so blocks written after it are current, and a run cut off in
     // between leaves a `.wav` whose blocks the pack rebuilds.
-    fs.writeFileSync(wavPath!, built.wav);
-    fs.writeFileSync(audioPath!, built.audio);
-    fs.writeFileSync(lipPath!, built.lip);
+    const writeTake = (): void => {
+      ensureDir(path.dirname(wavPath!));
+      fs.writeFileSync(wavPath!, built.wav);
+      fs.writeFileSync(audioPath!, built.audio);
+      fs.writeFileSync(lipPath!, built.lip);
+    };
+    if (ctx.resynth) {
+      const take = {
+        modId: ctx.modId,
+        lineKey,
+        variant: W3_VOICE_VARIANT,
+        targetLang: ctx.tgtLang,
+        speakerKey: line.speakerKey,
+      };
+      const settled = await settleVoiceResynthTake(
+        ctx.db,
+        ctx.resynth,
+        take,
+        { payloadVersion, newSimilarity: built.voiceSimilarity },
+        writeTake,
+      );
+      if (settled.kind === 'kept') {
+        log.info(`Witcher 3 voice ${paths.wav} kept (${settled.reason})`);
+        return {
+          kind: 'kept',
+          relPath: paths.wav,
+          reason: settled.reason,
+          voiceSimilarity:
+            lookupVoiceResynthStamp(ctx.resynth, line.speakerKey, lineKey, W3_VOICE_VARIANT)
+              ?.voiceSimilarity ?? null,
+        };
+      }
+      ctx.storedVersions.set(
+        voiceSynthesisStateKey(line.speakerKey, lineKey, W3_VOICE_VARIANT),
+        payloadVersion,
+      );
+      log.info(`Witcher 3 voice ${paths.wav} (lip: ${built.lipSource})`);
+      return {
+        kind: 'written',
+        relPath: paths.wav,
+        voiceSimilarity: built.voiceSimilarity,
+        lipSource: built.lipSource,
+      };
+    }
+    writeTake();
     await upsertVoiceSynthesisState(ctx.db, {
       modId: ctx.modId,
       lineKey,

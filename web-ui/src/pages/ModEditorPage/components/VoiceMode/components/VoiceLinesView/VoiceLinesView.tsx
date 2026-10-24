@@ -55,6 +55,7 @@ export interface VoiceLinesViewProps {
   showVoiceProgress: boolean;
   onVoiceMissing: () => void;
   onVoiceAll: () => void;
+  onVoiceLowSimilarity: () => void;
   onVoiceStop: () => void;
   synthesizingLines?: ReadonlySet<string>;
   flashedLines?: ReadonlySet<string>;
@@ -93,6 +94,7 @@ export const VoiceLinesView = ({
   showVoiceProgress,
   onVoiceMissing,
   onVoiceAll,
+  onVoiceLowSimilarity,
   onVoiceStop,
   synthesizingLines,
   flashedLines,
@@ -137,6 +139,7 @@ export const VoiceLinesView = ({
         showVoiceProgress={showVoiceProgress}
         onVoiceMissing={onVoiceMissing}
         onVoiceAll={onVoiceAll}
+        onVoiceLowSimilarity={onVoiceLowSimilarity}
         onVoiceStop={onVoiceStop}
       />
 

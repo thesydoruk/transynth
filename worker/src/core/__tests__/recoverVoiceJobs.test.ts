@@ -86,6 +86,39 @@ describe('recoverOrphanedVoiceGenerateJobs', () => {
     );
   });
 
+  it('resumes a low-similarity job with its scope and dialog params, and the first job id as run id', async () => {
+    const params = {
+      srcLang: 'en',
+      targetLang: 'uk',
+      scope: 'low-similarity',
+      similarityBelow: 0.4,
+      targetSimilarity: 0.45,
+      retries: 6,
+      noWorse: true,
+      speakerKey: 'PlayerVoiceFemale01',
+    };
+    const job = makeJob('job-723', { kind: 'voice-generate', modId: 33, params });
+    const deps = makeDeps({ getActiveJobs: async () => [job] });
+
+    await expect(recoverOrphanedVoiceGenerateJobs(deps)).resolves.toBe(1);
+    expect(deps.enqueueJob).toHaveBeenCalledWith(
+      { kind: 'voice-generate', modId: 33, params: { ...params, resetVoice: false, runId: 723 } },
+      800,
+    );
+  });
+
+  it('keeps the run id a low-similarity job already carries across a second restart', async () => {
+    const params = { srcLang: 'en', targetLang: 'uk', scope: 'low-similarity', runId: 700 };
+    const job = makeJob('job-723', { kind: 'voice-generate', modId: 33, params });
+    const deps = makeDeps({ getActiveJobs: async () => [job] });
+
+    await recoverOrphanedVoiceGenerateJobs(deps);
+    expect(deps.enqueueJob).toHaveBeenCalledWith(
+      { kind: 'voice-generate', modId: 33, params: { ...params, resetVoice: false } },
+      800,
+    );
+  });
+
   it('leaves non-voice active jobs alone', async () => {
     const job = makeJob('job-10', { kind: 'llm-translate', modId: 1, params: {} });
     const deps = makeDeps({ getActiveJobs: async () => [job] });
@@ -112,6 +145,21 @@ describe('requeueStalledVoiceGenerate', () => {
         ...voiceData(),
         params: { ...voiceData().params, scope: 'missing', resetVoice: false },
       },
+      800,
+    );
+  });
+
+  it('gives a stalled low-similarity job its own id as run id', async () => {
+    const params = { srcLang: 'en', targetLang: 'uk', scope: 'low-similarity', retries: 2 };
+    const job = makeJob('job-724', { kind: 'voice-generate', modId: 33, params });
+    const deps = makeDeps();
+    await requeueStalledVoiceGenerate(
+      job,
+      new Error('job stalled more than allowable limit'),
+      deps,
+    );
+    expect(deps.enqueueJob).toHaveBeenCalledWith(
+      { kind: 'voice-generate', modId: 33, params: { ...params, resetVoice: false, runId: 724 } },
       800,
     );
   });

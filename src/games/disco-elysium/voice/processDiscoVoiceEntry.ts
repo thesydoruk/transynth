@@ -27,11 +27,14 @@ import {
   upsertVoiceSynthesisState,
   voiceSynthesisStateKey,
 } from '../../../voice/voiceSynthesisState';
+import { voiceTtsPayloadVersionFromPrepared } from '../../../voice/voiceTtsPayloadVersion';
 import {
-  isVoiceSynthesisCurrent,
-  voiceTtsPayloadVersionFromPrepared,
-} from '../../../voice/voiceTtsPayloadVersion';
-import { withLiveRetryPolicy } from '../../../voice/voiceProjectSettings';
+  lookupVoiceResynthStamp,
+  settleVoiceResynthTake,
+  voiceLineSynthesisParams,
+  voiceTakeNeedsWork,
+  type VoiceResynthContext,
+} from '../../../voice/voiceResynth';
 import { resolveTtsLanguage, type TtsReferenceMode } from '../../../voice/voiceToolPaths';
 import { discoVoiceSpeakerKey } from './discoverDiscoVoiceFiles';
 import { outputLocalizedWavRelPath } from './voicePaths';
@@ -48,6 +51,8 @@ export type ProcessDiscoVoiceEntryOptions = {
   synthesis: TtsSynthesisParams;
   tgtLang: string;
   force: boolean;
+  /** Set for a `low-similarity` job: its picks, retry policy and replacement rule. */
+  resynth?: VoiceResynthContext;
   voiceSources: Map<string, VoiceSourceRow>;
   speakerRefCache: Map<string, SpeakerRefCacheEntry>;
   getSiblingEntries: (speakerKey: string, current: VoiceFileEntry) => VoiceFileEntry[];
@@ -59,6 +64,8 @@ export type ProcessDiscoVoiceEntryOptions = {
 
 export type ProcessDiscoVoiceEntryResult =
   | { kind: 'written'; relPath: string; voiceSimilarity: number | null }
+  /** A re-synthesis that did not beat the stored take; `voiceSimilarity` is the stored score. */
+  | { kind: 'kept'; relPath: string; reason: string; voiceSimilarity: number | null }
   | { kind: 'skipped'; relPath: string }
   | { kind: 'warning'; message: string };
 
@@ -79,6 +86,7 @@ export const processDiscoVoiceEntry = async (
     synthesis,
     tgtLang,
     force,
+    resynth,
     voiceSources,
     speakerRefCache,
     getSiblingEntries,
@@ -95,15 +103,22 @@ export const processDiscoVoiceEntry = async (
     const speakerKey = discoVoiceSpeakerKey(entry);
     const versionKey = voiceSynthesisStateKey(speakerKey, entry.lineKey, entry.variant);
     const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
-    const storedVersion = lookupVoiceSynthesisVersion(
-      storedVersions,
+    const due = voiceTakeNeedsWork({
+      force,
+      resynth,
       speakerKey,
-      entry.lineKey,
-      entry.variant,
-    );
-    if (!force && isVoiceSynthesisCurrent(storedVersion, payloadVersion, fs.existsSync(wavDest))) {
-      return { kind: 'skipped', relPath: wavRel };
-    }
+      lineKey: entry.lineKey,
+      variant: entry.variant,
+      storedVersion: lookupVoiceSynthesisVersion(
+        storedVersions,
+        speakerKey,
+        entry.lineKey,
+        entry.variant,
+      ),
+      payloadVersion,
+      fileExists: fs.existsSync(wavDest),
+    });
+    if (!due) return { kind: 'skipped', relPath: wavRel };
 
     workDir = path.join(tempRoot, `${speakerKey}_${entry.lineKey}_${entry.variant}`);
     ensureDir(workDir);
@@ -140,10 +155,44 @@ export const processDiscoVoiceEntry = async (
       {
         baseUrl: ttsBaseUrl,
         language: resolveTtsLanguage(tgtLang),
-        synthesis: await withLiveRetryPolicy(db, synthesis),
+        synthesis: await voiceLineSynthesisParams(db, synthesis, resynth),
         signal,
       },
     );
+
+    if (resynth && persistState) {
+      const take = {
+        modId,
+        lineKey: entry.lineKey,
+        variant: entry.variant,
+        targetLang: tgtLang,
+        speakerKey,
+      };
+      const settled = await settleVoiceResynthTake(
+        db,
+        resynth,
+        take,
+        { payloadVersion, newSimilarity: tts.voiceSimilarity },
+        () => {
+          ensureDir(path.dirname(wavDest));
+          fs.writeFileSync(wavDest, tts.wav);
+        },
+      );
+      if (settled.kind === 'kept') {
+        log.info(`Disco voice ${wavRel} kept (${settled.reason})`);
+        return {
+          kind: 'kept',
+          relPath: wavRel,
+          reason: settled.reason,
+          voiceSimilarity:
+            lookupVoiceResynthStamp(resynth, speakerKey, entry.lineKey, entry.variant)
+              ?.voiceSimilarity ?? null,
+        };
+      }
+      storedVersions.set(versionKey, payloadVersion);
+      log.info(`Disco voice ${wavRel}`);
+      return { kind: 'written', relPath: wavRel, voiceSimilarity: tts.voiceSimilarity };
+    }
 
     const persist = async (): Promise<void> => {
       if (!persistState) return;

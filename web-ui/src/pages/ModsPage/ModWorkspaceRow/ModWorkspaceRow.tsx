@@ -39,6 +39,7 @@ export interface ModWorkspaceRowProps {
   onGenderDetectStop?: () => void;
   onAiVoiceMissing?: () => void;
   onAiVoiceAll?: () => void;
+  onAiVoiceLowSimilarity?: () => void;
   onAiVoiceStop?: () => void;
 }
 
@@ -70,6 +71,7 @@ export const ModWorkspaceRow = ({
   onGenderDetectStop,
   onAiVoiceMissing,
   onAiVoiceAll,
+  onAiVoiceLowSimilarity,
   onAiVoiceStop,
 }: ModWorkspaceRowProps) => {
   const { t } = useTranslation();
@@ -149,7 +151,8 @@ export const ModWorkspaceRow = ({
           onSkipDetectWithLlm ||
           onGenderDetect ||
           onAiVoiceMissing ||
-          onAiVoiceAll) && (
+          onAiVoiceAll ||
+          onAiVoiceLowSimilarity) && (
           <ModAiControls
             compact
             translate={aiJobs.translate}
@@ -168,6 +171,7 @@ export const ModWorkspaceRow = ({
             onGenderDetectStop={onGenderDetectStop ?? (() => {})}
             onVoiceMissing={onAiVoiceMissing ?? (() => {})}
             onVoiceAll={onAiVoiceAll ?? (() => {})}
+            onVoiceLowSimilarity={onAiVoiceLowSimilarity ?? (() => {})}
             onVoiceStop={onAiVoiceStop ?? (() => {})}
           />
         )}

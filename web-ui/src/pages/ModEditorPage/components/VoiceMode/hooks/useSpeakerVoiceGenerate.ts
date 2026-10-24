@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { ModVoiceGenerateScope } from '../../../../../api';
+import type { ModVoiceGenerateScope, ModVoiceResynthParams } from '../../../../../api';
 import { getModAiJob, subscribeModAiJobs } from '../../../../../modAiJobsStore';
 import { startModAiVoice, stopModAiVoice } from '../../../../../modAiVoiceRunner';
 import { voiceSpeakerLinesQueryKey, voiceSpeakersQueryKey } from './useVoiceData';
@@ -49,9 +49,9 @@ export const useSpeakerVoiceGenerate = (
   const pct = progressPct(job.done, job.total);
   const showBar = isRunning || job.status === 'completed' || job.status === 'failed';
 
-  const start = (scope: ModVoiceGenerateScope) => {
+  const start = (scope: ModVoiceGenerateScope, resynth?: ModVoiceResynthParams) => {
     if (!speakerKey || isRunning) return;
-    void startModAiVoice(modId, srcLang, targetLang, scope, speakerKey);
+    void startModAiVoice(modId, srcLang, targetLang, scope, speakerKey, resynth);
   };
 
   const stop = () => {
@@ -66,6 +66,7 @@ export const useSpeakerVoiceGenerate = (
     showBar,
     startMissing: () => start('missing'),
     startAll: () => start('all'),
+    startLowSimilarity: (params: ModVoiceResynthParams) => start('low-similarity', params),
     stop,
   };
 };

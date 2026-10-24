@@ -81,6 +81,7 @@ export interface EditorToolbarProps {
   onGenderDetectStop: () => void;
   onAiVoiceMissing: () => void;
   onAiVoiceAll: () => void;
+  onAiVoiceLowSimilarity: () => void;
   onAiVoiceStop: () => void;
 }
 
@@ -126,6 +127,7 @@ export const EditorToolbar = ({
   onGenderDetectStop,
   onAiVoiceMissing,
   onAiVoiceAll,
+  onAiVoiceLowSimilarity,
   onAiVoiceStop,
 }: EditorToolbarProps) => {
   const { t } = useTranslation();
@@ -151,6 +153,7 @@ export const EditorToolbar = ({
           onGenderDetectStop={onGenderDetectStop}
           onVoiceMissing={onAiVoiceMissing}
           onVoiceAll={onAiVoiceAll}
+          onVoiceLowSimilarity={onAiVoiceLowSimilarity}
           onVoiceStop={onAiVoiceStop}
           showGenderDetect={capabilities.actions.genderDetect}
           showVoice={capabilities.modes.includes('voice')}

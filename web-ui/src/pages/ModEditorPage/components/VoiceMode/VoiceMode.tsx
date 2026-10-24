@@ -24,6 +24,7 @@ import { useSpeakerVoiceGenerate } from './hooks/useSpeakerVoiceGenerate';
 import { useVoiceLiveEvents } from './hooks/useVoiceLiveEvents';
 import { useVoiceState } from './hooks/useVoiceState';
 import { useVoiceStatusMatch } from './hooks/useVoiceStatusMatch';
+import { VoiceResynthDialog } from '../../../../components/VoiceResynthDialog';
 import { VoiceRegenerateModal } from './VoiceRegenerateModal';
 import styles from './VoiceMode.module.scss';
 
@@ -51,6 +52,7 @@ export const VoiceMode = ({
   const state = useVoiceState();
   const searchRef = useRef<HTMLInputElement>(null);
   const { width, isResizing, startResize } = useVoiceNavigatorWidth();
+  const [resynthOpen, setResynthOpen] = useState(false);
   const [regenerateLine, setRegenerateLine] = useState<VoiceLinePreview | null>(null);
 
   const statusMatch = useVoiceStatusMatch({
@@ -269,9 +271,23 @@ export const VoiceMode = ({
         showVoiceProgress={speakerVoice.showBar}
         onVoiceMissing={speakerVoice.startMissing}
         onVoiceAll={speakerVoice.startAll}
+        onVoiceLowSimilarity={() => setResynthOpen(true)}
         onVoiceStop={speakerVoice.stop}
         synthesizingLines={live.synthesizingLines}
         flashedLines={live.flashedLines}
+      />
+
+      <VoiceResynthDialog
+        open={resynthOpen}
+        onClose={() => setResynthOpen(false)}
+        modId={modId}
+        srcLang={srcLang}
+        targetLang={targetLang}
+        speakerKey={data.activeKey}
+        onStart={(params) => {
+          speakerVoice.startLowSimilarity(params);
+          setResynthOpen(false);
+        }}
       />
 
       {regenerateLine && (

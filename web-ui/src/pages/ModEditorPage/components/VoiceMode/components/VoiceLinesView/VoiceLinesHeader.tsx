@@ -31,6 +31,7 @@ export interface VoiceLinesHeaderProps {
   showVoiceProgress: boolean;
   onVoiceMissing: () => void;
   onVoiceAll: () => void;
+  onVoiceLowSimilarity: () => void;
   onVoiceStop: () => void;
 }
 
@@ -68,6 +69,7 @@ export const VoiceLinesHeader = ({
   showVoiceProgress,
   onVoiceMissing,
   onVoiceAll,
+  onVoiceLowSimilarity,
   onVoiceStop,
 }: VoiceLinesHeaderProps) => {
   const { t } = useTranslation();
@@ -85,6 +87,7 @@ export const VoiceLinesHeader = ({
   const voiceMenuItems: CircularProgressButtonMenuItem[] = [
     { label: t('modEditor.aiVoiceGenerateMissing'), onClick: onVoiceMissing },
     { label: t('modEditor.aiVoiceGenerateAll'), onClick: onVoiceAll },
+    { label: t('modEditor.aiVoiceGenerateLowSimilarity'), onClick: onVoiceLowSimilarity },
   ];
 
   let voiceStatus: string | null = null;
