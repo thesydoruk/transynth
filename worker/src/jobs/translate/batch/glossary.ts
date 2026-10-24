@@ -1,9 +1,10 @@
 import type { Tx } from '../../../../../src/db';
-import { selectRelevantGlossary } from '../../../../../src/llm/glossarySelect';
+import { nameHintsForGame, selectGlossaryWithNameHints } from '../../../../../src/llm/nameHints';
 import type { LlmGlossaryEntry } from '../../../../../src/llm/translate';
 import { loadGlossaryTermsForGame, termWordBoundaryRe } from '../../../../../src/web/data/queries';
 import type { GlossaryEntryWithRe } from './types';
 
+/** The game's glossary, followed by the name-canon entries it lacks. */
 export const loadGlossaryForBatch = async (
   db: Tx,
   srcLang: string,
@@ -13,11 +14,12 @@ export const loadGlossaryForBatch = async (
   const glossaryRows = await loadGlossaryTermsForGame(db, srcLang, targetLang, game, {
     limit: 2000,
   });
-  return glossaryRows.map((g) => ({ ...g, re: termWordBoundaryRe(g.term) }));
+  const names = nameHintsForGame(game, srcLang, targetLang, glossaryRows);
+  return [...glossaryRows, ...names].map((g) => ({ ...g, re: termWordBoundaryRe(g.term) }));
 };
 
-/** Word-boundary hits plus a few embedding neighbors. Never the full glossary. */
+/** Word-boundary hits plus a few embedding neighbors, then names. Never the full glossary. */
 export const relevantGlossaryForChunk = (
   glossaryAll: GlossaryEntryWithRe[],
   sourceTexts: string[],
-): Promise<LlmGlossaryEntry[]> => selectRelevantGlossary(glossaryAll, sourceTexts);
+): Promise<LlmGlossaryEntry[]> => selectGlossaryWithNameHints(glossaryAll, sourceTexts);
