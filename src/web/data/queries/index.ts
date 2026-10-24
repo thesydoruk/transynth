@@ -12,6 +12,7 @@ export * from './mcmSiblings';
 export * from './dialogs';
 export * from './translationsRead';
 export * from './translationsUpsert';
+export * from './translationsApplyFixes';
 export * from './translationsDelete';
 export * from './translationsSkip';
 export * from './translationsStatus';

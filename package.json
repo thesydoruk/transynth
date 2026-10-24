@@ -13,6 +13,7 @@
     "db:restore": "tsx scripts/dbRestore.ts",
     "db:seed:glossary": "tsx scripts/seedGlossary.ts",
     "qa:refresh": "tsx scripts/refreshQaIssues.ts",
+    "translations:apply": "tsx scripts/applyTranslationFixes.ts",
     "eval:quality": "tsx scripts/evalTranslationQuality.ts",
     "dialog:refresh": "tsx scripts/refreshDialogSpeakers.ts",
     "rag:reindex": "tsx scripts/reindexRag.ts",
