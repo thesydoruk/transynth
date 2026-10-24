@@ -33,6 +33,9 @@ export type CreationEngineTitle = {
   /** Legacy engine keywords that must survive translation verbatim. */
   functionKeywords: readonly string[];
 
+  /** One-word tone prompts on the dialogue wheel; see `GameTextAdapter.toneTagPrompts`. */
+  toneTagPrompts?: readonly string[];
+
   archive: {
     /** Container the game packs assets into. */
     kind: 'ba2' | 'bsa';

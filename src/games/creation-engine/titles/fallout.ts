@@ -33,6 +33,7 @@ import { FO3_UK_GLOSSARY } from '../data/glossary/fo3-uk';
 import { FO4_UK_GLOSSARY } from '../data/glossary/fo4-uk';
 import { FO76_UK_GLOSSARY } from '../data/glossary/fo76-uk';
 import { FNV_UK_GLOSSARY } from '../data/glossary/fnv-uk';
+import { FO4_TONE_TAG_PROMPTS } from '../data/toneTagPrompts';
 
 import { fo4UkTranslatePrompt, fo4UkVerifyPrompt } from '../prompts/fo4/families';
 import { resolveFo4PromptFamily } from '../prompts/fo4/families/resolve';
@@ -81,6 +82,7 @@ export const fallout4: CreationEngineTitle = {
   recorddefs: compileRecorddefs([fo4Recorddefs as RecorddefsJson]),
   npcReference: fo4NpcReference,
   functionKeywords: FO4_FUNCTION_KEYWORDS,
+  toneTagPrompts: FO4_TONE_TAG_PROMPTS,
   archive: { kind: 'ba2', bsaVersion: 104 },
   strings: { lookupOrder: ['loose', 'ba2'], officialLocales: FO4_OFFICIAL_LOCALES },
   voice: { faceFxTitle: 'Fallout4', packLangpackVoiceIntoBa2: true },

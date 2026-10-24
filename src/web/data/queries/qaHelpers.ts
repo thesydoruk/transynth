@@ -10,6 +10,7 @@ import {
 } from './glossaryHelpers';
 import { applyCalqueQaIssues } from './qaCalque';
 import { applyGenderQaIssues } from './qaGender';
+import { applyToneTagQaIssues } from './qaToneTag';
 import type { DialogParticipantsRow } from './dialogs';
 import { PENDING_REVIEW_STATUSES } from './constants';
 
@@ -296,6 +297,14 @@ export const collectQAIssuesForRow = (
   );
   applyGenderQaIssues(issues, row.translation, ctx.targetLang, row, location.field, row.game);
   applyCalqueQaIssues(issues, row.translation, ctx.targetLang);
+  applyToneTagQaIssues(
+    issues,
+    row.source,
+    row.translation,
+    ctx.targetLang,
+    location.field,
+    row.game,
+  );
   appendDuplicateInconsistencyIssue(issues, duplicateAlts);
   return issues;
 };

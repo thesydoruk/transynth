@@ -60,6 +60,13 @@ export type GameTextAdapter = {
   recordKind(grup: string | null | undefined, field?: string | null): GameRecordKind;
 
   /**
+   * One-word player prompts that name a tone rather than words to say
+   * ("Sarcastic"). A Ukrainian translation writes them as a bracketed remark,
+   * «[Сарказм]», and QA flags a bare one. Absent when a game has none.
+   */
+  toneTagPrompts?: readonly string[];
+
+  /**
    * Mask markup the LLM must reproduce exactly but must not translate —
    * Disco's lockit `*italics*` / `"speech"` / `--`, for example.
    *
