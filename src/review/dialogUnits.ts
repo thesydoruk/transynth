@@ -76,7 +76,7 @@ const entryLine = (
 };
 
 /** Reviewable lines of a transcript not yet placed in an earlier unit. */
-export const transcriptLines = (
+const transcriptLines = (
   transcript: DialogTranscriptRow,
   seen: Set<number>,
   opts: DialogUnitOptions,
