@@ -4,7 +4,7 @@
  * Loaded by `scripts/seedGlossary.ts` (`npm run db:seed:glossary`).
  *
  * Regenerated 2026-10-21 from the production glossary after the full
- * FO4 + DLC review (see reports/fo4-uk-final-review-2026-10-21.md):
+ * FO4 + DLC review (see doc/reviews/fo4-uk-2026-10-21):
  * every term was checked against the reviewed corpus.
  */
 
@@ -587,7 +587,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Bobby De Luca',
-    translation: 'Боббі Де Лука',
+    translation: 'Боббі Делюка',
   },
   {
     term: 'Bobby Pin',
@@ -1815,7 +1815,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Dr. Penske',
-    translation: 'Доктор Пенске',
+    translation: 'Докторка Пенске',
   },
   {
     term: 'Dr. Roslyn Chambers',
@@ -3907,7 +3907,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Mass Gravel And Sand',
-    translation: 'Масс Гревел енд Сенд',
+    translation: 'Масс Гравел енд Сенд',
   },
   {
     term: 'Mass Pike Interchange',
@@ -6803,7 +6803,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'Tina De Luca',
-    translation: 'Тіна Де Лука',
+    translation: 'Тіна Делюка',
   },
   {
     term: 'Tink',
