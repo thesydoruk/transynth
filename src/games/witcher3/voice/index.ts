@@ -147,7 +147,7 @@ export const witcher3VoiceAdapter: GameVoiceAdapter = {
 
   isLocalizedVoicePath: (normalizedRelPath) => /\.w3speech$/.test(normalizedRelPath),
 
-  voiceKeyFromFileName: w3VoiceKeyFromFileName,
+  voiceKeyFromRelPath: (relPath) => w3VoiceKeyFromFileName(relPath.split('/').pop() ?? ''),
 
   localizedTakeRelPath: (entry) => {
     const hash = entry.relPath.lastIndexOf('#');
@@ -270,7 +270,7 @@ export const witcher3VoiceAdapter: GameVoiceAdapter = {
     ]);
     const text = w3VoiceTextMaps(lines);
     const translationAudio = buildTranslationAudioSet(ctx.localizeDir, {
-      voiceKeyFromFileName: w3VoiceKeyFromFileName,
+      voiceKeyFromRelPath: (relPath) => w3VoiceKeyFromFileName(relPath.split('/').pop() ?? ''),
     });
     const speakerOf = new Map(lines.map((line) => [String(line.id), line.speakerKey]));
     return {

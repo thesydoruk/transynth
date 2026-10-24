@@ -9,6 +9,7 @@ import { BETHESDA_VOICE_MARKUP } from '../prepareVoiceTtsText';
 import {
   loadVoiceSpeakerRef,
   setVoiceSpeakerRef,
+  voiceSpeakerRefMatches,
   type VoiceSpeakerRefPick,
 } from '../voiceSpeakerRefs';
 import { stripVoiceNonSpeechBlocks, type VoiceTtsMarkupStyle } from '../prepareVoiceTtsText';
@@ -23,6 +24,7 @@ import {
   speakerReferenceCacheRoot,
 } from './constants';
 import {
+  entryReferenceId,
   getOrDecodeEntryReferenceWav,
   getOrReuseSpeakerReferenceWav,
   sourceDigest,
@@ -56,7 +58,7 @@ export type ResolveSpeakerReferenceInput = {
   /** Keeps clips without a known transcript (orphan audio) out of the pool. */
   isEligible?: VoiceReferenceEligibility;
   /** English line text for syllable-rate ranking. */
-  getSourceText?: (lineKey: string, variant: number) => string | null;
+  getSourceText?: (lineKey: string, variant: number, origin?: string | null) => string | null;
   markup?: VoiceTtsMarkupStyle;
 };
 
@@ -71,16 +73,12 @@ const findPickedEntry = (
   preferredEntry: VoiceFileEntry,
   getFallbackEntries: () => VoiceFileEntry[],
 ): VoiceFileEntry | undefined => {
-  if (
-    pick.lineKey.toUpperCase() === preferredEntry.lineKey.toUpperCase() &&
-    pick.variant === preferredEntry.variant
-  ) {
-    return preferredEntry;
-  }
-  return getFallbackEntries().find(
-    (entry) =>
-      entry.lineKey.toUpperCase() === pick.lineKey.toUpperCase() && entry.variant === pick.variant,
-  );
+  // A pick that carries an origin only matches a take of that origin.
+  const matches = (entry: VoiceFileEntry): boolean =>
+    voiceSpeakerRefMatches(pick, entry.lineKey, entry.variant, entry.originPlugin) &&
+    (!pick.originPlugin || entry.originPlugin === pick.originPlugin);
+  if (matches(preferredEntry)) return preferredEntry;
+  return getFallbackEntries().find(matches);
 };
 
 type ScoredEntry = AutoSelectMetrics & {
@@ -95,7 +93,7 @@ const syllableCountForEntry = (
   markup: VoiceTtsMarkupStyle,
 ): number | null => {
   if (!getSourceText) return null;
-  const source = getSourceText(entry.lineKey, entry.variant);
+  const source = getSourceText(entry.lineKey, entry.variant, entry.originPlugin);
   if (!source) return null;
   const spoken = stripVoiceNonSpeechBlocks(source, markup);
   const count = countEnglishSyllables(spoken);
@@ -138,10 +136,11 @@ const finalizeAutoReference = async (
   const pick: VoiceSpeakerRefPick = {
     lineKey: scored.entry.lineKey,
     variant: scored.entry.variant,
+    originPlugin: scored.entry.originPlugin ?? null,
   };
   await setVoiceSpeakerRef(db, modId, speakerKey, pick, scored.score);
 
-  const autoMarker = `auto:${scored.entry.lineKey}_${scored.entry.variant}:${sourceDigest(scored.entry.absolutePath)}`;
+  const autoMarker = `auto:${entryReferenceId(scored.entry)}:${sourceDigest(scored.entry.absolutePath)}`;
   const outPath = await getOrReuseSpeakerReferenceWav(
     speakerKey,
     dirs.speaker,
@@ -195,13 +194,13 @@ const resolveSavedReference = async (
   const pickedEntry = findPickedEntry(savedPick, input.preferredEntry, input.getFallbackEntries);
   if (!pickedEntry) {
     log.warn(
-      `Speaker ref "${speakerKey}": saved pick ${savedPick.lineKey}_${savedPick.variant} not found on disk`,
+      `Speaker ref "${speakerKey}": saved pick ${savedPick.originPlugin ? `${savedPick.originPlugin}/` : ''}${savedPick.lineKey}_${savedPick.variant} not found on disk`,
     );
     return null;
   }
 
   try {
-    const savedMarker = `saved:${pickedEntry.lineKey}_${pickedEntry.variant}:${sourceDigest(pickedEntry.absolutePath)}`;
+    const savedMarker = `saved:${entryReferenceId(pickedEntry)}:${sourceDigest(pickedEntry.absolutePath)}`;
     const outPath = await getOrReuseSpeakerReferenceWav(speakerKey, dirs.speaker, savedMarker, () =>
       getOrDecodeEntryReferenceWav(pickedEntry, dirs.entry, dirs.work),
     );
@@ -227,7 +226,11 @@ const autoSelectReference = async (
   const analyze = (entry: VoiceFileEntry) =>
     scoreEntryReference(entry, dirs, input.getSourceText, markup);
 
-  const preferredScored = isEligible(preferredEntry.lineKey, preferredEntry.variant)
+  const preferredScored = isEligible(
+    preferredEntry.lineKey,
+    preferredEntry.variant,
+    preferredEntry.originPlugin,
+  )
     ? await analyze(preferredEntry)
     : null;
   if (preferredScored && isPreferredAutoSelectPick(preferredScored)) {
@@ -237,7 +240,7 @@ const autoSelectReference = async (
   const candidates: ScoredEntry[] = [];
   if (preferredScored) candidates.push(preferredScored);
   for (const entry of input.getFallbackEntries()) {
-    if (!isEligible(entry.lineKey, entry.variant)) continue;
+    if (!isEligible(entry.lineKey, entry.variant, entry.originPlugin)) continue;
     const scored = await analyze(entry);
     if (scored) candidates.push(scored);
   }
@@ -280,7 +283,7 @@ export const resolveSpeakerReferenceForSpeaker = async (
   const savedPick = await loadVoiceSpeakerRef(db, modId, speakerKey);
   if (savedPick && !isVoiceReferencePickEligible(savedPick, isEligible)) {
     log.warn(
-      `Speaker ref "${speakerKey}": dropping pick ${savedPick.lineKey}_${savedPick.variant} — no dialogue text for that clip`,
+      `Speaker ref "${speakerKey}": dropping pick ${savedPick.originPlugin ? `${savedPick.originPlugin}/` : ''}${savedPick.lineKey}_${savedPick.variant} — no dialogue text for that clip`,
     );
   } else if (savedPick) {
     const resolved = await resolveSavedReference(speakerKey, savedPick, input, dirs);

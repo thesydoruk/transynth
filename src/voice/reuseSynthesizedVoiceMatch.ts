@@ -2,8 +2,12 @@
 
 export type ReuseVoiceLineKey = {
   speakerKey: string;
+  /** Lower-cased plugin folder under Sound/Voice; '' when unknown. */
+  originPlugin: string;
   sourceText: string;
   translation: string;
+  /** Transcript of the reference clip when it is not `sourceText` (see `VoiceTake`). */
+  speakerSource?: string;
 };
 
 export type ReuseVoiceDestLine = ReuseVoiceLineKey & {
@@ -31,7 +35,7 @@ export type ReuseVoiceMatch = {
 };
 
 const reuseVoiceLineKey = (line: ReuseVoiceLineKey): string =>
-  `${line.speakerKey.toLowerCase()}\0${line.sourceText}\0${line.translation}`;
+  `${line.speakerKey.toLowerCase()}\0${line.originPlugin}\0${line.sourceText}\0${line.translation}`;
 
 export const isReusableVoiceText = (value: string | null | undefined): value is string =>
   Boolean(value && value.trim());

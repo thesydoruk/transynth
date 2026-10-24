@@ -32,7 +32,7 @@ export const discoVoiceAdapter: GameVoiceAdapter = {
 
   isLocalizedVoicePath: (normalizedRelPath) => /(^|\/)audio(\/|$)/.test(normalizedRelPath),
 
-  voiceKeyFromFileName: discoVoiceKeyFromFileName,
+  voiceKeyFromRelPath: (relPath) => discoVoiceKeyFromFileName(relPath.split('/').pop() ?? ''),
 
   localizedTakeRelPath: (entry) => outputLocalizedWavRelPath(entry),
 

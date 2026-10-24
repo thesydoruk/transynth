@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
 import { isVoiceFormidKey } from '../../../voice/voiceFormidKey';
+import { normalizeVoiceOrigin } from '../../../voice/voiceOrigin';
 import { parseRouteId } from '../parseRouteId';
 import {
   commitVoiceRegenerateSession,
@@ -18,7 +19,7 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
   // POST /api/mods/:id/voice/regenerate/:lineKey/:variant/session — start a preview session.
   app.post<{
     Params: { id: string; lineKey: string; variant: string };
-    Body: { sessionId?: string; srcLang?: string; targetLang?: string };
+    Body: { sessionId?: string; srcLang?: string; targetLang?: string; originPlugin?: string };
   }>('/api/mods/:id/voice/regenerate/:lineKey/:variant/session', async (req, reply) => {
     const modId = parseRouteId(req.params.id);
     const lineKey = req.params.lineKey.trim();
@@ -47,6 +48,7 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
       variant,
       srcLang,
       targetLang,
+      normalizeVoiceOrigin(req.body?.originPlugin) || undefined,
     );
     if (!result.ok) {
       return reply.code(400).send(result);
@@ -74,6 +76,7 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
       return reply.send({
         ok: true,
         lineKey: meta.lineKey,
+        originPlugin: meta.originPlugin ?? null,
         variant: meta.variant,
         srcLang: meta.srcLang,
         targetLang: meta.targetLang,
@@ -98,6 +101,7 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
       srcLang?: string;
       targetLang?: string;
       speakerKey?: string;
+      originPlugin?: string;
       params?: VoiceRegenerateParams;
     };
   }>('/api/mods/:id/voice/regenerate/:sessionId/preview', async (req, reply) => {
@@ -131,6 +135,7 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
       targetLang,
       params,
       req.body?.speakerKey?.trim(),
+      normalizeVoiceOrigin(req.body?.originPlugin) || undefined,
     );
     if (!result.ok) {
       const status = result.reason === 'tts_failed' ? 503 : 400;

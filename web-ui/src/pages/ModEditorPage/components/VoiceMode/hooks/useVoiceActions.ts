@@ -40,6 +40,7 @@ export const useVoiceActions = ({
         line.variant,
         srcLang,
         targetLang,
+        line.originPlugin ?? undefined,
       );
     },
     onSuccess: () => void invalidateVoice(),
@@ -54,6 +55,7 @@ export const useVoiceActions = ({
         srcLang,
         targetLang,
         line.speakerKey,
+        line.originPlugin ?? undefined,
       ),
     onSuccess: async (_result, line) => {
       await invalidateVoice();

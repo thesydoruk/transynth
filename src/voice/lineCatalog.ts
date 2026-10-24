@@ -8,7 +8,7 @@
  * branches in the editor code.
  */
 import type { VoiceFileEntry } from './discoverVoiceFiles';
-import type { InheritedVoiceLookup } from './inheritedVoiceText';
+import type { InheritedVoiceLookup, MasterModRef } from './inheritedVoiceText';
 import type { VoiceSourceDetailRow, VoiceTranslationRow } from './loadVoiceTranslations';
 import type { VoiceTtsMarkupStyle } from './prepareVoiceTtsText';
 import type { VoiceSpeakerRefMap } from './voiceSpeakerRefs';
@@ -51,6 +51,11 @@ export type VoiceLineCatalog = {
   speakerDisplayName: (speakerKey: string, lineKey: string) => string;
   /** True when a synthesized take already exists for this source file. */
   hasLocalizedTake: (entry: VoiceFileEntry) => boolean;
+  /**
+   * The master whose take this entry is, for a line the mod overrides without
+   * recording: the file sits in the master's package, the dub in this mod's.
+   */
+  masterBackedOf?: (entry: VoiceFileEntry) => MasterModRef | null;
 };
 
 export type VoiceLineCatalogResult = VoiceLineCatalog | VoiceLineCatalogError;

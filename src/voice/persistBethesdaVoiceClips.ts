@@ -72,7 +72,7 @@ const collectClipStringRefs = async (
   variantByStringId: Map<number, number>;
   sharedFrom: Map<string, string>;
 }> => {
-  const { responses, sharedFrom } = await loadModInfoVoiceSlots(db, modId);
+  const { responses, sharedFrom, origins } = await loadModInfoVoiceSlots(db, modId);
   const nam1 = await loadNam1ClipStrings(db, modId, srcLang);
   const stringsByKey = new Map<string, VoiceClipStringRef>();
   const variantByStringId = new Map<number, number>();
@@ -82,14 +82,14 @@ const collectClipStringRefs = async (
       row.ordinal,
       responses.get(row.formidHex.toUpperCase()),
     );
-    const key = voiceTranslationMapKey(row.lineKey, variant);
+    const key = voiceTranslationMapKey(row.lineKey, variant, origins.originOfFormid(row.formidHex));
     if (!stringsByKey.has(key)) {
       stringsByKey.set(key, { stringId: row.stringId, formidHex: row.formidHex });
     }
     variantByStringId.set(row.stringId, variant);
   }
 
-  for (const [key, row] of await loadVoicePromptSources(db, modId, srcLang)) {
+  for (const [key, row] of await loadVoicePromptSources(db, modId, srcLang, origins)) {
     if (!stringsByKey.has(key)) {
       stringsByKey.set(key, { stringId: row.stringId, formidHex: row.infoFormidHex });
     }
@@ -138,20 +138,22 @@ const replaceVoiceClips = async (db: Tx, modId: number, rows: VoiceClipRow[]): P
   const batchSize = Math.max(1, CONFIG.dbChunkSize);
   for (const part of chunk(rows, batchSize)) {
     await db.query(
-      // `formid_hex` and the DNAM alias source are Creation Engine's own
-      // business, so they ride in `game_data` rather than widening the table
-      // every game shares.
+      // `formid_hex`, the owning plugin and the DNAM alias source are Creation
+      // Engine's own business, so they ride in `game_data` rather than widening
+      // the table every game shares.
       `INSERT INTO voice_clips(
          mod_id, speaker_key, line_key, variant, string_id, rel_path, game_data
        )
        SELECT $1, u.speaker_key, u.line_key, u.variant, u.string_id, u.rel_path,
               jsonb_strip_nulls(jsonb_build_object(
                 'formid_hex', u.formid_hex,
+                'origin_plugin', NULLIF(u.origin_plugin, ''),
                 'shared_from_formid', u.shared_from_formid))
          FROM UNNEST(
-           $2::text[], $3::text[], $4::int[], $5::int[], $6::text[], $7::text[], $8::text[]
+           $2::text[], $3::text[], $4::int[], $5::int[], $6::text[], $7::text[], $8::text[],
+           $9::text[]
          ) AS u(speaker_key, line_key, variant, string_id, rel_path,
-                formid_hex, shared_from_formid)`,
+                formid_hex, shared_from_formid, origin_plugin)`,
       [
         modId,
         part.map((row) => row.speakerKey),
@@ -161,6 +163,7 @@ const replaceVoiceClips = async (db: Tx, modId: number, rows: VoiceClipRow[]): P
         part.map((row) => row.relPath),
         part.map((row) => row.formidHex),
         part.map((row) => row.sharedFromFormid),
+        part.map((row) => row.originPlugin),
       ],
     );
   }

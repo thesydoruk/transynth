@@ -148,6 +148,75 @@ describe('orderVortexLangpackModIds', () => {
   });
 });
 
+describe('orderVortexLangpackModIds master constraint', () => {
+  const rows = [
+    {
+      id: 1,
+      name: 'Unofficial Fallout 4 Patch',
+      channel: 'mods',
+      abs_path: null,
+      source_folder: 'UFO4P',
+      pluginFileName: 'Unofficial Fallout 4 Patch.esp',
+    },
+    {
+      id: 2,
+      name: 'Fallout4',
+      channel: 'game',
+      abs_path: 'C:/game/Data/Fallout4.esm',
+      source_folder: null,
+    },
+    {
+      id: 3,
+      name: 'DLCRobot',
+      channel: 'game',
+      abs_path: 'C:/game/Data/DLCRobot.esm',
+      source_folder: null,
+    },
+  ];
+  const masters: Record<string, string[]> = {
+    'unofficial fallout 4 patch.esp': ['Fallout4.esm', 'DLCRobot.esm'],
+    'dlcrobot.esm': ['FALLOUT4.ESM'],
+  };
+  const mastersOf = (row: { abs_path: string | null; pluginFileName?: string | null }) =>
+    masters[(row.pluginFileName || row.abs_path?.split('/').pop() || '').toLowerCase()] ?? [];
+
+  it('puts a plugin after its masters when there is no Vortex order', () => {
+    expect(orderVortexLangpackModIds(rows, null, mastersOf)).toEqual([2, 3, 1]);
+  });
+
+  it('does not hang on a master cycle', () => {
+    const cyclic = (row: { abs_path: string | null; pluginFileName?: string | null }) => {
+      const name = (row.pluginFileName || row.abs_path?.split('/').pop() || '').toLowerCase();
+      if (name === 'fallout4.esm') return ['DLCRobot.esm'];
+      return mastersOf(row);
+    };
+    const ids = orderVortexLangpackModIds(rows, null, cyclic);
+    expect([...ids].sort()).toEqual([1, 2, 3]);
+  });
+
+  it('lets the Vortex load order win for plugin-ranked rows', () => {
+    const ids = orderVortexLangpackModIds(
+      rows,
+      {
+        plugins: ['Unofficial Fallout 4 Patch.esp', 'Fallout4.esm', 'DLCRobot.esm'],
+        fileWinners: [],
+      },
+      mastersOf,
+    );
+    expect(ids).toEqual([1, 2, 3]);
+  });
+
+  it('orders rows without a plugin rank after their masters', () => {
+    const ids = orderVortexLangpackModIds(
+      rows,
+      { plugins: ['Fallout4.esm'], fileWinners: [{ path: 'x', sourceFolder: 'UFO4P' }] },
+      mastersOf,
+    );
+    expect(ids.indexOf(2)).toBeLessThan(ids.indexOf(3));
+    expect(ids.indexOf(3)).toBeLessThan(ids.indexOf(1));
+  });
+});
+
 describe('mergeLangpackEntries file winners', () => {
   it('keeps the Vortex winner even when a later mod wrote the same path', () => {
     const merged = mergeLangpackEntries(

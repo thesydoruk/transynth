@@ -64,13 +64,14 @@ export const modsEndpoints = {
     variant: number,
     srcLang = getSrcLang(),
     targetLang = getTgtLang(),
+    originPlugin?: string,
   ) => {
     const params = new URLSearchParams({ srcLang, targetLang });
     return req<{ ok: true; referencePick: VoiceSpeakerRefPick }>(
       `/api/mods/${modId}/voice/speaker-ref?${params}`,
       {
         method: 'PUT',
-        body: JSON.stringify({ speakerKey, lineKey, variant }),
+        body: JSON.stringify({ speakerKey, lineKey, variant, originPlugin }),
       },
     );
   },
@@ -86,9 +87,11 @@ export const modsEndpoints = {
     srcLang = getSrcLang(),
     targetLang = getTgtLang(),
     speakerKey?: string,
+    originPlugin?: string,
   ) => {
     const params = new URLSearchParams({ srcLang, targetLang });
     if (speakerKey?.trim()) params.set('speakerKey', speakerKey.trim());
+    if (originPlugin?.trim()) params.set('originPlugin', originPlugin.trim());
     return req<{ ok: true; relPath: string; skipped: boolean }>(
       `/api/mods/${modId}/voice/translation-audio/${lineKey}/${variant}?${params}`,
       { method: 'POST' },
@@ -101,12 +104,13 @@ export const modsEndpoints = {
     sessionId: string,
     srcLang = getSrcLang(),
     targetLang = getTgtLang(),
+    originPlugin?: string,
   ) =>
     req<{ ok: true; defaultParams: VoiceRegenerateParams }>(
       `/api/mods/${modId}/voice/regenerate/${lineKey}/${variant}/session`,
       {
         method: 'POST',
-        body: JSON.stringify({ sessionId, srcLang, targetLang }),
+        body: JSON.stringify({ sessionId, srcLang, targetLang, originPlugin }),
       },
     ),
   getVoiceRegenerateSession: (modId: number, sessionId: string) =>
@@ -116,6 +120,7 @@ export const modsEndpoints = {
       variant: number;
       srcLang: string;
       targetLang: string;
+      originPlugin?: string | null;
       previews: VoiceRegeneratePreview[];
     }>(`/api/mods/${modId}/voice/regenerate/${sessionId}`),
   generateVoiceRegeneratePreview: (
@@ -127,6 +132,7 @@ export const modsEndpoints = {
       srcLang: string;
       targetLang: string;
       speakerKey?: string;
+      originPlugin?: string;
       params: VoiceRegenerateParams;
     },
   ) =>

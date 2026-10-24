@@ -43,6 +43,7 @@ export const useVoiceRegenerateSession = (
           sessionId,
           srcLang,
           targetLang,
+          line.originPlugin ?? undefined,
         );
         if (cancelled) return;
         setParams(result.defaultParams);
@@ -58,7 +59,7 @@ export const useVoiceRegenerateSession = (
     return () => {
       cancelled = true;
     };
-  }, [line.lineKey, line.variant, modId, sessionId, srcLang, targetLang, t]);
+  }, [line.lineKey, line.originPlugin, line.variant, modId, sessionId, srcLang, targetLang, t]);
 
   const discardSession = useCallback(async () => {
     try {
@@ -79,6 +80,7 @@ export const useVoiceRegenerateSession = (
         srcLang,
         targetLang,
         speakerKey: line.speakerKey,
+        originPlugin: line.originPlugin ?? undefined,
         params,
       });
       const preview: VoiceRegeneratePreview = {

@@ -5,6 +5,7 @@ import {
   type VoiceFileEntry,
 } from '../../../voice/discoverVoiceFiles';
 import { voiceSpeakerKey } from '../../../voice/speakerReference';
+import { normalizeVoiceOrigin } from '../../../voice/voiceOrigin';
 import type { VoicePackageContext } from './context';
 
 /** Clean a voice directory name into a human-readable speaker label. */
@@ -24,6 +25,7 @@ export const formatVoiceSpeakerLabel = (folderName: string): string => {
   return cleaned.trim() || folderName;
 };
 
+// Keyed by lower-6 only: speaker display names, last-wins across origins.
 export const loadSpeakerNamesFromDb = async (
   db: Tx,
   modId: number,
@@ -57,17 +59,20 @@ export const discoverVoiceEntries = (ctx: VoicePackageContext): VoiceFileEntry[]
  * A FormID pair is ambiguous on its own: the same line exists once per voice
  * type, so pass `speakerKey` whenever the caller knows which speaker's take the
  * user asked for, or playback and dubbing can land on another actor's file.
+ * Likewise pass `originPlugin` when two owning plugins may share the lower-6.
  */
 export const findVoiceEntry = (
   entries: VoiceFileEntry[],
   lineKey: string,
   variant: number,
-  scope?: { voiceRootRel: string; speakerKey?: string },
+  scope?: { voiceRootRel: string; speakerKey?: string; originPlugin?: string | null },
 ): VoiceFileEntry | undefined => {
   const wantSpeaker = scope?.speakerKey?.trim();
+  const wantOrigin = normalizeVoiceOrigin(scope?.originPlugin);
   return entries.find((entry) => {
     if (entry.lineKey.toUpperCase() !== lineKey.toUpperCase()) return false;
     if (entry.variant !== variant) return false;
+    if (wantOrigin && (entry.originPlugin ?? '') !== wantOrigin) return false;
     if (!wantSpeaker) return true;
     return voiceSpeakerKey(entry, scope!.voiceRootRel) === wantSpeaker;
   });

@@ -14,6 +14,7 @@ export const generateVoiceTranslationForMod = async (
   srcLang: string,
   targetLang: string,
   speakerKey?: string,
+  originPlugin?: string | null,
 ): Promise<VoiceGenerateLineResult> => {
   const resolved = await resolveModVoiceContext(db, modId);
   if (!resolved.ok) return resolved;
@@ -28,7 +29,15 @@ export const generateVoiceTranslationForMod = async (
   }
 
   const speaker = speakerKey?.trim() ?? '';
-  const live = speaker ? { modId, speakerKey: speaker, lineKey, variant } : null;
+  const live = speaker
+    ? {
+        modId,
+        speakerKey: speaker,
+        lineKey,
+        variant,
+        originPlugin: originPlugin ?? null,
+      }
+    : null;
   if (live) emitVoiceLive({ type: 'line_started', ...live });
 
   const mod = await loadImportedMod(db, modId);
@@ -48,6 +57,7 @@ export const generateVoiceTranslationForMod = async (
       srcLang,
       tgtLang: targetLang,
       speakerKey,
+      originPlugin,
     });
     if (live) {
       if (result.ok && !result.skipped) emitVoiceLive({ type: 'line_done', ...live });

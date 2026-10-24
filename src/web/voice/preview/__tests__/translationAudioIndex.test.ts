@@ -35,8 +35,9 @@ describe('buildTranslationAudioSet', () => {
       'Data/Sound/Voice/AA FusionCityRising.esp/ClubFusionDanaFeytonVoice/00002185_1.fuz',
     );
     const set = buildTranslationAudioSet(root, creationEngineVoiceAdapter);
-    expect(hasTranslationAudio(set, '002185', 1)).toBe(true);
-    expect(hasTranslationAudio(set, '002185', 2)).toBe(false);
+    expect(hasTranslationAudio(set, '002185', 1, 'aa fusioncityrising.esp')).toBe(true);
+    expect(hasTranslationAudio(set, '002185', 2, 'aa fusioncityrising.esp')).toBe(false);
+    expect(hasTranslationAudio(set, '002185', 1)).toBe(false);
   });
 
   it('ignores files that are not voice takes', () => {

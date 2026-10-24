@@ -40,6 +40,9 @@ const resolveVoiceEntry = async (
   lineKey: string,
   variant: number,
   speakerKey?: string,
+  originPlugin?: string | null,
+  srcLang?: string,
+  targetLang?: string,
 ): Promise<
   { ok: true; entry: VoiceFileEntry } | { ok: false; reason: 'line_not_found'; message: string }
 > => {
@@ -49,6 +52,9 @@ const resolveVoiceEntry = async (
     lineKey,
     variant,
     speakerKey,
+    originPlugin,
+    srcLang,
+    targetLang,
   });
   return entry
     ? { ok: true, entry }
@@ -62,11 +68,20 @@ export const getVoicePreviewWav = async (
   lineKey: string,
   variant: number,
   speakerKey?: string,
+  originPlugin?: string | null,
 ): Promise<VoiceAudioResult> => {
   const meta = await loadModVoiceMeta(db, modId);
   if (!meta.ok) return meta;
 
-  const resolved = await resolveVoiceEntry(db, modId, meta, lineKey, variant, speakerKey);
+  const resolved = await resolveVoiceEntry(
+    db,
+    modId,
+    meta,
+    lineKey,
+    variant,
+    speakerKey,
+    originPlugin,
+  );
   if (!resolved.ok) return resolved;
   const entry = resolved.entry;
   if (!fs.existsSync(entry.absolutePath)) {
@@ -92,6 +107,7 @@ export const getVoiceTranslationWav = async (
   lineKey: string,
   variant: number,
   speakerKey?: string,
+  originPlugin?: string | null,
 ): Promise<VoiceAudioResult> => {
   const meta = await loadModVoiceMeta(db, modId);
   if (!meta.ok) return meta;
@@ -99,7 +115,17 @@ export const getVoiceTranslationWav = async (
   const resolved = await resolveModVoiceContext(db, modId);
   if (!resolved.ok) return resolved;
 
-  const found = await resolveVoiceEntry(db, modId, meta, lineKey, variant, speakerKey);
+  const found = await resolveVoiceEntry(
+    db,
+    modId,
+    meta,
+    lineKey,
+    variant,
+    speakerKey,
+    originPlugin,
+    undefined,
+    resolved.targetLang,
+  );
   if (!found.ok) return found;
   const entry = found.entry;
 

@@ -74,6 +74,12 @@ export type VoiceTake = {
   destRelPath: string;
   source: string;
   translation: string;
+  /**
+   * Transcript of the reference clip when it is not `source` — a patch dubbing
+   * a line against its master's take. Version stamps are built on it, so every
+   * path that stamps a take must use it.
+   */
+  speakerSource?: string;
 };
 
 /** Inputs shared by the single-line synthesis entry points. */
@@ -90,6 +96,8 @@ export type VoiceLineRequest = {
   srcLang: string;
   tgtLang: string;
   speakerKey?: string;
+  /** Plugin that owns the line, when the game has such a notion and the caller knows it. */
+  originPlugin?: string | null;
 };
 
 /** A preview take built in memory, before it is written into a review session. */
@@ -160,10 +168,12 @@ export type GameVoiceAdapter = {
   isLocalizedVoicePath(normalizedRelPath: string): boolean;
 
   /**
-   * Map a localized clip's file name to its `FORMID6:variant` key, or null
+   * Map a localized clip's path (relative to the localize tree) to its voice
+   * key — `<origin>/FORMID6:variant` for games whose takes have an owning
+   * plugin, `FORMID6:variant` otherwise — or null
    * when the file is not a voice take.
    */
-  voiceKeyFromFileName(fileName: string): string | null;
+  voiceKeyFromRelPath(relPath: string): string | null;
 
   /** Where a localized take is written, relative to the localize directory. */
   localizedTakeRelPath(entry: VoiceFileEntry): string;
@@ -217,7 +227,10 @@ export type GameVoiceAdapter = {
     request: Omit<VoiceLineRequest, 'localizeDir'> & { referenceMode: TtsReferenceMode },
   ): Promise<VoiceLinePreviewBuild>;
 
-  /** Locate one source take on disk so the editor can play the original. */
+  /**
+   * Locate one source take on disk so the editor can play the original — the
+   * mod's own file, or the master's take for a line the mod only overrides.
+   */
   findLineEntry(
     db: Tx,
     request: {
@@ -226,6 +239,9 @@ export type GameVoiceAdapter = {
       lineKey: string;
       variant: number;
       speakerKey?: string;
+      originPlugin?: string | null;
+      srcLang?: string;
+      targetLang?: string;
     },
   ): Promise<VoiceFileEntry | null>;
 

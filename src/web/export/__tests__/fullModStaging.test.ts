@@ -30,9 +30,14 @@ const makeDb = (
     translation: string;
     edid: null;
   }> = [],
+  /** `mods.abs_path` of the staged mod — voice rows take their origin from its plugin. */
+  pluginPath: string | null = null,
 ): Tx =>
   ({
     query: async (sql: string) => {
+      if (sql.includes('abs_path FROM mods WHERE id')) {
+        return { rows: pluginPath ? [{ abs_path: pluginPath }] : [] };
+      }
       if (sql.includes('is_localized')) {
         return {
           rows: [{ mod_id: 1, mod_name: 'Demo', src_lang: 'en', game: 'fo4', is_localized: 1 }],
@@ -137,26 +142,29 @@ describe('stageFullLocalizedMod', () => {
 
     const pluginPath = path.join(extractRoot, 'Demo.esp');
     const result = await stageFullLocalizedMod(
-      makeDb([
-        {
-          line_key: '123456',
-          info_formid_hex: '00123456',
-          voice_ordinal: 1,
-          string_id: 1,
-          source: 'Hello, traveler.',
-          translation: 'Привіт, мандрівнику.',
-          edid: null,
-        },
-        {
-          line_key: '0219CF',
-          info_formid_hex: '000219CF',
-          voice_ordinal: 1,
-          string_id: 2,
-          source: 'Oof!',
-          translation: 'Оф!',
-          edid: null,
-        },
-      ]),
+      makeDb(
+        [
+          {
+            line_key: '123456',
+            info_formid_hex: '00123456',
+            voice_ordinal: 1,
+            string_id: 1,
+            source: 'Hello, traveler.',
+            translation: 'Привіт, мандрівнику.',
+            edid: null,
+          },
+          {
+            line_key: '0219CF',
+            info_formid_hex: '000219CF',
+            voice_ordinal: 1,
+            string_id: 2,
+            source: 'Oof!',
+            translation: 'Оф!',
+            edid: null,
+          },
+        ],
+        pluginPath,
+      ),
       1,
       pluginPath,
       'en',

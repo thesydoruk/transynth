@@ -20,12 +20,18 @@ import {
 export { normalizeVoiceText, voiceTranslationMapKey };
 export type { VoiceSourceDetailRow, VoiceSourceRow, VoiceTranslationRow };
 
-/** Resolve a translated voice row for an exact FormID + variant (no sibling fallback). */
+/**
+ * Resolve a translated voice row for an exact origin + FormID + variant (no
+ * sibling fallback). Creation Engine maps are origin-qualified, so a lookup
+ * without `origin` only finds rows of games that have none.
+ */
 export const lookupVoiceTranslation = (
   translations: Map<string, VoiceTranslationRow>,
   lineKey: string,
   variant: number,
-): VoiceTranslationRow | undefined => translations.get(voiceTranslationMapKey(lineKey, variant));
+  origin?: string | null,
+): VoiceTranslationRow | undefined =>
+  translations.get(voiceTranslationMapKey(lineKey, variant, origin));
 
 const resolveVoiceVariant = (
   ordinal: number,
@@ -34,10 +40,11 @@ const resolveVoiceVariant = (
 ): number => voiceVariantFromOrdinal(ordinal, responseMap.get(infoFormidHex.toUpperCase()));
 
 /**
- * Load translated INFO NAM1 lines keyed by lower-6 FormID + voice-file variant.
+ * Load translated INFO NAM1 lines keyed by origin + lower-6 FormID + voice-file variant.
  *
  * SQL still numbers NAM1 rows with `ROW_NUMBER` (import order). Keys are then
- * remapped to FO4 `TRDA` response numbers so they match `<FormID>_<N>.fuz`.
+ * remapped to FO4 `TRDA` response numbers so they match `<FormID>_<N>.fuz`, and
+ * the origin is read off the FormID's master-index byte.
  */
 export const loadVoiceTranslations = async (
   db: Tx,
@@ -45,7 +52,7 @@ export const loadVoiceTranslations = async (
   srcLang: string,
   tgtLang: string,
 ): Promise<Map<string, VoiceTranslationRow>> => {
-  const { responses: responseMap, sharedFrom } = await loadModInfoVoiceSlots(db, modId);
+  const { responses: responseMap, sharedFrom, origins } = await loadModInfoVoiceSlots(db, modId);
   const { rows } = await db.query<{
     line_key: string;
     info_formid_hex: string;
@@ -90,9 +97,11 @@ export const loadVoiceTranslations = async (
   const map = new Map<string, VoiceTranslationRow>();
   for (const row of rows) {
     const voiceVariant = resolveVoiceVariant(row.voice_ordinal, row.info_formid_hex, responseMap);
-    map.set(voiceTranslationMapKey(row.line_key, voiceVariant), {
+    const originPlugin = origins.originOfFormid(row.info_formid_hex);
+    map.set(voiceTranslationMapKey(row.line_key, voiceVariant, originPlugin), {
       lineKey: row.line_key,
       infoFormidHex: row.info_formid_hex,
+      originPlugin,
       voiceVariant,
       stringId: row.string_id,
       translationId: row.translation_id,
@@ -102,18 +111,21 @@ export const loadVoiceTranslations = async (
       edid: row.edid,
     });
   }
-  fillMissingVoiceKeys(map, await loadVoicePromptTranslations(db, modId, srcLang, tgtLang));
+  fillMissingVoiceKeys(
+    map,
+    await loadVoicePromptTranslations(db, modId, srcLang, tgtLang, origins),
+  );
   expandSharedResponseAliases(map, sharedFrom);
   return map;
 };
 
-/** Load INFO NAM1 source lines keyed by formid lower-6 + voice-file variant. */
+/** Load INFO NAM1 source lines keyed by origin + formid lower-6 + voice-file variant. */
 export const loadVoiceSourcesDetailed = async (
   db: Tx,
   modId: number,
   srcLang: string,
 ): Promise<Map<string, VoiceSourceDetailRow>> => {
-  const { responses: responseMap, sharedFrom } = await loadModInfoVoiceSlots(db, modId);
+  const { responses: responseMap, sharedFrom, origins } = await loadModInfoVoiceSlots(db, modId);
   const { rows } = await db.query<{
     line_key: string;
     info_formid_hex: string;
@@ -146,19 +158,21 @@ export const loadVoiceSourcesDetailed = async (
     const source = normalizeVoiceText(row.source);
     if (!source) continue;
     const voiceVariant = resolveVoiceVariant(row.voice_ordinal, row.info_formid_hex, responseMap);
-    map.set(voiceTranslationMapKey(row.line_key, voiceVariant), {
+    const originPlugin = origins.originOfFormid(row.info_formid_hex);
+    map.set(voiceTranslationMapKey(row.line_key, voiceVariant, originPlugin), {
       source,
       infoFormidHex: row.info_formid_hex,
+      originPlugin,
       stringId: row.string_id,
       edid: row.edid,
     });
   }
-  fillMissingVoiceKeys(map, await loadVoicePromptSources(db, modId, srcLang));
+  fillMissingVoiceKeys(map, await loadVoicePromptSources(db, modId, srcLang, origins));
   expandSharedResponseAliases(map, sharedFrom);
   return map;
 };
 
-/** Load English INFO NAM1 source lines keyed by formid lower-6 + voice variant. */
+/** Load English INFO NAM1 source lines keyed by origin + formid lower-6 + voice variant. */
 export const loadVoiceSources = async (
   db: Tx,
   modId: number,
@@ -176,4 +190,5 @@ export const lookupVoiceSource = (
   sources: Map<string, VoiceSourceRow>,
   lineKey: string,
   variant: number,
-): string | null => sources.get(voiceTranslationMapKey(lineKey, variant))?.source ?? null;
+  origin?: string | null,
+): string | null => sources.get(voiceTranslationMapKey(lineKey, variant, origin))?.source ?? null;

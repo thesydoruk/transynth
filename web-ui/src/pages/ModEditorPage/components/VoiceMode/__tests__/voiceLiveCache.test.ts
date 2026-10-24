@@ -100,6 +100,9 @@ describe('applyVoiceLiveLineDone', () => {
 
 describe('voiceLiveLineKey', () => {
   it('matches the editor row key', () => {
-    expect(voiceLiveLineKey({ speakerKey: 'Nora', lineKey: 'aa', variant: 2 })).toBe('Nora:aa:2');
+    expect(voiceLiveLineKey({ speakerKey: 'Nora', lineKey: 'aa', variant: 2 })).toBe('/Nora:aa:2');
+    expect(
+      voiceLiveLineKey({ originPlugin: 'a.esm', speakerKey: 'Nora', lineKey: 'aa', variant: 2 }),
+    ).toBe('a.esm/Nora:aa:2');
   });
 });

@@ -54,6 +54,11 @@ export type ProcessVoiceLocalizeEntryOptions = {
   getSiblingEntries: (speakerKey: string, current: VoiceFileEntry) => VoiceFileEntry[];
   storedVersions: Map<string, string>;
   signal?: AbortSignal;
+  /**
+   * Transcript of the take used as reference audio when it is not the line's
+   * own source — a patch dubbing a master's line against the master's take.
+   */
+  referenceSource?: string | null;
 };
 
 export type ProcessVoiceLocalizeEntryResult =
@@ -92,6 +97,7 @@ export const processVoiceLocalizeEntry = async (
     storedVersions,
     signal,
   } = options;
+  const referenceSource = options.referenceSource ?? row.source;
 
   const fuzRel = outputLocalizedFuzRelPath(entry);
   const fuzDest = toDiskPath(localizeDir, fuzRel);
@@ -99,7 +105,13 @@ export const processVoiceLocalizeEntry = async (
 
   try {
     const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
-    const versionKey = voiceSynthesisStateKey(speakerKey, entry.lineKey, entry.variant);
+    const originPlugin = entry.originPlugin;
+    const versionKey = voiceSynthesisStateKey(
+      speakerKey,
+      entry.lineKey,
+      entry.variant,
+      originPlugin,
+    );
     const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
     const due = voiceTakeNeedsWork({
       force,
@@ -107,18 +119,23 @@ export const processVoiceLocalizeEntry = async (
       speakerKey,
       lineKey: entry.lineKey,
       variant: entry.variant,
+      origin: originPlugin,
       storedVersion: lookupVoiceSynthesisVersion(
         storedVersions,
         speakerKey,
         entry.lineKey,
         entry.variant,
+        originPlugin,
       ),
       payloadVersion,
       fileExists: fs.existsSync(fuzDest),
     });
     if (!due) return { kind: 'skipped', relPath: prefix + fuzRel };
 
-    workDir = path.join(tempRoot, `${speakerKey}_${entry.lineKey}_${entry.variant}`);
+    workDir = path.join(
+      tempRoot,
+      `${originPlugin ?? ''}_${speakerKey}_${entry.lineKey}_${entry.variant}`,
+    );
     ensureDir(workDir);
     const lineEnglishWav = await prepareReferenceAudio(entry, workDir);
     const picked = await pickVoiceTtsReference({
@@ -129,7 +146,7 @@ export const processVoiceLocalizeEntry = async (
       speakerKey: speakerKey || null,
       entry,
       lineEnglishWav,
-      lineSource: row.source,
+      lineSource: referenceSource,
       referenceMode,
       voiceSources,
       getSiblingEntries: (key) => getSiblingEntries(key, entry),
@@ -142,7 +159,7 @@ export const processVoiceLocalizeEntry = async (
       prepared.text,
       picked.clips.map((clip) => ({
         wavPath: clip.wavPath,
-        speakerText: stripVoiceNonSpeechBlocks(clip.speakerText ?? row.source) || undefined,
+        speakerText: stripVoiceNonSpeechBlocks(clip.speakerText ?? referenceSource) || undefined,
       })),
       {
         baseUrl: ttsBaseUrl,
@@ -167,6 +184,7 @@ export const processVoiceLocalizeEntry = async (
         variant: entry.variant,
         targetLang: tgtLang,
         speakerKey,
+        originPlugin,
       };
       const settled = await settleVoiceResynthTake(
         db,
@@ -185,7 +203,7 @@ export const processVoiceLocalizeEntry = async (
           relPath: prefix + fuzRel,
           reason: settled.reason,
           voiceSimilarity:
-            lookupVoiceResynthStamp(resynth, speakerKey, entry.lineKey, entry.variant)
+            lookupVoiceResynthStamp(resynth, speakerKey, entry.lineKey, entry.variant, originPlugin)
               ?.voiceSimilarity ?? null,
         };
       }
@@ -201,6 +219,7 @@ export const processVoiceLocalizeEntry = async (
         lineKey: entry.lineKey,
         variant: entry.variant,
         speakerKey,
+        originPlugin,
         targetLang: tgtLang,
         ttsTextVersion: payloadVersion,
         voiceSimilarity: tts.voiceSimilarity,
@@ -217,6 +236,7 @@ export const processVoiceLocalizeEntry = async (
         lineKey: entry.lineKey,
         variant: entry.variant,
         speakerKey,
+        originPlugin,
         targetLang: tgtLang,
         ttsTextVersion: payloadVersion,
         voiceSimilarity: tts.voiceSimilarity,

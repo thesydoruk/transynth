@@ -61,7 +61,12 @@ export const collectSiblingFallbackClips = async (
     if (!decoded || !(decoded.durationSec > 0)) continue;
     clips.push({
       wavPath: decoded.wavPath,
-      speakerText: lookupVoiceSource(sources, candidate.lineKey, candidate.variant),
+      speakerText: lookupVoiceSource(
+        sources,
+        candidate.lineKey,
+        candidate.variant,
+        candidate.originPlugin,
+      ),
       fileName: candidate.fileName,
     });
     totalSec += decoded.durationSec;

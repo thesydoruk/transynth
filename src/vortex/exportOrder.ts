@@ -103,18 +103,56 @@ export const filterVortexLangpackMods = (
   });
 };
 
+/**
+ * Stable topological pass: a row whose plugin lists another row's plugin as a
+ * master moves after it, so a patch's own takes (written under its master's
+ * voice folder) beat the master's. Every other relative order is kept. Cycles
+ * cannot hang: a row still blocked once nothing is ready is emitted as-is.
+ */
+const applyMasterConstraint = (
+  sorted: VortexLangpackModRef[],
+  mastersOf: (row: VortexLangpackModRef) => string[],
+  eligible: (row: VortexLangpackModRef) => boolean = () => true,
+): VortexLangpackModRef[] => {
+  const indexByPlugin = new Map<string, number>();
+  sorted.forEach((row, index) => {
+    const plugin = pluginNameOf(row);
+    if (plugin && !indexByPlugin.has(plugin)) indexByPlugin.set(plugin, index);
+  });
+  if (indexByPlugin.size === 0) return sorted;
+
+  const deps = sorted.map((row, index) => {
+    if (!eligible(row)) return new Set<number>();
+    const out = new Set<number>();
+    for (const master of mastersOf(row)) {
+      const dep = indexByPlugin.get(master.toLowerCase());
+      if (dep != null && dep !== index) out.add(dep);
+    }
+    return out;
+  });
+
+  const emitted = new Array<boolean>(sorted.length).fill(false);
+  const result: VortexLangpackModRef[] = [];
+  while (result.length < sorted.length) {
+    let pick = sorted.findIndex(
+      (_row, index) => !emitted[index] && [...deps[index]!].every((dep) => emitted[dep]),
+    );
+    // Cycle: drop the blocking edges of the first remaining row.
+    if (pick < 0) pick = emitted.indexOf(false);
+    emitted[pick] = true;
+    result.push(sorted[pick]!);
+  }
+  return result;
+};
+
 export const orderVortexLangpackModIds = (
   rows: VortexLangpackModRef[],
   order: VortexExportOrder | null | undefined,
+  mastersOf?: (row: VortexLangpackModRef) => string[],
 ): number[] => {
-  const byId = new Map(rows.map((row) => [row.id, row]));
-  const ids = rows.map((row) => row.id);
   if (!order || (order.plugins.length === 0 && order.fileWinners.length === 0)) {
-    return [...ids].sort((a, b) => {
-      const left = byId.get(a)?.name ?? '';
-      const right = byId.get(b)?.name ?? '';
-      return left.localeCompare(right, 'en');
-    });
+    const byName = [...rows].sort((a, b) => a.name.localeCompare(b.name, 'en'));
+    return (mastersOf ? applyMasterConstraint(byName, mastersOf) : byName).map((row) => row.id);
   }
 
   const pluginRank = new Map(order.plugins.map((name, index) => [name.toLowerCase(), index]));
@@ -133,13 +171,15 @@ export const orderVortexLangpackModIds = (
     return [row.channel === 'game' ? 2 : 3, 1_000_000, row.name];
   };
 
-  return [...rows]
-    .sort((a, b) => {
-      const left = rank(a);
-      const right = rank(b);
-      if (left[0] !== right[0]) return left[0] - right[0];
-      if (left[1] !== right[1]) return left[1] - right[1];
-      return left[2].localeCompare(right[2], 'en');
-    })
-    .map((row) => row.id);
+  const ranked = [...rows].sort((a, b) => {
+    const left = rank(a);
+    const right = rank(b);
+    if (left[0] !== right[0]) return left[0] - right[0];
+    if (left[1] !== right[1]) return left[1] - right[1];
+    return left[2].localeCompare(right[2], 'en');
+  });
+  // Rows ranked by plugin load order are already correct; only the rest need the safety net.
+  return (
+    mastersOf ? applyMasterConstraint(ranked, mastersOf, (row) => rank(row)[0] !== 0) : ranked
+  ).map((row) => row.id);
 };

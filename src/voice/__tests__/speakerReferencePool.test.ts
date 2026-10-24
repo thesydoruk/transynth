@@ -67,6 +67,13 @@ describe('voiceSpeakerKey', () => {
     expect(voiceSpeakerKey(entry, voiceRoot)).toBe('AlexanderBrown');
   });
 
+  it('reads the speaker below any origin folder, not only the plugin own one', () => {
+    const entry = {
+      relPath: 'Sound/Voice/Fallout4.esm/MaleRough/x.fuz',
+    } as VoiceFileEntry;
+    expect(voiceSpeakerKey(entry, 'Sound/Voice/Mod.esp')).toBe('MaleRough');
+  });
+
   it('returns empty when file is directly under voice root', () => {
     const entry = {
       relPath: 'Data/Sound/Voice/Mod.esp/00002CBA_4.fuz',
@@ -154,20 +161,29 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
   let modId: number;
 
   const createMockDb = () => {
-    const picks = new Map<string, { lineKey: string; variant: number }>();
+    const picks = new Map<string, { lineKey: string; variant: number; originPlugin: string }>();
     return {
       query: async (sql: string, params: unknown[] = []) => {
         const key = params[1] as string | undefined;
         if (sql.includes('SELECT line_key, variant') && key) {
           const pick = picks.get(key);
           return {
-            rows: pick ? [{ line_key: pick.lineKey, variant: pick.variant }] : [],
+            rows: pick
+              ? [
+                  {
+                    line_key: pick.lineKey,
+                    variant: pick.variant,
+                    origin_plugin: pick.originPlugin,
+                  },
+                ]
+              : [],
           };
         }
         if (sql.includes('INSERT INTO voice_speaker_refs')) {
           picks.set(params[1] as string, {
             lineKey: params[2] as string,
             variant: params[3] as number,
+            originPlugin: (params[5] as string | undefined) ?? '',
           });
           return { rows: [] };
         }
@@ -182,9 +198,10 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
     lineKey: string,
     variant: number,
     samples: Int16Array,
+    origin?: string,
   ): VoiceFileEntry => {
     const fileName = `${lineKey}_${variant}.wav`;
-    const relPath = `Data/Sound/Voice/Mod.esp/${speaker}/${fileName}`;
+    const relPath = `Data/Sound/Voice/${origin ?? 'Mod.esp'}/${speaker}/${fileName}`;
     const absolutePath = path.join(packageDir, ...relPath.split('/'));
     writeTestWav(absolutePath, samples);
     return {
@@ -194,6 +211,7 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
       lineKey,
       variant,
       ext: 'wav',
+      ...(origin ? { originPlugin: origin.toLowerCase() } : {}),
     };
   };
 
@@ -258,7 +276,7 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
     });
 
     expect(result?.source).toBe('auto');
-    expect(result?.pick).toEqual({ lineKey: '00002CBA', variant: 1 });
+    expect(result?.pick).toEqual({ lineKey: '00002CBA', variant: 1, originPlugin: null });
     expect(fallbackCalled).toBe(false);
   });
 
@@ -283,8 +301,39 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
     });
 
     expect(result?.source).toBe('auto');
-    expect(result?.pick).toEqual({ lineKey: '00002CBB', variant: 1 });
+    expect(result?.pick).toEqual({ lineKey: '00002CBB', variant: 1, originPlugin: null });
     expect(fallbackCalled).toBe(true);
+  });
+
+  it('does not match a saved pick of one origin to a take of another with the same lower-6', async () => {
+    const speaker = 'AlexanderBrown';
+    const db = createMockDb() as unknown as import('../../db').Tx;
+    const base = makeEntry(tmpDir, speaker, '00002CBA', 1, makeSpeechLike(10), 'Fallout4.esm');
+    await resolveSpeakerReferenceForSpeaker({
+      db,
+      modId,
+      speakerKey: speaker,
+      preferredEntry: base,
+      getFallbackEntries: () => [],
+      packageDir: tmpDir,
+      pluginRelPath: 'Data/Mod.esp',
+    });
+    fs.rmSync(speakerReferenceCacheRoot(modId), { recursive: true, force: true });
+
+    const other = makeEntry(tmpDir, speaker, '00002CBA', 1, makeSpeechLike(10), 'DLCRobot.esm');
+    const result = await resolveSpeakerReferenceForSpeaker({
+      db,
+      modId,
+      speakerKey: speaker,
+      preferredEntry: other,
+      getFallbackEntries: () => [other],
+      packageDir: tmpDir,
+      pluginRelPath: 'Data/Mod.esp',
+    });
+
+    // The saved pick is fallout4.esm; `other` is dlcrobot.esm, so it is re-picked, not reused.
+    expect(result?.source).toBe('auto');
+    expect(result?.pick).toEqual({ lineKey: '00002CBA', variant: 1, originPlugin: 'dlcrobot.esm' });
   });
 
   it('picks the closest longer clip when no 8–12s sibling exists', async () => {
@@ -304,7 +353,7 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
       pluginRelPath: 'Data/Mod.esp',
     });
 
-    expect(result?.pick).toEqual({ lineKey: '00002CBB', variant: 1 });
+    expect(result?.pick).toEqual({ lineKey: '00002CBB', variant: 1, originPlugin: null });
   });
 
   it('prefers the 8–12s clip whose speaking rate is closer to 5 syl/s', async () => {
@@ -325,7 +374,7 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
       getSourceText: (formid) => (formid === '00002CBA' ? pace(80) : pace(50)),
     });
 
-    expect(result?.pick).toEqual({ lineKey: '00002CBB', variant: 1 });
+    expect(result?.pick).toEqual({ lineKey: '00002CBB', variant: 1, originPlugin: null });
   });
 
   it('scans sibling entries when the current line is too short to use', async () => {
@@ -349,7 +398,7 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
     });
 
     expect(result?.source).toBe('auto');
-    expect(result?.pick).toEqual({ lineKey: '00002CBB', variant: 1 });
+    expect(result?.pick).toEqual({ lineKey: '00002CBB', variant: 1, originPlugin: null });
     expect(fallbackCalled).toBe(true);
   });
 
@@ -370,7 +419,7 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
       isEligible: (lineKey) => lineKey !== '00002CBA',
     });
 
-    expect(result?.pick).toEqual({ lineKey: '00002CBB', variant: 1 });
+    expect(result?.pick).toEqual({ lineKey: '00002CBB', variant: 1, originPlugin: null });
   });
 
   it('drops a saved pick that lost its dialogue text', async () => {
@@ -401,7 +450,7 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
       isEligible: (lineKey) => lineKey !== '00002CBA',
     });
 
-    expect(reresolved?.pick).toEqual({ lineKey: '00002CBB', variant: 1 });
+    expect(reresolved?.pick).toEqual({ lineKey: '00002CBB', variant: 1, originPlugin: null });
   });
 
   it('scores an 8–12s speech clip as a usable reference', () => {

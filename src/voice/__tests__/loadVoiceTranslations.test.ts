@@ -20,6 +20,12 @@ describe('voiceTranslationMapKey', () => {
     expect(voiceTranslationMapKey('002cba', 4)).toBe('002CBA:4');
     expect(voiceTranslationMapKey('01EFF', 1)).toBe('01EFF:1');
   });
+
+  it('prefixes the lower-cased origin plugin when given', () => {
+    expect(voiceTranslationMapKey('002cba', 4, 'Fallout4.esm')).toBe('fallout4.esm/002CBA:4');
+    expect(voiceTranslationMapKey('002cba', 4, null)).toBe('002CBA:4');
+    expect(voiceTranslationMapKey('002cba', 4, '')).toBe('002CBA:4');
+  });
 });
 
 describe('lookupVoiceTranslation', () => {
@@ -42,6 +48,17 @@ describe('lookupVoiceTranslation', () => {
 
   it('returns exact variant match', () => {
     expect(lookupVoiceTranslation(rows, '002cba', 1)?.translation).toBe('Привіт');
+  });
+
+  it('finds an origin-qualified row only with that origin', () => {
+    const qualified = new Map([
+      ['fallout4.esm/002CBA:1', { ...rows.get('002CBA:1')!, originPlugin: 'fallout4.esm' }],
+    ]);
+    expect(lookupVoiceTranslation(qualified, '002cba', 1, 'Fallout4.esm')?.translation).toBe(
+      'Привіт',
+    );
+    expect(lookupVoiceTranslation(qualified, '002cba', 1, 'dlcrobot.esm')).toBeUndefined();
+    expect(lookupVoiceTranslation(qualified, '002cba', 1)).toBeUndefined();
   });
 
   it('does not fall back to a sibling variant', () => {

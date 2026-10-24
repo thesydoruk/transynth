@@ -24,12 +24,13 @@ import { voiceSpeakerKey } from '../../../voice/speakerReference';
 import { collectVoiceSourceFormids } from '../../../voice/voiceSourceFormids';
 import { loadVoiceSpeakerRefs } from '../../../voice/voiceSpeakerRefs';
 import { loadVoiceSimilarityMap } from '../../../voice/voiceSynthesisState';
+import { loadVoiceWorkList } from '../../../voice/voiceWorkList';
 import {
   fillVoiceLocalizeDirFromImport,
   resolveVoicePackageContext,
 } from '../../../web/voice/preview/context';
 import { loadVoiceFolderGenders } from '../../../web/voice/preview/speakerGender';
-import { creationEngineVoiceKeyFromFileName } from './takeFiles';
+import { creationEngineVoiceKeyFromRelPath } from './takeFiles';
 import {
   buildTranslationAudioSet,
   voiceEntryAudioKey,
@@ -73,14 +74,26 @@ export const loadCreationEngineVoiceCatalog = async (
     );
   }
 
-  const voiceFiles = discoverVoiceEntries(ctx);
+  // Own takes, plus the masters' takes for lines this mod overrides with a
+  // different translation — the editor dubs those into this mod's tree too.
+  const work = await loadVoiceWorkList(db, {
+    modId,
+    packageDir: ctx.packageDir,
+    pluginPath: ctx.pluginPath,
+    srcLang,
+    tgtLang: targetLang,
+  });
+  const voiceFiles = [
+    ...discoverVoiceEntries(ctx),
+    ...work.items.filter((item) => item.masterBacked).map((item) => item.entry),
+  ];
   if (voiceFiles.length === 0) {
     return { ok: false, reason: 'no_voice_files', message: 'No voice files found for this mod' };
   }
 
   const voiceRootRel = resolveVoiceRootRel(ctx.pluginRel);
   const translationAudio = buildTranslationAudioSet(ctx.localizeDir, {
-    voiceKeyFromFileName: creationEngineVoiceKeyFromFileName,
+    voiceKeyFromRelPath: creationEngineVoiceKeyFromRelPath,
   });
 
   const [
@@ -130,5 +143,6 @@ export const loadCreationEngineVoiceCatalog = async (
       return dbSpeakerNames.get(lineKey.toUpperCase()) || folderLabel;
     },
     hasLocalizedTake: (entry) => translationAudio.has(voiceEntryAudioKey(entry)),
+    masterBackedOf: (entry) => work.masterOfEntry(entry)?.master ?? null,
   };
 };

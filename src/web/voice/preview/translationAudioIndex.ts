@@ -33,7 +33,7 @@ export const voiceEntryAudioKey = (entry: { relPath: string }): string =>
  */
 export const buildTranslationAudioSet = (
   localizeDir: string | null,
-  voice: Pick<GameVoiceAdapter, 'voiceKeyFromFileName'>,
+  voice: Pick<GameVoiceAdapter, 'voiceKeyFromRelPath'>,
 ): Set<string> => {
   const keys = new Set<string>();
   if (!localizeDir || !fs.existsSync(localizeDir)) return keys;
@@ -46,7 +46,7 @@ export const buildTranslationAudioSet = (
         walk(fullPath, relPath);
         continue;
       }
-      const lineKey = voice.voiceKeyFromFileName(entry.name);
+      const lineKey = voice.voiceKeyFromRelPath(relPath);
       if (!lineKey) continue;
       keys.add(lineKey);
       // Games whose takes mirror a source tree also need the path key, because
@@ -64,7 +64,8 @@ export const hasTranslationAudio = (
   translationAudio: Set<string>,
   lineKey: string,
   variant: number,
-): boolean => translationAudio.has(voiceTranslationMapKey(lineKey, variant));
+  origin?: string | null,
+): boolean => translationAudio.has(voiceTranslationMapKey(lineKey, variant, origin));
 
 /** Dubbed-clip check for a plugin voice tree, scoped to this file's speaker folder. */
 export const hasTranslationAudioForEntry = (

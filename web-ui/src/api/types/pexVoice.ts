@@ -45,6 +45,8 @@ export type VoiceLinePreview = {
   fileName: string;
   /** Voice-type folder; Nate and Nora share a FormID, so this picks the take. */
   speakerKey: string;
+  /** Plugin folder under Sound/Voice the take lives in (lower-case). */
+  originPlugin?: string | null;
   /** Source string row id — null for orphan audio with no dialogue record. */
   stringId: number | null;
   translationId: number | null;
@@ -125,6 +127,7 @@ export type VoiceLiveLineEvent = {
   speakerKey: string;
   lineKey: string;
   variant: number;
+  originPlugin?: string | null;
   voiceSimilarity?: number | null;
 };
 

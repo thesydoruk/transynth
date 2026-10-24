@@ -1,24 +1,17 @@
 /**
  * Mod-wide voice synthesis for a Creation Engine title.
  *
- * Walks every source take in the mod's packages, pairs it with the reviewed
- * translation of its INFO line, and writes a localized `.fuz` (plus lip-sync)
- * into the localize tree. A take whose payload has not changed since the last
- * run is skipped unless the job forces it.
+ * Walks every source take in the mod's packages — its own, and the masters'
+ * takes it borrows for lines it overrides with a different translation —
+ * pairs each with the reviewed translation of its INFO line, and writes a
+ * localized `.fuz` (plus lip-sync) into the localize tree. A take whose
+ * payload has not changed since the last run is skipped unless the job forces
+ * it.
  */
 import fs from 'node:fs';
 import type { Tx } from '../../../db';
-import { pluginRelPath, resolveImportPackages, toDiskPath } from '../../../modImport';
-import {
-  dedupeVoiceFiles,
-  discoverVoiceFiles,
-  resolveVoiceRootRel,
-} from '../../../voice/discoverVoiceFiles';
-import {
-  loadVoiceTranslations,
-  lookupVoiceTranslation,
-  voiceTranslationMapKey,
-} from '../../../voice/loadVoiceTranslations';
+import { resolveImportPackages, toDiskPath } from '../../../modImport';
+import { voiceTranslationMapKey } from '../../../voice/loadVoiceTranslations';
 import { localizeVoicePackage } from '../../../voice/localizeVoicePackage';
 import { canSynthesizeVoiceLine, prepareVoiceTtsText } from '../../../voice/prepareVoiceTtsText';
 import { voiceSpeakerKey } from '../../../voice/speakerReference';
@@ -29,6 +22,7 @@ import {
 } from '../../../voice/voiceSynthesisState';
 import { voiceTtsPayloadVersionFromPrepared } from '../../../voice/voiceTtsPayloadVersion';
 import { loadVoiceResynthContext, voiceTakeNeedsWork } from '../../../voice/voiceResynth';
+import { loadVoiceWorkList } from '../../../voice/voiceWorkList';
 import type { VoiceLocalizeRequest, VoiceLocalizeSink } from '../../contract';
 
 export const countCreationEngineVoiceWork = async (
@@ -46,29 +40,33 @@ export const countCreationEngineVoiceWork = async (
   let total = 0;
 
   for (const pkg of packages) {
-    const pluginRel = pluginRelPath(pkg.packageDir, pkg.pluginPath);
-    const voiceRootRel = resolveVoiceRootRel(pluginRel);
-    const translations = await loadVoiceTranslations(db, modId, srcLang, tgtLang);
-    const voiceFiles = dedupeVoiceFiles(discoverVoiceFiles(pkg.packageDir, pluginRel));
+    const work = await loadVoiceWorkList(db, {
+      modId,
+      packageDir: pkg.packageDir,
+      pluginPath: pkg.pluginPath,
+      srcLang,
+      tgtLang,
+    });
 
-    for (const entry of voiceFiles) {
-      if (onlyKeys && !onlyKeys.has(voiceTranslationMapKey(entry.lineKey, entry.variant))) {
+    for (const { entry, row, referenceSource } of work.items) {
+      if (
+        onlyKeys &&
+        !onlyKeys.has(voiceTranslationMapKey(entry.lineKey, entry.variant, entry.originPlugin))
+      ) {
         continue;
       }
-      if (speakerFilter && voiceSpeakerKey(entry, voiceRootRel) !== speakerFilter) continue;
-
-      const row = lookupVoiceTranslation(translations, entry.lineKey, entry.variant);
-      if (!row || !canSynthesizeVoiceLine(row.source, row.translation, row.edid)) continue;
+      if (speakerFilter && voiceSpeakerKey(entry, work.voiceRootRel) !== speakerFilter) continue;
+      if (!canSynthesizeVoiceLine(row.source, row.translation, row.edid)) continue;
 
       const prepared = prepareVoiceTtsText({
         lineSource: row.source,
         translation: row.translation,
-        speakerSource: row.source,
+        speakerSource: referenceSource ?? row.source,
         edid: row.edid,
       });
       if (prepared.action !== 'synthesize') continue;
 
-      const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
+      const speakerKey = voiceSpeakerKey(entry, work.voiceRootRel);
       const fuzDest = toDiskPath(pkg.localizeDir, outputLocalizedFuzRelPath(entry));
       const due = voiceTakeNeedsWork({
         force: forceAll,
@@ -76,11 +74,13 @@ export const countCreationEngineVoiceWork = async (
         speakerKey,
         lineKey: entry.lineKey,
         variant: entry.variant,
+        origin: entry.originPlugin,
         storedVersion: lookupVoiceSynthesisVersion(
           storedVersions,
           speakerKey,
           entry.lineKey,
           entry.variant,
+          entry.originPlugin,
         ),
         payloadVersion: voiceTtsPayloadVersionFromPrepared(prepared, tgtLang),
         fileExists: fs.existsSync(fuzDest),

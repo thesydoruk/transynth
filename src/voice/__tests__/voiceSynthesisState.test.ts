@@ -30,6 +30,61 @@ describe('voiceSynthesisStateKey', () => {
   });
 });
 
+describe('voiceSynthesisStateKey with origin', () => {
+  it('prefixes the lower-cased origin', () => {
+    expect(voiceSynthesisStateKey('MaleRough', '19ee0c', 1, 'Fallout4.esm')).toBe(
+      'fallout4.esm/MaleRough:19EE0C:1',
+    );
+  });
+
+  it('keeps the same speaker and FormID apart across origins', () => {
+    expect(voiceSynthesisStateKey('MaleRough', '19EE0C', 1, 'fallout4.esm')).not.toBe(
+      voiceSynthesisStateKey('MaleRough', '19EE0C', 1, 'dlcrobot.esm'),
+    );
+  });
+
+  it('is the legacy key without an origin', () => {
+    expect(voiceSynthesisStateKey('MaleRough', '19EE0C', 1, null)).toBe('MaleRough:19EE0C:1');
+  });
+});
+
+describe('origin fallback of lookups', () => {
+  const origin = 'fallout4.esm';
+
+  it('prefers (origin, speaker), then (no origin, speaker), then (no origin, no speaker)', () => {
+    const exact = voiceSynthesisStateKey('MaleRough', '19EE0C', 1, origin);
+    const noOrigin = voiceSynthesisStateKey('MaleRough', '19EE0C', 1);
+    const legacy = voiceSynthesisStateKey('', '19EE0C', 1);
+
+    const all = new Map([
+      [exact, 'a'],
+      [noOrigin, 'b'],
+      [legacy, 'c'],
+    ]);
+    expect(lookupVoiceSynthesisVersion(all, 'MaleRough', '19EE0C', 1, origin)).toBe('a');
+    all.delete(exact);
+    expect(lookupVoiceSynthesisVersion(all, 'MaleRough', '19EE0C', 1, origin)).toBe('b');
+    all.delete(noOrigin);
+    expect(lookupVoiceSynthesisVersion(all, 'MaleRough', '19EE0C', 1, origin)).toBe('c');
+    all.delete(legacy);
+    expect(lookupVoiceSynthesisVersion(all, 'MaleRough', '19EE0C', 1, origin)).toBeNull();
+  });
+
+  it('does not use a stamp stored under a different origin', () => {
+    const other = new Map([
+      [voiceSynthesisStateKey('MaleRough', '19EE0C', 1, 'dlcrobot.esm'), 'x'],
+    ]);
+    expect(lookupVoiceSynthesisVersion(other, 'MaleRough', '19EE0C', 1, origin)).toBeNull();
+  });
+
+  it('applies the same fallback to similarity scores', () => {
+    const map = new Map([[voiceSynthesisStateKey('', '19EE0C', 1), 0.5]]);
+    expect(lookupVoiceSimilarity(map, 'MaleRough', '19EE0C', 1, origin)).toBe(0.5);
+    map.set(voiceSynthesisStateKey('MaleRough', '19EE0C', 1, origin), 0.9);
+    expect(lookupVoiceSimilarity(map, 'MaleRough', '19EE0C', 1, origin)).toBe(0.9);
+  });
+});
+
 describe('lookupVoiceSynthesisVersion', () => {
   const map = new Map([
     [voiceSynthesisStateKey('PlayerVoiceMale01', '005825', 1), 'male-hash'],

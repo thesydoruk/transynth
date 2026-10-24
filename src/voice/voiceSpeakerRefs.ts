@@ -3,10 +3,13 @@ import path from 'node:path';
 import type { Tx } from '../db';
 import { PATHS } from '../paths';
 import { isVoiceFormidKey } from './voiceFormidKey';
+import { normalizeVoiceOrigin } from './voiceOrigin';
 
 export type VoiceSpeakerRefPick = {
   lineKey: string;
   variant: number;
+  /** Normalized lower-case origin plugin; null/absent for legacy picks. */
+  originPlugin?: string | null;
 };
 
 export type VoiceSpeakerRefMap = Record<string, VoiceSpeakerRefPick>;
@@ -14,10 +17,14 @@ export type VoiceSpeakerRefMap = Record<string, VoiceSpeakerRefPick>;
 const speakerRefsFilePath = (modId: number): string =>
   path.join(PATHS.voicePreview, String(modId), 'speaker-refs.json');
 
-const normalizeVoiceSpeakerRefPick = (pick: VoiceSpeakerRefPick): VoiceSpeakerRefPick => ({
-  lineKey: pick.lineKey.toUpperCase(),
-  variant: pick.variant,
-});
+const normalizeVoiceSpeakerRefPick = (pick: VoiceSpeakerRefPick): VoiceSpeakerRefPick => {
+  const originPlugin = normalizeVoiceOrigin(pick.originPlugin);
+  return {
+    lineKey: pick.lineKey.toUpperCase(),
+    variant: pick.variant,
+    ...(originPlugin ? { originPlugin } : {}),
+  };
+};
 
 const parseJsonSpeakerRefs = (raw: unknown): VoiceSpeakerRefMap => {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
@@ -29,7 +36,12 @@ const parseJsonSpeakerRefs = (raw: unknown): VoiceSpeakerRefMap => {
     const variant = (value as { variant?: unknown }).variant;
     if (typeof lineKey !== 'string' || !isVoiceFormidKey(lineKey)) continue;
     if (!Number.isInteger(variant) || (variant as number) < 1) continue;
-    out[speakerKey] = normalizeVoiceSpeakerRefPick({ lineKey, variant: variant as number });
+    const originPlugin = (value as { originPlugin?: unknown }).originPlugin;
+    out[speakerKey] = normalizeVoiceSpeakerRefPick({
+      lineKey,
+      variant: variant as number,
+      originPlugin: typeof originPlugin === 'string' ? originPlugin : null,
+    });
   }
   return out;
 };
@@ -59,8 +71,13 @@ export const migrateVoiceSpeakerRefsFromJsonIfNeeded = async (
 /** Load all per-speaker TTS reference picks for a mod. */
 export const loadVoiceSpeakerRefs = async (db: Tx, modId: number): Promise<VoiceSpeakerRefMap> => {
   await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, modId);
-  const { rows } = await db.query<{ speaker_key: string; line_key: string; variant: number }>(
-    `SELECT speaker_key, line_key, variant
+  const { rows } = await db.query<{
+    speaker_key: string;
+    line_key: string;
+    variant: number;
+    origin_plugin: string;
+  }>(
+    `SELECT speaker_key, line_key, variant, origin_plugin
      FROM voice_speaker_refs
      WHERE mod_id = $1
      ORDER BY speaker_key`,
@@ -72,6 +89,7 @@ export const loadVoiceSpeakerRefs = async (db: Tx, modId: number): Promise<Voice
     out[row.speaker_key] = normalizeVoiceSpeakerRefPick({
       lineKey: row.line_key,
       variant: row.variant,
+      originPlugin: row.origin_plugin,
     });
   }
   return out;
@@ -87,15 +105,19 @@ export const loadVoiceSpeakerRef = async (
   if (!key) return null;
 
   await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, modId);
-  const { rows } = await db.query<{ line_key: string; variant: number }>(
-    `SELECT line_key, variant
+  const { rows } = await db.query<{ line_key: string; variant: number; origin_plugin: string }>(
+    `SELECT line_key, variant, origin_plugin
      FROM voice_speaker_refs
      WHERE mod_id = $1 AND speaker_key = $2`,
     [modId, key],
   );
   const row = rows[0];
   if (!row) return null;
-  return normalizeVoiceSpeakerRefPick({ lineKey: row.line_key, variant: row.variant });
+  return normalizeVoiceSpeakerRefPick({
+    lineKey: row.line_key,
+    variant: row.variant,
+    originPlugin: row.origin_plugin,
+  });
 };
 
 /** Persist one speaker's TTS reference line pick. */
@@ -111,14 +133,22 @@ export const setVoiceSpeakerRef = async (
 
   const normalized = normalizeVoiceSpeakerRefPick(pick);
   await db.query(
-    `INSERT INTO voice_speaker_refs (mod_id, speaker_key, line_key, variant, auto_score, updated_at)
-     VALUES ($1, $2, $3, $4, $5, NOW())
+    `INSERT INTO voice_speaker_refs (mod_id, speaker_key, line_key, variant, auto_score, origin_plugin, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, NOW())
      ON CONFLICT (mod_id, speaker_key) DO UPDATE SET
        line_key = EXCLUDED.line_key,
        variant = EXCLUDED.variant,
        auto_score = EXCLUDED.auto_score,
+       origin_plugin = EXCLUDED.origin_plugin,
        updated_at = NOW()`,
-    [modId, key, normalized.lineKey, normalized.variant, autoScore ?? null],
+    [
+      modId,
+      key,
+      normalized.lineKey,
+      normalized.variant,
+      autoScore ?? null,
+      normalized.originPlugin ?? '',
+    ],
   );
 };
 
@@ -141,4 +171,11 @@ export const voiceSpeakerRefMatches = (
   pick: VoiceSpeakerRefPick,
   lineKey: string,
   variant: number,
-): boolean => pick.lineKey.toUpperCase() === lineKey.toUpperCase() && pick.variant === variant;
+  origin?: string | null,
+): boolean => {
+  if (pick.lineKey.toUpperCase() !== lineKey.toUpperCase() || pick.variant !== variant)
+    return false;
+  const pickOrigin = normalizeVoiceOrigin(pick.originPlugin);
+  const wantOrigin = normalizeVoiceOrigin(origin);
+  return !pickOrigin || !wantOrigin || pickOrigin === wantOrigin;
+};

@@ -65,7 +65,8 @@ const ttsVersionForLine = (line: ReuseVoiceLineKey, tgtLang: string): string => 
   const prepared = prepareVoiceTtsText({
     lineSource: line.sourceText,
     translation: line.translation,
-    speakerSource: line.sourceText,
+    // Same speaker text as synthesis, or a reused master-backed take would look stale.
+    speakerSource: line.speakerSource ?? line.sourceText,
   });
   if (prepared.action === 'synthesize') {
     return voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
@@ -124,10 +125,12 @@ const loadVoiceReuseSnapshot = async (
 
   const lines: VoiceReuseSnapshot['lines'] = takes.map((take) => ({
     speakerKey: take.speakerKey,
+    originPlugin: take.entry.originPlugin ?? '',
     lineKey: take.entry.lineKey,
     variant: take.entry.variant,
     sourceText: take.source,
     translation: take.translation,
+    ...(take.speakerSource ? { speakerSource: take.speakerSource } : {}),
     sourceAbsPath: take.entry.absolutePath,
     sourceRelPath: take.entry.relPath,
     destRelPath: take.destRelPath,
@@ -137,12 +140,14 @@ const loadVoiceReuseSnapshot = async (
       take.speakerKey,
       take.entry.lineKey,
       take.entry.variant,
+      take.entry.originPlugin,
     ),
     voiceSimilarity: lookupVoiceSimilarity(
       storedSimilarities,
       take.speakerKey,
       take.entry.lineKey,
       take.entry.variant,
+      take.entry.originPlugin,
     ),
   }));
 
@@ -214,6 +219,7 @@ const copyOneTake = async (
     variant: match.dest.variant,
     targetLang,
     speakerKey: match.dest.speakerKey,
+    originPlugin: match.dest.originPlugin,
     // The donor's stamp equals this by construction (the matcher checked it); stamp the
     // dest from its own text so the take is "current" exactly while that text stands.
     ttsTextVersion: ttsVersionForLine(match.dest, targetLang),
@@ -278,6 +284,7 @@ const reuseSynthesizedVoiceUnsafe = async (
       if (!fs.existsSync(localizedAbsPath)) continue;
       donorLines.push({
         speakerKey: line.speakerKey,
+        originPlugin: line.originPlugin,
         sourceText: line.sourceText,
         translation: line.translation,
         sourceAbsPath: line.sourceAbsPath,
@@ -330,6 +337,7 @@ const reuseSynthesizedVoiceUnsafe = async (
         const destLine = dest.lines.find(
           (line) =>
             line.speakerKey === pair.dest.speakerKey &&
+            line.originPlugin === pair.dest.originPlugin &&
             line.lineKey === pair.dest.lineKey &&
             line.variant === pair.dest.variant &&
             line.destRelPath === pair.dest.destRelPath,

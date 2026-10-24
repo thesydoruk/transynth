@@ -2,7 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { inflateSync } from 'node:zlib';
 import type { Tx } from '../db';
+import { parseTes4MasterNames } from '../formats/esp/pluginHeader';
 import { resolveModStoredPath } from '../modStorage';
+import { buildVoiceOriginResolver, originFormidKey, type VoiceOriginResolver } from './voiceOrigin';
 
 /**
  * FO4/Skyrim voice files are named `<FormID>_<responseNumber>.fuz`.
@@ -20,7 +22,8 @@ export type InfoVoiceResponseMap = Map<string, number[]>;
  * Bethesda mirrors a line across voice types this way — e.g. the spouse INFO
  * `0022B5CD` (PlayerVoiceMale01) carries no text of its own and points at
  * `001AC372`. Its `.fuz` still uses its own FormID, so matching has to follow
- * the pointer to find the text. Keyed and valued by lower-6 FormID.
+ * the pointer to find the text. Keyed and valued by `<origin>/<FORMID6>`
+ * ({@link originFormidKey}), the group prefix of the voice-text map keys.
  */
 export type InfoSharedResponseMap = Map<string, string>;
 
@@ -28,6 +31,8 @@ export type InfoSharedResponseMap = Map<string, string>;
 export type InfoVoiceSlots = {
   responses: InfoVoiceResponseMap;
   sharedFrom: InfoSharedResponseMap;
+  /** Which plugin owns each FormID of this plugin. */
+  origins: VoiceOriginResolver;
 };
 
 const RECORD_HEADER = 24;
@@ -53,8 +58,13 @@ type CacheEntry = {
   slots: InfoVoiceSlots;
 };
 
-const lower6 = (formId: number): string =>
-  formId.toString(16).toUpperCase().padStart(8, '0').substring(2);
+const hex8 = (formId: number): string => formId.toString(16).toUpperCase().padStart(8, '0');
+
+/** `<origin>/<FORMID6>` of a raw FormID in the plugin being walked. */
+const originKeyOf = (origins: VoiceOriginResolver, formId: number): string => {
+  const hex = hex8(formId);
+  return originFormidKey(origins.originOfFormid(hex), hex.substring(2));
+};
 
 const cache = new Map<string, CacheEntry>();
 
@@ -62,8 +72,8 @@ const readSig = (buf: Buffer, off: number): string => buf.toString('ascii', off,
 
 type ParsedInfo = {
   responses: number[];
-  /** Lower-6 FormID of the INFO this record borrows its responses from. */
-  sharedFrom: string | null;
+  /** Raw FormID of the INFO this record borrows its responses from. */
+  sharedFrom: number | null;
 };
 
 const parseInfoResponses = (recordData: Buffer): ParsedInfo => {
@@ -71,7 +81,7 @@ const parseInfoResponses = (recordData: Buffer): ParsedInfo => {
   let pos = 0;
   let nam1Ordinal = 0;
   let pendingResp: number | null = null;
-  let sharedFrom: string | null = null;
+  let sharedFrom: number | null = null;
 
   while (pos + 6 <= recordData.length) {
     const subSig = readSig(recordData, pos);
@@ -82,7 +92,7 @@ const parseInfoResponses = (recordData: Buffer): ParsedInfo => {
 
     if (subSig === 'DNAM' && subSize === 4) {
       const target = recordData.readUInt32LE(dataStart);
-      if (target !== 0) sharedFrom = lower6(target);
+      if (target !== 0) sharedFrom = target;
     } else if (subSig === 'TRDA' && subSize >= TRDA_SIZE) {
       const raw = recordData.readUInt32LE(dataStart + 4);
       pendingResp = raw >= 1 && raw <= MAX_RESPONSE_NUMBER ? raw : null;
@@ -135,9 +145,12 @@ const walkPlugin = (buf: Buffer, start: number, end: number, out: InfoVoiceSlots
             : buf.subarray(dataStart, dataEnd);
         const parsed = parseInfoResponses(recordData);
         if (parsed.responses.length > 0) {
-          out.responses.set(formId.toString(16).toUpperCase().padStart(8, '0'), parsed.responses);
-        } else if (parsed.sharedFrom) {
-          out.sharedFrom.set(lower6(formId), parsed.sharedFrom);
+          out.responses.set(hex8(formId), parsed.responses);
+        } else if (parsed.sharedFrom != null) {
+          out.sharedFrom.set(
+            originKeyOf(out.origins, formId),
+            originKeyOf(out.origins, parsed.sharedFrom),
+          );
         }
       } catch {
         // Skip corrupt compressed INFO records.
@@ -147,7 +160,12 @@ const walkPlugin = (buf: Buffer, start: number, end: number, out: InfoVoiceSlots
   }
 };
 
-const emptySlots = (): InfoVoiceSlots => ({ responses: new Map(), sharedFrom: new Map() });
+/** Slots for a plugin that cannot be read: no responses, every FormID its own. */
+const emptySlots = (pluginAbsPath: string, masters: string[] = []): InfoVoiceSlots => ({
+  responses: new Map(),
+  sharedFrom: new Map(),
+  origins: buildVoiceOriginResolver(pluginAbsPath, masters),
+});
 
 /** Parse (or return cached) voiced INFO slots — response numbers and DNAM aliases. */
 const loadInfoVoiceSlots = (pluginAbsPath: string): InfoVoiceSlots => {
@@ -162,7 +180,7 @@ const loadInfoVoiceSlots = (pluginAbsPath: string): InfoVoiceSlots => {
   try {
     st = fs.statSync(abs);
   } catch {
-    return emptySlots();
+    return emptySlots(pluginAbsPath);
   }
 
   const hit = cache.get(abs);
@@ -173,9 +191,12 @@ const loadInfoVoiceSlots = (pluginAbsPath: string): InfoVoiceSlots => {
   }
 
   const buf = fs.readFileSync(abs);
-  if (buf.length < RECORD_HEADER + 4) return emptySlots();
-  const slots = emptySlots();
+  if (buf.length < RECORD_HEADER + 4) return emptySlots(pluginAbsPath);
   const tes4Size = buf.readUInt32LE(4);
+  const tes4End = Math.min(RECORD_HEADER + tes4Size, buf.length);
+  const masters =
+    readSig(buf, 0) === 'TES4' ? parseTes4MasterNames(buf.subarray(RECORD_HEADER, tes4End)) : [];
+  const slots = emptySlots(pluginAbsPath, masters);
   walkPlugin(buf, RECORD_HEADER + tes4Size, buf.length, slots);
   cache.set(abs, { mtimeMs: st.mtimeMs, size: st.size, slots });
   while (cache.size > MAX_CACHED_PLUGINS) {
@@ -190,16 +211,21 @@ const loadInfoVoiceSlots = (pluginAbsPath: string): InfoVoiceSlots => {
 export const loadInfoVoiceResponseNumbers = (pluginAbsPath: string): InfoVoiceResponseMap =>
   loadInfoVoiceSlots(pluginAbsPath).responses;
 
-/** Resolve `mods.abs_path` and load the plugin's voiced INFO slots (empty if missing). */
+/**
+ * Resolve `mods.abs_path` and load the plugin's voiced INFO slots.
+ *
+ * A mod without a plugin file still gets an origin resolver named after its
+ * stored path, so its rows and its takes on disk agree on the origin.
+ */
 export const loadModInfoVoiceSlots = async (db: Tx, modId: number): Promise<InfoVoiceSlots> => {
   const { rows } = await db.query<{ abs_path: string | null }>(
     `SELECT abs_path FROM mods WHERE id = $1`,
     [modId],
   );
   const stored = rows[0]?.abs_path?.trim();
-  if (!stored) return emptySlots();
+  if (!stored) return emptySlots('');
   const pluginPath = resolveModStoredPath(stored);
-  if (!fs.existsSync(pluginPath)) return emptySlots();
+  if (!fs.existsSync(pluginPath)) return emptySlots(pluginPath);
   return loadInfoVoiceSlots(pluginPath);
 };
 

@@ -96,8 +96,9 @@ export const lookupVoiceResynthStamp = (
   speakerKey: string | null | undefined,
   lineKey: string,
   variant: number,
+  origin?: string | null,
 ): VoiceSynthesisStamp | null =>
-  lookupVoiceSynthesisEntry(ctx.stamps, speakerKey, lineKey, variant);
+  lookupVoiceSynthesisEntry(ctx.stamps, speakerKey, lineKey, variant, origin);
 
 export type VoiceTakeCheck = {
   /** Synthesize even a current take (`scope=all`). */
@@ -107,6 +108,8 @@ export type VoiceTakeCheck = {
   speakerKey: string | null | undefined;
   lineKey: string;
   variant: number;
+  /** Plugin that owns the line, for games whose stamps carry one (Creation Engine). */
+  origin?: string | null;
   storedVersion: string | null;
   payloadVersion: string;
   fileExists: boolean;
@@ -128,6 +131,7 @@ export const voiceTakeNeedsWork = (check: VoiceTakeCheck): boolean => {
       check.speakerKey,
       check.lineKey,
       check.variant,
+      check.origin,
     );
     const { runId, similarityBelow } = check.resynth.params;
     return (
@@ -192,11 +196,20 @@ export type VoiceResynthTakeOutcome = { kind: 'replaced' } | { kind: 'kept'; rea
 export const settleVoiceResynthTake = async (
   db: Tx,
   ctx: VoiceResynthContext,
-  take: Pick<VoiceSynthesisStateRow, 'modId' | 'lineKey' | 'variant' | 'targetLang' | 'speakerKey'>,
+  take: Pick<
+    VoiceSynthesisStateRow,
+    'modId' | 'lineKey' | 'variant' | 'targetLang' | 'speakerKey' | 'originPlugin'
+  >,
   outcome: { payloadVersion: string; newSimilarity: number | null },
   writeFile: () => void,
 ): Promise<VoiceResynthTakeOutcome> => {
-  const stamp = lookupVoiceResynthStamp(ctx, take.speakerKey, take.lineKey, take.variant);
+  const stamp = lookupVoiceResynthStamp(
+    ctx,
+    take.speakerKey,
+    take.lineKey,
+    take.variant,
+    take.originPlugin,
+  );
   const verdict = judgeVoiceResynthTake(ctx, {
     textCurrent: stamp?.ttsTextVersion === outcome.payloadVersion,
     oldSimilarity: stamp?.voiceSimilarity ?? null,

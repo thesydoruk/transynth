@@ -35,3 +35,50 @@ describe('findVoiceEntry', () => {
     expect(nora?.relPath).toContain('PlayerVoiceFemale01');
   });
 });
+
+describe('findVoiceEntry origin filter', () => {
+  const voiceRootRel = 'Sound/Voice/Patch.esp';
+  const withOrigin = (origin: string, folder: string): VoiceFileEntry => ({
+    relPath: `Sound/Voice/${folder}/MaleRough/00019EE0_1.fuz`,
+    absolutePath: `/data/${folder}/MaleRough/00019EE0_1.fuz`,
+    fileName: '00019EE0_1.fuz',
+    lineKey: '019EE0',
+    variant: 1,
+    ext: 'fuz',
+    originPlugin: origin,
+  });
+  const files = [
+    withOrigin('dlcrobot.esm', 'DLCRobot.esm'),
+    withOrigin('fallout4.esm', 'Fallout4.esm'),
+  ];
+
+  it('picks the take of the requested origin', () => {
+    expect(
+      findVoiceEntry(files, '019EE0', 1, { voiceRootRel, originPlugin: 'Fallout4.esm' })?.relPath,
+    ).toContain('Fallout4.esm');
+    expect(
+      findVoiceEntry(files, '019EE0', 1, { voiceRootRel, originPlugin: 'dlcrobot.esm' })?.relPath,
+    ).toContain('DLCRobot.esm');
+  });
+
+  it('finds nothing for an origin with no such take', () => {
+    expect(
+      findVoiceEntry(files, '019EE0', 1, { voiceRootRel, originPlugin: 'patch.esp' }),
+    ).toBeUndefined();
+  });
+
+  it('matches the first take when no origin is requested', () => {
+    expect(findVoiceEntry(files, '019EE0', 1, { voiceRootRel })?.relPath).toContain('DLCRobot.esm');
+    expect(findVoiceEntry(files, '019EE0', 1, { voiceRootRel, originPlugin: null })).toBeDefined();
+  });
+
+  it('combines origin and speaker', () => {
+    expect(
+      findVoiceEntry(files, '019EE0', 1, {
+        voiceRootRel,
+        originPlugin: 'fallout4.esm',
+        speakerKey: 'FemaleRough',
+      }),
+    ).toBeUndefined();
+  });
+});
