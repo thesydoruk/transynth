@@ -354,7 +354,8 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
     });
 
     expect(result?.pick).toEqual({ lineKey: '00002CBB', variant: 1, originPlugin: null });
-  });
+    // Three ffmpeg decodes of 5–14 s clips exceed Jest's 5 s default on Windows.
+  }, 20_000);
 
   it('prefers the 8–12s clip whose speaking rate is closer to 5 syl/s', async () => {
     const speaker = 'AlexanderBrown';

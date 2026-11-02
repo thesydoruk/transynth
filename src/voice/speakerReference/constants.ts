@@ -32,3 +32,12 @@ export const speakerReferenceCacheRoot = (modId: number): string =>
 
 export const entryReferenceCacheRoot = (modId: number): string =>
   path.join(PATHS.voicePreview, String(modId), 'entry-ref');
+
+/**
+ * Auto-select decodes at most this many sibling takes per speaker, spread over
+ * the pool; a player voice has ~13k takes and decoding them all stalled jobs.
+ */
+export const AUTO_SELECT_MAX_CANDIDATES = 240;
+
+/** Stop the scan once this many 8–12 s in-tempo takes are ranked. */
+export const AUTO_SELECT_PREFERRED_STOP_COUNT = 8;

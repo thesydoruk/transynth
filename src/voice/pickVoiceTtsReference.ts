@@ -48,7 +48,7 @@ const referenceTextForPick = (
   return lookupVoiceSource(sources, pick.lineKey, pick.variant, pick.originPlugin);
 };
 
-const resolveCachedSpeakerRef = async (input: {
+type SpeakerRefInput = {
   db: Tx;
   modId: number;
   packageDir: string;
@@ -59,9 +59,46 @@ const resolveCachedSpeakerRef = async (input: {
   getSiblingEntries: (speakerKey: string) => VoiceFileEntry[];
   speakerRefCache?: Map<string, SpeakerRefCacheEntry>;
   markup?: VoiceTtsMarkupStyle;
-}): Promise<ResolvedSpeakerReference | null> => {
+  signal?: AbortSignal;
+};
+
+type SpeakerRefResolution = Promise<ResolvedSpeakerReference | null>;
+
+/**
+ * One resolution per speaker per job, keyed by the job's `speakerRefCache`.
+ * Parallel lines of a speaker await the same sibling scan instead of each
+ * running one (and racing over the same cache files). A settled scan stays
+ * here, even a failed one, so a speaker without a usable take is scanned once.
+ */
+const inFlightBySpeakerCache = new WeakMap<
+  Map<string, SpeakerRefCacheEntry>,
+  Map<string, SpeakerRefResolution>
+>();
+
+const resolveSpeakerRefOnce = (input: SpeakerRefInput): SpeakerRefResolution => {
+  const cache = input.speakerRefCache;
+  if (!cache) return resolveSpeakerRef(input);
+  let inFlight = inFlightBySpeakerCache.get(cache);
+  if (!inFlight) {
+    inFlight = new Map();
+    inFlightBySpeakerCache.set(cache, inFlight);
+  }
+  const pending = inFlight.get(input.speakerKey);
+  if (pending) return pending;
+  const started = resolveSpeakerRef(input);
+  inFlight.set(input.speakerKey, started);
+  // A rejected scan (cancel, I/O error) may be retried by the next line.
+  started.catch(() => inFlight.delete(input.speakerKey));
+  return started;
+};
+
+const resolveCachedSpeakerRef = async (input: SpeakerRefInput): SpeakerRefResolution => {
   const cached = input.speakerRefCache?.get(input.speakerKey);
   if (cached) return cached.resolved;
+  return resolveSpeakerRefOnce(input);
+};
+
+const resolveSpeakerRef = async (input: SpeakerRefInput): SpeakerRefResolution => {
   const resolved = await resolveSpeakerReferenceForSpeaker({
     db: input.db,
     modId: input.modId,
@@ -74,6 +111,7 @@ const resolveCachedSpeakerRef = async (input: {
     getSourceText: (lineKey, variant, origin) =>
       lookupVoiceSource(input.voiceSources, lineKey, variant, origin),
     markup: input.markup,
+    signal: input.signal,
   });
   if (resolved) {
     input.speakerRefCache?.set(input.speakerKey, {
@@ -130,6 +168,7 @@ export const pickVoiceTtsReference = async (input: {
   getSiblingEntries: (speakerKey: string) => VoiceFileEntry[];
   speakerRefCache?: Map<string, SpeakerRefCacheEntry>;
   markup?: VoiceTtsMarkupStyle;
+  signal?: AbortSignal;
 }): Promise<PickedVoiceTtsReference> => {
   const lineClip = lineRefClip(input.lineEnglishWav, input.lineSource, input.entry.fileName);
   const lineTooLong = isLineReferenceTooLong(input.lineEnglishWav);

@@ -5,19 +5,13 @@ import { log } from '../../logger';
 import { ensureDir } from '../../utils/file';
 import { decodeAudioToReferenceWav } from '../ffmpegAudio';
 import { resolveVoiceRootRel, type VoiceFileEntry } from '../discoverVoiceFiles';
-import { BETHESDA_VOICE_MARKUP } from '../prepareVoiceTtsText';
 import {
   loadVoiceSpeakerRef,
-  setVoiceSpeakerRef,
   voiceSpeakerRefMatches,
   type VoiceSpeakerRefPick,
 } from '../voiceSpeakerRefs';
-import { stripVoiceNonSpeechBlocks, type VoiceTtsMarkupStyle } from '../prepareVoiceTtsText';
-import {
-  isPreferredAutoSelectPick,
-  pickAutoSelectCandidate,
-  type AutoSelectMetrics,
-} from './autoSelect';
+import type { VoiceTtsMarkupStyle } from '../prepareVoiceTtsText';
+import { autoSelectReference, type CacheDirs } from './autoSelectScan';
 import {
   MANUAL_REFERENCE_NAME,
   entryReferenceCacheRoot,
@@ -36,8 +30,6 @@ import {
   isVoiceReferencePickEligible,
   type VoiceReferenceEligibility,
 } from './eligibility';
-import { analyzeReferenceWav } from './scoring';
-import { countEnglishSyllables } from './syllables';
 
 export type ResolvedSpeakerReference = {
   wavPath: string;
@@ -60,12 +52,8 @@ export type ResolveSpeakerReferenceInput = {
   /** English line text for syllable-rate ranking. */
   getSourceText?: (lineKey: string, variant: number, origin?: string | null) => string | null;
   markup?: VoiceTtsMarkupStyle;
-};
-
-type CacheDirs = {
-  speaker: string;
-  entry: string;
-  work: string;
+  /** A cancelled job stops the sibling scan instead of finishing it. */
+  signal?: AbortSignal;
 };
 
 const findPickedEntry = (
@@ -79,79 +67,6 @@ const findPickedEntry = (
     (!pick.originPlugin || entry.originPlugin === pick.originPlugin);
   if (matches(preferredEntry)) return preferredEntry;
   return getFallbackEntries().find(matches);
-};
-
-type ScoredEntry = AutoSelectMetrics & {
-  entry: VoiceFileEntry;
-  wavPath: string;
-  score: number;
-};
-
-const syllableCountForEntry = (
-  entry: VoiceFileEntry,
-  getSourceText: ResolveSpeakerReferenceInput['getSourceText'],
-  markup: VoiceTtsMarkupStyle,
-): number | null => {
-  if (!getSourceText) return null;
-  const source = getSourceText(entry.lineKey, entry.variant, entry.originPlugin);
-  if (!source) return null;
-  const spoken = stripVoiceNonSpeechBlocks(source, markup);
-  const count = countEnglishSyllables(spoken);
-  return count > 0 ? count : null;
-};
-
-const scoreEntryReference = async (
-  entry: VoiceFileEntry,
-  dirs: CacheDirs,
-  getSourceText: ResolveSpeakerReferenceInput['getSourceText'],
-  markup: VoiceTtsMarkupStyle,
-): Promise<ScoredEntry | null> => {
-  try {
-    const wavPath = await getOrDecodeEntryReferenceWav(entry, dirs.entry, dirs.work);
-    const analysis = analyzeReferenceWav(wavPath);
-    return {
-      entry,
-      wavPath,
-      score: analysis.score,
-      qualityScore: analysis.score,
-      durationSec: analysis.durationSec,
-      activeSec: analysis.activeSec,
-      syllableCount: syllableCountForEntry(entry, getSourceText, markup),
-    };
-  } catch (err) {
-    log.warn(
-      `Speaker ref skip ${entry.fileName}: ${err instanceof Error ? err.message : String(err)}`,
-    );
-    return null;
-  }
-};
-
-const finalizeAutoReference = async (
-  db: Tx,
-  modId: number,
-  speakerKey: string,
-  dirs: CacheDirs,
-  scored: ScoredEntry,
-): Promise<ResolvedSpeakerReference> => {
-  const pick: VoiceSpeakerRefPick = {
-    lineKey: scored.entry.lineKey,
-    variant: scored.entry.variant,
-    originPlugin: scored.entry.originPlugin ?? null,
-  };
-  await setVoiceSpeakerRef(db, modId, speakerKey, pick, scored.score);
-
-  const autoMarker = `auto:${entryReferenceId(scored.entry)}:${sourceDigest(scored.entry.absolutePath)}`;
-  const outPath = await getOrReuseSpeakerReferenceWav(
-    speakerKey,
-    dirs.speaker,
-    autoMarker,
-    async () => scored.wavPath,
-  );
-
-  log.info(
-    `Speaker ref "${speakerKey}": auto ${scored.entry.fileName} (score=${scored.score.toFixed(1)})`,
-  );
-  return { wavPath: outPath, pick, source: 'auto', score: scored.score };
 };
 
 const resolveManualReference = async (
@@ -216,49 +131,12 @@ const resolveSavedReference = async (
   }
 };
 
-const autoSelectReference = async (
-  input: ResolveSpeakerReferenceInput,
-  dirs: CacheDirs,
-  isEligible: VoiceReferenceEligibility,
-): Promise<ResolvedSpeakerReference | null> => {
-  const { db, modId, speakerKey, preferredEntry } = input;
-  const markup = input.markup ?? BETHESDA_VOICE_MARKUP;
-  const analyze = (entry: VoiceFileEntry) =>
-    scoreEntryReference(entry, dirs, input.getSourceText, markup);
-
-  const preferredScored = isEligible(
-    preferredEntry.lineKey,
-    preferredEntry.variant,
-    preferredEntry.originPlugin,
-  )
-    ? await analyze(preferredEntry)
-    : null;
-  if (preferredScored && isPreferredAutoSelectPick(preferredScored)) {
-    return finalizeAutoReference(db, modId, speakerKey, dirs, preferredScored);
-  }
-
-  const candidates: ScoredEntry[] = [];
-  if (preferredScored) candidates.push(preferredScored);
-  for (const entry of input.getFallbackEntries()) {
-    if (!isEligible(entry.lineKey, entry.variant, entry.originPlugin)) continue;
-    const scored = await analyze(entry);
-    if (scored) candidates.push(scored);
-  }
-
-  const best = pickAutoSelectCandidate(candidates);
-  if (!best) {
-    log.warn(`Speaker ref "${speakerKey}": no suitable reference found`);
-    return null;
-  }
-
-  return finalizeAutoReference(db, modId, speakerKey, dirs, best);
-};
-
 /**
  * Resolve one speaker's TTS reference clip when synthesizing a voice line.
  * Prefers a hand-placed WAV, then the saved pick, then auto-selection.
  * Auto-select accepts the current line only when it is 8–12s and in-tempo;
- * otherwise it ranks every eligible sibling (prefer 8–12s, else closest longer).
+ * otherwise it ranks a bounded spread of eligible siblings (prefer 8–12s,
+ * else closest longer). Throws an `AbortError` when `signal` fires mid-scan.
  */
 export const resolveSpeakerReferenceForSpeaker = async (
   input: ResolveSpeakerReferenceInput,

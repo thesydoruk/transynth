@@ -30,8 +30,23 @@ const readCacheMarker = (markerPath: string): string | null => {
   return fs.readFileSync(markerPath, 'utf8').trim() || null;
 };
 
+/** Per-call suffix: parallel scans of one speaker must never share a temp file. */
+const uniqueSuffix = (): string =>
+  `${process.pid}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+/** Write through a temp file + rename so a reader never sees a half-written file. */
+const writeFileAtomic = (filePath: string, write: (tmpPath: string) => void): void => {
+  const tmpPath = `${filePath}.${uniqueSuffix()}.tmp`;
+  try {
+    write(tmpPath);
+    fs.renameSync(tmpPath, filePath);
+  } finally {
+    fs.rmSync(tmpPath, { force: true });
+  }
+};
+
 const writeCacheMarker = (markerPath: string, marker: string): void => {
-  fs.writeFileSync(markerPath, marker);
+  writeFileAtomic(markerPath, (tmpPath) => fs.writeFileSync(tmpPath, marker));
 };
 
 /** Reuse a cached decoded reference WAV for one voice line when the source file is unchanged. */
@@ -49,10 +64,18 @@ export const getOrDecodeEntryReferenceWav = async (
   }
 
   ensureDir(entryCacheDir);
-  await decodeEntryToReferenceWav(entry, outPath, workDir);
-  if (!isUsableWavFile(outPath)) {
-    fs.rmSync(outPath, { force: true });
-    throw new Error(`Decoded reference audio has no audio data: ${entry.relPath}`);
+  // Decode beside the target and rename into place: parallel lines of one
+  // speaker decode the same takes, and a half-written WAV must never be read
+  // (or cached) as the finished one.
+  const tmpPath = path.join(entryCacheDir, `${base}.${uniqueSuffix()}.tmp.wav`);
+  try {
+    await decodeEntryToReferenceWav(entry, tmpPath, workDir);
+    if (!isUsableWavFile(tmpPath)) {
+      throw new Error(`Decoded reference audio has no audio data: ${entry.relPath}`);
+    }
+    fs.renameSync(tmpPath, outPath);
+  } finally {
+    fs.rmSync(tmpPath, { force: true });
   }
   writeCacheMarker(markerPath, digest);
   return outPath;
@@ -92,7 +115,7 @@ export const getOrReuseSpeakerReferenceWav = async (
     );
   }
   ensureDir(speakerCacheDir);
-  fs.copyFileSync(decodedPath, outPath);
+  writeFileAtomic(outPath, (tmpPath) => fs.copyFileSync(decodedPath, tmpPath));
   writeCacheMarker(markerPath, marker);
   return outPath;
 };
@@ -116,11 +139,17 @@ const decodeEntryToReferenceWav = async (
     return;
   }
 
-  const sourceAudioPath = path.join(tempDir, `${entryReferenceId(entry)}.src.audio`);
   if (entry.ext === 'fuz') {
-    const xwm = extractXwmFromFuzFile(entry.absolutePath);
-    fs.writeFileSync(`${sourceAudioPath}.xwm`, xwm);
-    await decodeAudioToReferenceWav(`${sourceAudioPath}.xwm`, outputPath);
+    const xwmPath = path.join(
+      tempDir,
+      `${entryReferenceId(entry)}.${uniqueSuffix()}.src.audio.xwm`,
+    );
+    try {
+      fs.writeFileSync(xwmPath, extractXwmFromFuzFile(entry.absolutePath));
+      await decodeAudioToReferenceWav(xwmPath, outputPath);
+    } finally {
+      fs.rmSync(xwmPath, { force: true });
+    }
     return;
   }
 

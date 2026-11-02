@@ -151,6 +151,7 @@ export const processVoiceLocalizeEntry = async (
       voiceSources,
       getSiblingEntries: (key) => getSiblingEntries(key, entry),
       speakerRefCache,
+      signal,
     });
 
     // TTS may use a different reference transcript than the line source; version
