@@ -296,3 +296,12 @@ describe('title singles vs street elisions', () => {
     expect(extractDiscoTitleSingleSpans("If by 'fun stuff,' you mean alcohol.")).toHaveLength(1);
   });
 });
+
+describe('italics vs censorship stars', () => {
+  it('ignores stars inside a censored word', () => {
+    expect(
+      extractDiscoItalicSpans('"F***y f*g," he says. *Really.*').map((s) => s.content),
+    ).toEqual(['Really.']);
+    expect(discoMarkupMismatches('You f****ts!', 'Ви підари!')).toEqual([]);
+  });
+});
