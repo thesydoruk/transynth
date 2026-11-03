@@ -73,7 +73,15 @@ export const fixProblems = (
   const markup = markupProblem(line, shaped, game);
   if (markup) why.push(markup);
   if (SLASH_GENDER_RE.test(fix.new)) why.push('slash gender form');
-  if (!/[а-яіїєґ]/i.test(fix.new) && /[а-яіїєґ]/i.test(line.tr)) why.push('no Cyrillic left');
+  // A line the game leaves in another language (German crosstalk, Latin mottos)
+  // is restored to the source verbatim; that is a deliberate non-translation.
+  if (
+    !/[а-яіїєґ]/i.test(fix.new) &&
+    /[а-яіїєґ]/i.test(line.tr) &&
+    fix.new.trim() !== line.src.trim()
+  ) {
+    why.push('no Cyrillic left');
+  }
 
   const known = [...latinWords(line.src), ...latinWords(line.tr)];
   const stray = latinWords(fix.new).filter(

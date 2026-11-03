@@ -32,6 +32,12 @@ describe('fixProblems', () => {
     expect(problems('Ну що, rush, <Alias=Player>?')).toEqual(['unexpected Latin: rush']);
   });
 
+  it('accepts restoring the source verbatim for a line the game keeps foreign', () => {
+    expect(
+      problems('Ich bin ein Polizist.', { src: 'Ich bin ein Polizist.', tr: 'Я поліцейський.' }),
+    ).toEqual([]);
+  });
+
   it('does not take units such as об/хв for a gender form', () => {
     expect(problems('2000 об/хв', { src: '2000 RPM', tr: '2000 обертів' })).not.toContain(
       'slash gender form',
