@@ -30,7 +30,8 @@ export const writeLangpackEntriesToDir = (
       continue;
     }
     if (entry.absPath) {
-      fs.copyFileSync(entry.absPath, dest);
+      // A game's finalize pass may already have written the file in place.
+      if (path.resolve(entry.absPath) !== path.resolve(dest)) fs.copyFileSync(entry.absPath, dest);
       written += 1;
     }
   }

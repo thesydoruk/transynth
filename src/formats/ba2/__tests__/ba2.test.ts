@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, it, expect } from '@jest/globals';
 import { parseStringsBuffer, writeStringsBuffer } from '../../strings';
-import { Ba2Reader, writeBa2, isBa2GnrArchive, readBa2ArchiveType } from '..';
+import { Ba2Reader, writeBa2, writeBa2File, isBa2GnrArchive, readBa2ArchiveType } from '..';
 import type { ArchiveInputFile } from '../../types';
 import {
   LOCALIZED_EXPORT_GOLDEN_CORPUS,
@@ -154,6 +154,34 @@ describe('BA2 writer', () => {
     try {
       expect(reader.extractByName('Sound\\Voice\\Mod.esp\\00123456_1.fuz')).toEqual(voice);
       expect(reader.extractByName('Meshes\\Armor.nif')).toEqual(mesh);
+    } finally {
+      reader.close();
+    }
+  });
+
+  it('writeBa2File produces the same bytes as the synchronous writer', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'formats-ba2-async-'));
+    tempArtifacts.push(tempDir);
+    const voicePath = path.join(tempDir, 'line.fuz');
+    fs.writeFileSync(voicePath, Buffer.alloc(3 * 1024 * 1024 + 17, 0xab));
+    const files = [
+      { name: 'Sound/Voice/Mod.esp/00123456_1.fuz', absPath: voicePath },
+      { name: 'Sound/Voice/Mod.esp/00123457_1.fuz', data: Buffer.from('inline-take') },
+      { name: 'Meshes\\Armor.nif', data: Buffer.alloc(512, 0xcd), compressed: true },
+    ];
+    const syncPath = path.join(tempDir, 'Sync - Main.ba2');
+    const asyncPath = path.join(tempDir, 'Async - Main.ba2');
+
+    const syncSize = writeBa2(files, syncPath);
+    const asyncSize = await writeBa2File(files, asyncPath);
+
+    expect(asyncSize).toBe(syncSize);
+    expect(fs.readFileSync(asyncPath).equals(fs.readFileSync(syncPath))).toBe(true);
+    const reader = new Ba2Reader(asyncPath);
+    try {
+      expect(reader.extractByName('Sound\\Voice\\Mod.esp\\00123457_1.fuz')?.toString()).toBe(
+        'inline-take',
+      );
     } finally {
       reader.close();
     }

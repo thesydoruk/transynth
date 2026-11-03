@@ -1,9 +1,10 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from '@jest/globals';
+import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import type { Tx } from '../../../db';
 import { writeStringsBuffer } from '../../../formats/strings';
+import { gamePlugin } from '../../../games/registry';
 import {
   LOCALIZED_EXPORT_GOLDEN_CORPUS,
   goldenFixtureToMap,
@@ -152,5 +153,39 @@ describe('exportLangpackZipBatch', () => {
     expect(zipText).toContain('Strings/PluginOne_en.STRINGS');
     expect(zipText).toContain('Strings/PluginTwo_en.STRINGS');
     expect(fs.existsSync(`${destPath}.staging`)).toBe(false);
+  }, 30_000);
+
+  it('ships a file the game finalize pass wrote into the staging tree', async () => {
+    const pluginPath = createLooseStringsMod('PluginOne.esp');
+    const db = makeOverlayDb(LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlayRows);
+    const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'langpack-finalize-'));
+    tempDirs.push(outDir);
+    const destPath = path.join(outDir, 'fo4_uk_langpack.zip');
+    const finalize = jest
+      .spyOn(gamePlugin('fo4').export, 'finalizeLangpackEntries')
+      .mockImplementation(async (entries, stagingDir) => {
+        const packed = path.join(stagingDir, 'UASoundPack - Main.ba2');
+        fs.writeFileSync(packed, Buffer.from('packed-voice'));
+        return [...entries, { name: 'UASoundPack - Main.ba2', absPath: packed }];
+      });
+
+    try {
+      const result = await exportLangpackZipToPath(
+        db,
+        [{ modId: 1, modPath: pluginPath, game: 'fo4' }],
+        LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceLang,
+        LOCALIZED_EXPORT_GOLDEN_CORPUS.targetLang,
+        destPath,
+      );
+
+      expect(finalize).toHaveBeenCalledWith(expect.any(Array), `${destPath}.staging`);
+      expect(result.fileCount).toBeGreaterThan(1);
+      const zipText = fs.readFileSync(destPath).toString('latin1');
+      expect(zipText).toContain('UASoundPack - Main.ba2');
+      expect(zipText).toContain('packed-voice');
+      expect(zipText).toContain('Strings/PluginOne_en.STRINGS');
+    } finally {
+      finalize.mockRestore();
+    }
   }, 30_000);
 });

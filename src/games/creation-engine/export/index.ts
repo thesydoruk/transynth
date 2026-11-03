@@ -29,11 +29,14 @@ import { collectCreationEngineLangpackEntries } from './langpack';
  * Fallout 4 will not play loose `.fuz` takes, so its langpack has to ship them
  * inside an archive the engine loads. Titles that play loose audio skip this.
  */
-const packVoiceIntoSoundPack = (entries: ZipPackEntry[], stagingDir: string): ZipPackEntry[] => {
+const packVoiceIntoSoundPack = async (
+  entries: ZipPackEntry[],
+  stagingDir: string,
+): Promise<ZipPackEntry[]> => {
   const { rest, voice } = splitLangpackVoiceEntries(entries);
   if (voice.length === 0) return rest;
 
-  writeUaSoundPackIntoDir(stagingDir, voice);
+  await writeUaSoundPackIntoDir(stagingDir, voice);
   return [
     ...rest,
     { name: UA_SOUND_PACK_ESP, absPath: path.join(stagingDir, UA_SOUND_PACK_ESP) },

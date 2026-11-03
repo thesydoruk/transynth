@@ -39,20 +39,18 @@ const langpackZipFileName = (game: GameId, targetLang: string): string =>
 /**
  * Run the game's own last pass over the merged entries.
  *
- * The pass gets a scratch directory of its own rather than the staging tree:
- * anything it writes there is copied in by name afterwards, so a game that
- * emits a file at the tree root cannot end up copying it over itself.
+ * The pass writes straight into the staging tree, so a voice archive of many
+ * gigabytes is built once instead of being copied in afterwards. An entry the
+ * pass returns from its final location is left in place by
+ * `writeLangpackEntriesToDir`, never copied over itself.
  */
-const finalizeFor = async (game: GameId, entries: ZipPackEntry[]): Promise<ZipPackEntry[]> => {
+const finalizeFor = async (
+  game: GameId,
+  entries: ZipPackEntry[],
+  stagingDir: string,
+): Promise<ZipPackEntry[]> => {
   const finalize = gamePlugin(game).export.finalizeLangpackEntries;
-  if (!finalize) return entries;
-
-  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'transynth-langpack-'));
-  try {
-    return await finalize(entries, scratch);
-  } finally {
-    fs.rmSync(scratch, { recursive: true, force: true });
-  }
+  return finalize ? finalize(entries, stagingDir) : entries;
 };
 
 export const exportLangpackZipToPath = async (
@@ -97,7 +95,7 @@ export const exportLangpackZipToPath = async (
     // Some games repack part of their own output before it is zipped — Fallout
     // 4 wraps synthesized voice in a BA2 because its engine ignores loose
     // takes. Whether that happens, and what it produces, is the plugin's call.
-    fileCount = writeLangpackEntriesToDir(stagingDir, await finalizeFor(game, merged));
+    fileCount = writeLangpackEntriesToDir(stagingDir, await finalizeFor(game, merged, stagingDir));
 
     if (fileCount === 0) {
       throw new Error(
