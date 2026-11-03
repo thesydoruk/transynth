@@ -42,15 +42,18 @@ const tokensKept = (line: ReviewLine, next: string, game: GameId | null) => {
  * from the source (Disco folds «» to `"…"`, restores `--` and `*italics*`).
  * Checked and applied in this form, so an editor need not know the lockit.
  */
-export const shapeFixText = (line: ReviewLine, next: string, game: GameId | null): string =>
-  findGamePlugin(game)?.text.restoreMarkupShape(line.src, next) ?? next;
+export const shapeFixText = (line: ReviewLine, next: string, game: GameId | null): string => {
+  const text = findGamePlugin(game)?.text;
+  return text ? text.restoreMarkupShape(text.restoreCensoredSpeech(line.src), next) : next;
+};
 
 /** What the game's own verify guard says about the shaped text; empty when it is fine. */
 const markupProblem = (line: ReviewLine, shaped: string, game: GameId | null): string | null => {
   const plugin = findGamePlugin(game);
   if (!plugin) return null;
+  // The shipped source censors a slur with stars (`F***y f*g`); the stars are not italics.
   const verdict = plugin.text.guardVerifyResult(
-    { source: line.src, translation: shaped },
+    { source: plugin.text.restoreCensoredSpeech(line.src), translation: shaped },
     { verdict: 'ok', reason: '', confidence: 1 },
   );
   return verdict.verdict === 'ok' ? null : verdict.reason || 'markup shape differs from source';

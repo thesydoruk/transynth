@@ -85,6 +85,18 @@ describe('validateFixes', () => {
 });
 
 describe('fixProblems — Disco lockit markup', () => {
+  it('does not take the stars of a censored slur for italics', () => {
+    const l: ReviewLine = {
+      id: 9,
+      kind: 'response',
+      src: '"F***y f*g," he says. *Really.*',
+      tr: '"Підар," каже він. *Справді.*',
+    };
+    expect(
+      fixProblems(l, { id: 9, old: l.tr, new: '"Підаре," каже він. *Справді.*' }, 'disco'),
+    ).toEqual([]);
+  });
+
   const disco = (over: Partial<ReviewLine> = {}): ReviewLine => ({
     id: 7,
     kind: 'response',
