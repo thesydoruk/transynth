@@ -125,7 +125,7 @@ export const hasDiscoNarrationOutsideQuotes = (text: string): boolean => {
  * (keeping offsets) before the italic pairs are read.
  */
 const blankInWordStars = (text: string): string =>
-  text.replace(/(?<=p{L})*+(?=p{L})/gu, (stars) => ' '.repeat(stars.length));
+  text.replace(/(?<=\p{L})\*+(?=\p{L})/gu, (stars) => ' '.repeat(stars.length));
 
 export const extractDiscoItalicSpans = (text: string): DiscoMarkupSpan[] =>
   collectRegexSpans(blankInWordStars(text), 'italic', DISCO_ITALIC_RE);
