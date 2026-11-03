@@ -20,13 +20,13 @@ afterEach(() => {
 });
 
 describe('writeUaSoundPackIntoDir', () => {
-  it('adds the dummy ESP and an uncompressed Main BA2', () => {
+  it('adds the dummy ESP and an uncompressed Main BA2', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ua-sound-'));
     tempDirs.push(dir);
     const clip = path.join(dir, 'clip.fuz');
     fs.writeFileSync(clip, Buffer.from('fuz-bytes'));
 
-    const added = writeUaSoundPackIntoDir(dir, [
+    const added = await writeUaSoundPackIntoDir(dir, [
       { name: 'Sound/Voice/Fallout4.esm/NPC/00123456_1.fuz', absPath: clip },
     ]);
 
@@ -47,10 +47,10 @@ describe('writeUaSoundPackIntoDir', () => {
     }
   });
 
-  it('does nothing when there is no voice to pack', () => {
+  it('does nothing when there is no voice to pack', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ua-sound-skip-'));
     tempDirs.push(dir);
-    expect(writeUaSoundPackIntoDir(dir, [])).toBe(0);
+    expect(await writeUaSoundPackIntoDir(dir, [])).toBe(0);
     expect(fs.existsSync(path.join(dir, UA_SOUND_PACK_ESP))).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { writeBa2 } from '../../formats/ba2';
+import { writeBa2File } from '../../formats/ba2';
 import { log } from '../../logger';
 import type { ZipPackEntry } from './exportTypes';
 import { normalizeLangpackZipPath } from './langpackMerge';
@@ -41,9 +41,14 @@ export const splitLangpackVoiceEntries = (
  *
  * Only a title whose engine refuses loose voice needs this; the caller decides
  * (see `CreationEngineTitle.voice.packLangpackVoiceIntoBa2`).
- * Returns how many files were added (0 or 2).
+ * The archive is streamed asynchronously: a full game's voice runs to hundreds
+ * of thousands of takes, and a synchronous copy would freeze the worker past
+ * its job-lock heartbeat. Returns how many files were added (0 or 2).
  */
-export const writeUaSoundPackIntoDir = (dir: string, voice: ZipPackEntry[]): number => {
+export const writeUaSoundPackIntoDir = async (
+  dir: string,
+  voice: ZipPackEntry[],
+): Promise<number> => {
   if (voice.length === 0) return 0;
   const espSrc = uaSoundPackEspPath();
   if (!fs.existsSync(espSrc)) {
@@ -52,7 +57,7 @@ export const writeUaSoundPackIntoDir = (dir: string, voice: ZipPackEntry[]): num
   const espDest = path.join(dir, UA_SOUND_PACK_ESP);
   const ba2Dest = path.join(dir, UA_SOUND_PACK_BA2);
   fs.copyFileSync(espSrc, espDest);
-  writeBa2(
+  await writeBa2File(
     voice.map((entry) => ({
       name: entry.name.replace(/\//g, '\\'),
       data: entry.data,

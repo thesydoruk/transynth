@@ -155,27 +155,41 @@ const copyFileToFd = (fd: number, absPath: string): void => {
   }
 };
 
+/** Header, entry table and name table for `prepared`, laid out in entry order. */
+const layoutArchive = (
+  prepared: readonly PreparedEntry[],
+): { header: Buffer; entries: Buffer; nameTable: Buffer } => {
+  const offsets: number[] = [];
+  let currentOffset = BA2_HEADER_SIZE + prepared.length * BA2_ENTRY_SIZE;
+  for (const entry of prepared) {
+    offsets.push(currentOffset);
+    currentOffset += entry.storedSize;
+  }
+  const { header, entries } = buildHeaderAndEntries(prepared, offsets, currentOffset);
+  const nameChunks: Buffer[] = [];
+  writeNameTable(
+    (buf) => {
+      nameChunks.push(buf);
+    },
+    prepared.map((entry) => entry.name),
+  );
+  return { header, entries, nameTable: Buffer.concat(nameChunks) };
+};
+
 /**
  * Build a BA2 (GNRL, version 1) archive.
  *
  * Pass `destPath` to stream onto disk (needed for archives larger than ~4 GiB).
  * Compression still follows each file's `compressed` flag, except STRINGS and `Sound\`.
+ * Both forms block the event loop for the whole write; a worker building a
+ * large archive should use `writeBa2File`.
  */
 export function writeBa2(files: readonly Ba2InputFile[]): Buffer;
 export function writeBa2(files: readonly Ba2InputFile[], destPath: string): number;
 export function writeBa2(files: readonly Ba2InputFile[], destPath?: string): Buffer | number {
   const streamFromDisk = Boolean(destPath);
   const prepared = files.map((file) => prepareEntry(file, streamFromDisk));
-  const dataStart = BA2_HEADER_SIZE + prepared.length * BA2_ENTRY_SIZE;
-  const offsets: number[] = [];
-  let currentOffset = dataStart;
-  for (const entry of prepared) {
-    offsets.push(currentOffset);
-    currentOffset += entry.storedSize;
-  }
-  const nameTableOffset = currentOffset;
-  const { header, entries } = buildHeaderAndEntries(prepared, offsets, nameTableOffset);
-  const names = prepared.map((entry) => entry.name);
+  const { header, entries, nameTable } = layoutArchive(prepared);
 
   if (destPath) {
     const fd = fs.openSync(destPath, 'w');
@@ -186,9 +200,7 @@ export function writeBa2(files: readonly Ba2InputFile[], destPath?: string): Buf
         if (entry.payload) fs.writeSync(fd, entry.payload);
         else copyFileToFd(fd, entry.absPath!);
       }
-      writeNameTable((buf) => {
-        fs.writeSync(fd, buf);
-      }, names);
+      fs.writeSync(fd, nameTable);
     } finally {
       fs.closeSync(fd);
     }
@@ -199,10 +211,73 @@ export function writeBa2(files: readonly Ba2InputFile[], destPath?: string): Buf
 
   const chunks: Buffer[] = [header, entries];
   for (const entry of prepared) chunks.push(entry.payload!);
-  writeNameTable((buf) => {
-    chunks.push(buf);
-  }, names);
+  chunks.push(nameTable);
   const result = Buffer.concat(chunks);
   log.info(`BA2: wrote archive with ${prepared.length} files, ${result.length} bytes`);
   return result;
 }
+
+/** How many on-disk entries are stat'ed concurrently while laying out the archive. */
+const STAT_BATCH = 256;
+
+const prepareEntriesAsync = async (files: readonly Ba2InputFile[]): Promise<PreparedEntry[]> => {
+  const prepared: PreparedEntry[] = [];
+  for (let start = 0; start < files.length; start += STAT_BATCH) {
+    const batch = await Promise.all(
+      files.slice(start, start + STAT_BATCH).map(async (file) => {
+        if (!file.absPath || file.data || shouldCompressFile(file)) {
+          return prepareEntry(file, false);
+        }
+        const realSize = (await fs.promises.stat(file.absPath)).size;
+        const name = file.name.replace(/\//g, '\\');
+        return { name, packedSize: 0, realSize, storedSize: realSize, absPath: file.absPath };
+      }),
+    );
+    prepared.push(...batch);
+  }
+  return prepared;
+};
+
+const copyFileToHandle = async (out: fs.promises.FileHandle, absPath: string): Promise<void> => {
+  const src = await fs.promises.open(absPath, 'r');
+  try {
+    const buf = Buffer.alloc(1024 * 1024);
+    for (;;) {
+      const { bytesRead } = await src.read(buf, 0, buf.length, null);
+      if (bytesRead === 0) break;
+      await out.write(buf, 0, bytesRead);
+    }
+  } finally {
+    await src.close();
+  }
+};
+
+/**
+ * Stream a BA2 (GNRL, version 1) archive onto disk without holding the event loop.
+ *
+ * Byte-for-byte the same archive as `writeBa2(files, destPath)`, but every stat,
+ * read and write yields, so a worker's job-lock heartbeat and other jobs keep
+ * running while an archive of hundreds of thousands of files is built.
+ */
+export const writeBa2File = async (
+  files: readonly Ba2InputFile[],
+  destPath: string,
+): Promise<number> => {
+  const prepared = await prepareEntriesAsync(files);
+  const { header, entries, nameTable } = layoutArchive(prepared);
+  const out = await fs.promises.open(destPath, 'w');
+  try {
+    await out.write(header);
+    await out.write(entries);
+    for (const entry of prepared) {
+      if (entry.payload) await out.write(entry.payload);
+      else await copyFileToHandle(out, entry.absPath!);
+    }
+    await out.write(nameTable);
+  } finally {
+    await out.close();
+  }
+  const byteSize = (await fs.promises.stat(destPath)).size;
+  log.info(`BA2: wrote archive with ${prepared.length} files, ${byteSize} bytes → ${destPath}`);
+  return byteSize;
+};
