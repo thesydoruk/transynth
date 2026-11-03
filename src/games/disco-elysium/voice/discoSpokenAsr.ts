@@ -62,9 +62,16 @@ const MIN_EVIDENCE_LENGTH = 4;
 /** `yeaaahhhh` / `nooooo` → `yeah` / `no`. Leaves `see` / `hello` intact. */
 const squeezeElongation = (token: string): string => token.replace(/([aeiouhy])\1{2,}/gi, '$1');
 
-const tokenize = (text: string): string[] =>
+/** Spellings Whisper splits or joins at will; folded so they match the lockit. */
+const foldSpellings = (text: string): string =>
   text
-    .toLowerCase()
+    .replace(/\ball ?right\b/g, 'alright')
+    .replace(/\bgod ?damn ?(it)?\b/g, 'goddamnit')
+    .replace(/\bm+[ -]?h+m+\b/g, 'mhm')
+    .replace(/\bo\.?k\.?\b/g, 'okay');
+
+const tokenize = (text: string): string[] =>
+  foldSpellings(text.toLowerCase())
     .replace(/&/g, ' and ')
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -168,8 +175,27 @@ const hasInterstitialDiscoNarration = (text: string): boolean => {
  * render. Bare interjections (`"Uh..."`, `"Yeaaahhhh..."`) are dropped or
  * respelled freely, so their absence is no evidence at all.
  */
-const spanAbsenceIsProvable = (content: string): boolean =>
-  contentTokens(dropElongated(content)).length > 0;
+const INTERJECTION = /^(m+h+m*|h+m+p*f*|u+h+m*|a+h+|o+h+|e+h+|hm+|pf+t*|t+s+k*)$/;
+
+/** Content words with a vowel that are not a grunt: what Whisper would render. */
+const evidenceTokens = (content: string): string[] =>
+  contentTokens(dropElongated(content)).filter((t) => /[aeiouy]/.test(t) && !INTERJECTION.test(t));
+
+/** A lone word is too often respelled (`Two hundred?` → `200?`) to be ruled out. */
+const MIN_ABSENT_EVIDENCE = 2;
+
+/**
+ * A span is out of the clip only when it holds enough evidence words and none
+ * of them was heard. One fuzzy hit (`Detective Du Bois…` against `Detective
+ * Dubois`) means the actor read it, however badly the rest transcribed.
+ */
+const spanIsAbsent = (content: string, asrTokens: string[]): boolean => {
+  const evidence = evidenceTokens(content);
+  return (
+    evidence.length >= MIN_ABSENT_EVIDENCE &&
+    !evidence.some((e) => asrTokens.some((a) => discoAsrTokensMatch(e, a)))
+  );
+};
 
 const allQuotesDecision = (source: string): DiscoSpokenAsrDecision => {
   const spans = extractDiscoQuoteSpans(source);
@@ -254,7 +280,7 @@ export const decideDiscoSpokenFromAsr = (
   if (narrCoverage >= NARRATION_FULL) return { mode: 'full', spokenSource: source };
 
   const omissible = new Set(
-    spans.flatMap((span, i) => (spanAbsenceIsProvable(span.content) ? [i] : [])),
+    spans.flatMap((span, i) => (spanIsAbsent(span.content, asrTok) ? [i] : [])),
   );
   const scored = discoQuoteHypotheses(source)
     .filter((hyp) => spans.every((_, i) => hyp.indexes.includes(i) || omissible.has(i)))

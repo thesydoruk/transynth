@@ -135,17 +135,49 @@ describe('decideDiscoSpokenFromAsr', () => {
   });
 
   it('cuts to one quote when ASR matches only that span (custom)', () => {
-    const source = '"Hello," she whispers, "goodbye."';
-    expect(decideDiscoSpokenFromAsr(source, 'Hello.')).toEqual({
+    const source = '"Hello again," she whispers, "goodbye forever."';
+    expect(decideDiscoSpokenFromAsr(source, 'Hello again.')).toEqual({
       mode: 'custom',
-      spokenSource: 'Hello,',
+      spokenSource: 'Hello again,',
       quoteIndexes: [0],
     });
-    expect(decideDiscoSpokenFromAsr(source, 'Goodbye.')).toEqual({
+    expect(decideDiscoSpokenFromAsr(source, 'Goodbye forever.')).toEqual({
       mode: 'custom',
-      spokenSource: 'goodbye.',
+      spokenSource: 'goodbye forever.',
       quoteIndexes: [1],
     });
+  });
+
+  it('never rules out a one-word quote: Whisper respells those at will', () => {
+    // `Two hundred?` came back as `200?`, `Here...` as `Yeah`.
+    const source = '"Two hundred?" He thinks for a moment. "Could it be two people?"';
+    expect(decideDiscoSpokenFromAsr(source, '200? Could it be two people?')).toMatchObject({
+      mode: 'quoted',
+      quoteIndexes: [0, 1],
+    });
+    expect(decideDiscoSpokenFromAsr('"Hello," she whispers, "goodbye."', 'Goodbye.')).toMatchObject(
+      {
+        mode: 'quoted',
+        quoteIndexes: [0, 1],
+      },
+    );
+  });
+
+  it('keeps a quote one of whose words was heard, however the rest came out', () => {
+    const source = '"Detective Du Bois..." He bows lightly. "It was downright tragic."';
+    expect(
+      decideDiscoSpokenFromAsr(source, 'Detective Dubois, it was downright tragic.'),
+    ).toMatchObject({
+      mode: 'quoted',
+      quoteIndexes: [0, 1],
+    });
+  });
+
+  it('folds spellings Whisper splits: all right, god damn it, mm-hmm', () => {
+    const source = '"Alright, alright," the old man mutters. "I have a bad feeling about this."';
+    expect(
+      decideDiscoSpokenFromAsr(source, 'All right, all right. I have a bad feeling about this.'),
+    ).toMatchObject({ mode: 'quoted', quoteIndexes: [0, 1] });
   });
 
   it('keeps a stretched yeah quote when Whisper drops or normalizes it', () => {
@@ -244,20 +276,20 @@ describe('resolveDiscoSpokenRowFromAsr', () => {
     expect(
       resolveDiscoSpokenRowFromAsr(
         {
-          source: '"Hello," she whispers, "goodbye."',
-          translation: '«Привіт,» вона шепоче, «бувай».',
+          source: '"Hello again," she whispers, "goodbye forever."',
+          translation: '«Привіт знову,» вона шепоче, «бувай назавжди».',
         },
-        'Goodbye.',
+        'Goodbye forever.',
       ),
-    ).toMatchObject({ source: 'goodbye.', translation: 'бувай' });
+    ).toMatchObject({ source: 'goodbye forever.', translation: 'бувай назавжди' });
   });
 
   it('keeps both sides full when custom has no matching Ukrainian quotes', () => {
     const row = {
-      source: '"Hello," she whispers, "goodbye."',
+      source: '"Hello again," she whispers, "goodbye forever."',
       translation: 'Вона лише шепоче бувай.',
     };
-    expect(resolveDiscoSpokenRowFromAsr(row, 'Hello.')).toMatchObject({
+    expect(resolveDiscoSpokenRowFromAsr(row, 'Hello again.')).toMatchObject({
       source: row.source,
       translation: row.translation,
     });
