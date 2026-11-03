@@ -77,3 +77,59 @@ describe('validateFixes', () => {
     expect(checked.notes).toEqual(['n']);
   });
 });
+
+describe('fixProblems — Disco lockit markup', () => {
+  const disco = (over: Partial<ReviewLine> = {}): ReviewLine => ({
+    id: 7,
+    kind: 'response',
+    src: '"The big deal?" The lieutenant rolls his eyes. "I guess we *really* differ -- a lot."',
+    tr: '"Велика справа?" Лейтенант закочує очі. "Мабуть, ми *справді* різні -- дуже."',
+    ...over,
+  });
+  const check = (next: string) => {
+    const l = disco();
+    return fixProblems(l, { id: l.id, old: l.tr, new: next }, 'disco');
+  };
+
+  it('accepts a fix that keeps quotes, italics and the em dash', () => {
+    expect(
+      check('"Велика річ?" Лейтенант закочує очі. "Схоже, ми *справді* різні -- дуже."'),
+    ).toEqual([]);
+  });
+
+  it('rejects a fix that loses a quote pair', () => {
+    expect(
+      check('Велика річ? Лейтенант закочує очі. "Схоже, ми *справді* різні -- дуже."').join(' '),
+    ).toMatch(/quotes/);
+  });
+
+  it('folds guillemets and a typographic dash into the lockit shape before checking', () => {
+    const l = disco();
+    const checked = validateFixes(
+      {
+        batch_id: 'b',
+        mod: 'm',
+        mod_id: 1,
+        game: 'disco',
+        family: 'dialog',
+        names: {},
+        units: [{ unit_id: 'u', kind: 'loose', lines: [l] }],
+      },
+      {
+        batch_id: 'b',
+        fixes: [
+          {
+            id: 7,
+            old: l.tr,
+            new: '«Велика річ?» Лейтенант закочує очі. «Схоже, ми *справді* різні — дуже.»',
+          },
+        ],
+      },
+      'disco',
+    );
+    expect(checked.rejected).toEqual([]);
+    expect(checked.ok[0]!.new).toBe(
+      '"Велика річ?" Лейтенант закочує очі. "Схоже, ми *справді* різні -- дуже."',
+    );
+  });
+});

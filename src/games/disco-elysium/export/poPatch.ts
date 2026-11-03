@@ -41,17 +41,21 @@ const expandHashedDiscoOverlays = (
   return out;
 };
 
-/** Parse `PO\\relPo\\msgctxt::msgid` into file + entry key. */
-const parseDiscoPoRecordPath = (recordPath: string): { relPo: string; entryKey: string } | null => {
-  const normalized = recordPath.replace(/\//g, '\\');
-  if (!normalized.toUpperCase().startsWith('PO\\')) return null;
-  const rest = normalized.slice(3);
+/**
+ * Parse `PO\relPo\msgctxt::msgid` into file + entry key.
+ *
+ * Only the two `\` separators the import wrote are structural: the entry key
+ * keeps its own `/` (`Dialogue Text/0x…::N/A`) untouched, or it would never
+ * match the gettext entry it names.
+ */
+export const parseDiscoPoRecordPath = (
+  recordPath: string,
+): { relPo: string; entryKey: string } | null => {
+  if (!recordPath.toUpperCase().startsWith('PO\\')) return null;
+  const rest = recordPath.slice(3);
   const sep = rest.indexOf('\\');
   if (sep < 0) return null;
-  return {
-    relPo: rest.slice(0, sep).replace(/\\/g, '/'),
-    entryKey: rest.slice(sep + 1),
-  };
+  return { relPo: rest.slice(0, sep), entryKey: rest.slice(sep + 1) };
 };
 
 /** Load DB overlays grouped by relative `.po` file path. */
