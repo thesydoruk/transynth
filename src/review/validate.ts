@@ -3,6 +3,7 @@
  * them reaches the database. A rejected fix goes back to the editor with the
  * reason; nothing here guesses a correction.
  */
+import { findGamePlugin } from '../games/registry';
 import type { GameId } from '../types';
 import { compareProtectedTokens } from '../utils/placeholders';
 import type { ReviewBatch, ReviewFix, ReviewFixFile, ReviewLine } from './types';
@@ -36,6 +37,25 @@ const tokensKept = (line: ReviewLine, next: string, game: GameId | null) => {
   );
 };
 
+/**
+ * The text the editor's save path would store: the game's markup shape copied
+ * from the source (Disco folds «» to `"…"`, restores `--` and `*italics*`).
+ * Checked and applied in this form, so an editor need not know the lockit.
+ */
+export const shapeFixText = (line: ReviewLine, next: string, game: GameId | null): string =>
+  findGamePlugin(game)?.text.restoreMarkupShape(line.src, next) ?? next;
+
+/** What the game's own verify guard says about the shaped text; empty when it is fine. */
+const markupProblem = (line: ReviewLine, shaped: string, game: GameId | null): string | null => {
+  const plugin = findGamePlugin(game);
+  if (!plugin) return null;
+  const verdict = plugin.text.guardVerifyResult(
+    { source: line.src, translation: shaped },
+    { verdict: 'ok', reason: '', confidence: 1 },
+  );
+  return verdict.verdict === 'ok' ? null : verdict.reason || 'markup shape differs from source';
+};
+
 /** Reasons a fix must not be applied; empty when it may. */
 export const fixProblems = (
   line: ReviewLine | undefined,
@@ -46,9 +66,12 @@ export const fixProblems = (
   const why: string[] = [];
   if (line.context_only) why.push('context_only line');
   if (typeof fix.new !== 'string' || !fix.new.trim()) return [...why, 'empty new'];
+  const shaped = shapeFixText(line, fix.new, game);
   if (fix.old !== line.tr) why.push('old does not match the current translation');
-  if (fix.new === line.tr) why.push('new equals old');
-  if (!tokensKept(line, fix.new, game)) why.push('tags or placeholders changed');
+  if (shaped === line.tr) why.push('new equals old');
+  if (!tokensKept(line, shaped, game)) why.push('tags or placeholders changed');
+  const markup = markupProblem(line, shaped, game);
+  if (markup) why.push(markup);
   if (SLASH_GENDER_RE.test(fix.new)) why.push('slash gender form');
   if (!/[а-яіїєґ]/i.test(fix.new) && /[а-яіїєґ]/i.test(line.tr)) why.push('no Cyrillic left');
 
@@ -89,7 +112,7 @@ export const validateFixes = (
     if (seen.has(fix.id)) why.push('duplicate id');
     seen.add(fix.id);
     if (why.length) out.rejected.push({ fix, why });
-    else out.ok.push(fix);
+    else out.ok.push({ ...fix, new: shapeFixText(lines.get(fix.id)!, fix.new, game) });
   }
   return out;
 };
