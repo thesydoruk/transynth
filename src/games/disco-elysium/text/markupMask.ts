@@ -15,6 +15,7 @@ import {
   DISCO_ITALIC_RE,
   DISCO_QUOTE_PAIR_RES,
   DISCO_TITLE_SINGLE_RE,
+  isDiscoElisionSpan,
 } from './lockitMarkup';
 
 const cloneRe = (re: RegExp): RegExp => new RegExp(re.source, re.flags);
@@ -45,8 +46,8 @@ export const maskDiscoLockitMarkup = (
     wrapWithKey(mapping, 'IT', italics++, inner, '*'),
   );
 
-  out = out.replace(cloneRe(DISCO_TITLE_SINGLE_RE), (_match, inner: string) =>
-    wrapWithKey(mapping, 'TS', titleSingles++, inner, "'"),
+  out = out.replace(cloneRe(DISCO_TITLE_SINGLE_RE), (match, inner: string) =>
+    isDiscoElisionSpan(inner) ? match : wrapWithKey(mapping, 'TS', titleSingles++, inner, "'"),
   );
 
   for (const { re } of DISCO_QUOTE_PAIR_RES) {

@@ -46,6 +46,18 @@ export const DISCO_ITALIC_RE = /\*([^*]+)\*/g;
  */
 export const DISCO_TITLE_SINGLE_RE = /(?<!\p{L})'((?:[^\n']|'(?=\p{L})){1,120})'(?!\p{L})/gu;
 
+/**
+ * Street speech drops letters at both ends of a word (`'Bout fuckin' time`,
+ * `'ere`, `nothin'`), and two such apostrophes look exactly like a title pair.
+ * A span that opens with a known clipped word or closes on a `-in'` ending is
+ * speech, not a title, so it is neither masked nor counted.
+ */
+const DISCO_ELISION_RE =
+  /^(?:bout|cause|cos|em|ere|til|till|round|tis|twas|n|ya|im|er|ave|ow|ello|allo|appen)\b|in$|'\s*$/iu;
+
+export const isDiscoElisionSpan = (content: string): boolean =>
+  DISCO_ELISION_RE.test(content.trim()) || /\win\s+\S.*\win$/iu.test(content.trim());
+
 /** `[Leave.]`, `[Discard thought.]` — 856 lines. UI; never spoken. */
 const DISCO_UI_BRACKET_RE = /\[([^[\]]+)\]/g;
 
@@ -108,11 +120,20 @@ export const hasDiscoNarrationOutsideQuotes = (text: string): boolean => {
   return /[\p{L}\p{N}]/u.test(rest);
 };
 
+/**
+ * Stars inside a word are censorship (`F***y f*g`), never italics; blank them
+ * (keeping offsets) before the italic pairs are read.
+ */
+const blankInWordStars = (text: string): string =>
+  text.replace(/(?<=\p{L})\*+(?=\p{L})/gu, (stars) => ' '.repeat(stars.length));
+
 export const extractDiscoItalicSpans = (text: string): DiscoMarkupSpan[] =>
-  collectRegexSpans(text, 'italic', DISCO_ITALIC_RE);
+  collectRegexSpans(blankInWordStars(text), 'italic', DISCO_ITALIC_RE);
 
 export const extractDiscoTitleSingleSpans = (text: string): DiscoMarkupSpan[] =>
-  collectRegexSpans(text, 'title_single', DISCO_TITLE_SINGLE_RE);
+  collectRegexSpans(text, 'title_single', DISCO_TITLE_SINGLE_RE).filter(
+    (span) => !isDiscoElisionSpan(span.content),
+  );
 
 const extractDiscoUiBracketSpans = (text: string): DiscoMarkupSpan[] =>
   collectRegexSpans(text, 'ui_bracket', DISCO_UI_BRACKET_RE);

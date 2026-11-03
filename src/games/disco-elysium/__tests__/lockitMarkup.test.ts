@@ -282,3 +282,26 @@ describe('discoMarkupMismatches', () => {
     );
   });
 });
+
+describe('title singles vs street elisions', () => {
+  it('does not take clipped words for a title pair', () => {
+    expect(extractDiscoTitleSingleSpans("'Bout fuckin' time, man.")).toEqual([]);
+    expect(extractDiscoTitleSingleSpans("Come 'ere, it's Rosemary's.")).toEqual([]);
+    expect(extractDiscoTitleSingleSpans("Nothin' to see 'round here, nothin' at all.")).toEqual([]);
+    expect(discoMarkupMismatches("'Bout fuckin' time.", 'Давно, бляха, пора.')).toEqual([]);
+  });
+
+  it('still counts real titles and scare quotes', () => {
+    expect(extractDiscoTitleSingleSpans("The 'Scab Leader' was here.")).toHaveLength(1);
+    expect(extractDiscoTitleSingleSpans("If by 'fun stuff,' you mean alcohol.")).toHaveLength(1);
+  });
+});
+
+describe('italics vs censorship stars', () => {
+  it('ignores stars inside a censored word', () => {
+    expect(
+      extractDiscoItalicSpans('"F***y f*g," he says. *Really.*').map((s) => s.content),
+    ).toEqual(['Really.']);
+    expect(discoMarkupMismatches('You f****ts!', 'Ви підари!')).toEqual([]);
+  });
+});
