@@ -54,6 +54,27 @@ const readExportOrder = (config: AgentConfig): VortexExportOrder => {
   };
 };
 
+/**
+ * Start the group's TM run, or join the one already running: a run a previous
+ * tick (or a manual start) left in progress is the same work, not an error.
+ */
+const startOrJoinTm = async (
+  api: AgentApi,
+  groupId: number,
+  channel: AgentConfig['channel'],
+): Promise<number> => {
+  try {
+    const tm = await api.startStage(groupId, 'tm', { channel, startedBy: 'agent' });
+    return tm.runId;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const active = /^409 .*"runId":(\d+)/.exec(message);
+    if (!active) throw err;
+    log.info(`vortex-agent: joining run #${active[1]} already in progress`);
+    return Number(active[1]);
+  }
+};
+
 /** What the server will be told; the signatures decide whether to tell it. */
 export const scanForSync = async (ctx: SyncContext) => {
   ctx.onPhase?.('scanning');
@@ -121,6 +142,7 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
   ctx.onPhase?.('uploading');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vortex-agent-'));
   let uploaded = 0;
+  const rejected: string[] = [];
   try {
     for (const unit of scan.inventory.units) {
       if (!needed.has(unit.unitId)) continue;
@@ -129,12 +151,26 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
       log.info(
         `vortex-agent: uploading ${unit.name} (${(fs.statSync(zipPath).size / 1048576).toFixed(1)} MiB)`,
       );
-      await api.putUnitZip(plan.run.id, unit.unitId, zipPath);
+      try {
+        await api.putUnitZip(plan.run.id, unit.unitId, zipPath);
+        uploaded += 1;
+      } catch (err) {
+        // A unit the importer cannot register (a folder with nothing to
+        // translate) must not stop the mods it can: note it and move on.
+        const message = err instanceof Error ? err.message : String(err);
+        if (!/\b5\d\d\b|Archive holds no/.test(message)) throw err;
+        log.warn(`vortex-agent: ${unit.name} rejected by the server, skipping: ${message}`);
+        rejected.push(unit.name);
+      }
       fs.rmSync(zipPath, { force: true });
-      uploaded += 1;
     }
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
+  }
+  if (uploaded === 0 && rejected.length > 0 && state.lastRunId != null) {
+    state.signatures.units = scan.unitsSig;
+    state.signatures.order = scan.orderSig;
+    return { kind: 'order-only', groupId: plan.group.id };
   }
 
   ctx.onPhase?.('waiting-server');
@@ -153,14 +189,8 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
 
   let tmRunId: number | null = null;
   if (config.autoStages === 'tm') {
-    const tm = await api.startStage(plan.group.id, 'tm', {
-      channel: config.channel,
-      startedBy: 'agent',
-    });
-    tmRunId = tm.runId;
-    await api.waitRun(tm.runId, (run) =>
-      log.info(`vortex-agent: TM run #${tm.runId} ${run.status}`),
-    );
+    tmRunId = await startOrJoinTm(api, plan.group.id, config.channel);
+    await api.waitRun(tmRunId, (run) => log.info(`vortex-agent: TM run #${tmRunId} ${run.status}`));
   }
 
   state.lastRunId = plan.run.id;

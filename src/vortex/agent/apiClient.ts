@@ -69,7 +69,12 @@ export const createAgentApi = (opts: { api: string; token?: string }) => {
         body: form,
         dispatcher: uploadAgent,
       },
-    );
+    ).catch((err: unknown) => {
+      // `fetch failed` alone says nothing; the cause (ECONNRESET, EPIPE…) does.
+      const cause = err instanceof Error && err.cause instanceof Error ? err.cause.message : '';
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(`Upload ${unitId} failed: ${message}${cause ? ` (${cause})` : ''}`);
+    });
     if (!res.ok) throw new Error(`Upload ${unitId} failed: ${await res.text()}`);
   };
 
