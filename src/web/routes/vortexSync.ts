@@ -29,7 +29,7 @@ import { scopedVortexFileHash, vortexGroupLabel } from '../../vortex/groupKey';
 import {
   isVortexChannel,
   resolveStageRange,
-  vortexRangeCrossesTm,
+  vortexRangeCrossesFanOut,
   vortexWorkerStages,
   type ServerVortexStage,
 } from '../../vortex/stages';
@@ -185,15 +185,15 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
       });
     }
     const requested = resolveStageRange(req.body?.from, req.body?.to);
-    if (vortexRangeCrossesTm(requested)) {
+    if (vortexRangeCrossesFanOut(requested)) {
       return reply.code(400).send({
         error:
-          'TM is a tm-apply job, not vortex-sync. Start import–carry and llm–export separately.',
+          'A vortex-sync job runs import–carry or export; the stages between are per-mod jobs started with /api/vortex/groups/:id/stage/:stage.',
       });
     }
     const stages = vortexWorkerStages(requested);
     if (stages.length === 0) {
-      return reply.send({ ok: true, runId, skipped: true, reason: 'no server stages' });
+      return reply.send({ ok: true, runId, skipped: true, reason: 'no in-process stages' });
     }
     const from = stages[0]! as ServerVortexStage;
     const to = stages[stages.length - 1]! as ServerVortexStage;
@@ -203,14 +203,6 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
     );
     await updateVortexSyncRun(db, runId, { status: 'queued', job_id: jobId });
     return reply.send({ ok: true, runId, jobId, from, to });
-  });
-
-  app.get<{ Params: { runId: string } }>('/api/vortex/sync/:runId', async (req, reply) => {
-    const runId = parseRouteId(req.params.runId);
-    if (runId === null) return reply.code(400).send({ error: 'Invalid run id' });
-    const run = await getVortexSyncRun(db, runId);
-    if (!run) return reply.code(404).send({ error: 'Run not found' });
-    return run;
   });
 
   app.get<{ Params: { runId: string } }>('/api/vortex/sync/:runId/langpack', async (req, reply) => {

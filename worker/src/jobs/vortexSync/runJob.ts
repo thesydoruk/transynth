@@ -1,258 +1,214 @@
+/**
+ * One Vortex run. Either an in-process range (`import` → `carry`, or `export`)
+ * or one fan-out stage (`tm`, `llm`, `verify`, `skip`, `gender`, `voice`) that
+ * enqueues the per-mod jobs one at a time — see fanOutStage.ts.
+ */
 import type { Tx } from '../../../../src/db';
 import { carryOverTranslations } from '../../../../src/web/data/queries/importDiff';
 import { reuseSynthesizedVoice } from '../../../../src/voice/reuseSynthesizedVoice';
 import { invalidateVoiceListContext } from '../../../../src/web/voice/preview/voiceListContext';
-import { insertExportArchive } from '../../../../src/web/data/queries/exportArchives';
-import { executeLangpackExport } from '../langpackExport/runJob';
 import { runModImport } from '../../../../src/import/mod/run/runImport';
 import { getModImportJob } from '../../../../src/import/mod/jobs';
-import { runLlmTranslateJob } from '../translate/runJob';
 import { log } from '../../../../src/logger';
 import {
   findPreviousVortexMod,
   getVortexSyncRun,
   listCurrentGroupModIds,
-  listVortexExportModRows,
   markCurrentVortexMods,
   updateVortexSyncRun,
   upsertCurrentGameRelease,
   type VortexSyncRunRow,
 } from '../../../../src/vortex/db';
-import { getGroupExportOrder } from '../../../../src/vortex/dbAgents';
 import {
-  filterVortexLangpackMods,
-  isVortexExportOrder,
-  orderVortexLangpackModIds,
-} from '../../../../src/vortex/exportOrder';
-import { readPluginMastersOf } from '../../../../src/vortex/pluginMasters';
-import type { ServerVortexStage } from '../../../../src/vortex/stages';
-import type { VortexExportOrder, VortexPlanUnit } from '../../../../src/vortex/types';
+  isFanOutStage,
+  type ServerVortexStage,
+  type VortexFanOutStage,
+} from '../../../../src/vortex/stages';
+import { findActiveJobIdForMod } from '../../api/jobStatus';
+import { startBackgroundJob } from '../../api/startBackgroundJob';
+import { requestJobStop } from '../../core/queue';
+import { readJobSnapshot } from '../../core/snapshots';
 import type { JobResult } from '../../types';
+import { runExportStage, planUnits } from './exportStage';
+import { runFanOutStage, type FanOutStageOptions } from './fanOutStage';
 
 export type VortexSyncJobParams = {
   runId: number;
-  from: ServerVortexStage;
-  to: ServerVortexStage;
+  /** In-process range (CLI / agent): import→carry or export. */
+  from?: ServerVortexStage;
+  to?: ServerVortexStage;
+  /** One fan-out stage (UI button / agent TM). */
+  stage?: VortexFanOutStage;
+  modIds?: number[];
+  options?: FanOutStageOptions;
 };
 
-const STAGE_ORDER: ServerVortexStage[] = ['import', 'carry', 'llm', 'export'];
+const IN_PROCESS_ORDER: ServerVortexStage[] = ['import', 'carry', 'export'];
 
 const sliceStages = (from: ServerVortexStage, to: ServerVortexStage): ServerVortexStage[] => {
-  const start = STAGE_ORDER.indexOf(from);
-  const end = STAGE_ORDER.indexOf(to);
+  const start = IN_PROCESS_ORDER.indexOf(from);
+  const end = IN_PROCESS_ORDER.indexOf(to);
   if (start < 0 || end < 0 || start > end) {
     throw new Error(`Invalid server stage range: ${from}..${to}`);
   }
-  return STAGE_ORDER.slice(start, end + 1);
+  return IN_PROCESS_ORDER.slice(start, end + 1);
 };
 
-const planUnits = (run: VortexSyncRunRow): VortexPlanUnit[] => {
-  const raw = run.plan_json as { units?: VortexPlanUnit[] } | null;
-  return raw?.units ?? [];
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+type RunOpts = { jobId: number; isCancelled: () => boolean };
+
+const runImportStage = async (db: Tx, run: VortexSyncRunRow): Promise<number[]> => {
+  const importedModIds: number[] = [];
+  for (const unit of planUnits(run)) {
+    if (unit.action === 'skip' && unit.existingModId) {
+      importedModIds.push(unit.existingModId);
+      continue;
+    }
+    if (!unit.existingJobId) continue;
+    const job = await getModImportJob(db, unit.existingJobId);
+    if (!job) continue;
+    if (job.status === 'completed' && job.mod_id) {
+      importedModIds.push(job.mod_id);
+      continue;
+    }
+    log.info(`Vortex sync: importing ${unit.name} (job #${job.id})`);
+    const result = await runModImport(db, job);
+    if (result.mod_id) importedModIds.push(result.mod_id);
+  }
+  const hint = (run.plan_json as { gameRelease?: { versionLabel: string; releaseHash: string } })
+    ?.gameRelease;
+  if (hint?.releaseHash) {
+    const releaseId = await upsertCurrentGameRelease(db, run.vortex_group_id, hint);
+    if (releaseId) {
+      await db.query(
+        `UPDATE mods SET game_release_id = $1,
+               version_label = COALESCE(NULLIF(version_label, ''), $4)
+         WHERE vortex_group_id = $2 AND channel = 'game' AND id = ANY($3::int[])`,
+        [releaseId, run.vortex_group_id, importedModIds, hint.versionLabel],
+      );
+    }
+  }
+  await markCurrentVortexMods(db, run.vortex_group_id, importedModIds);
+  return importedModIds;
 };
 
-const planExportOrder = (run: VortexSyncRunRow): VortexExportOrder | null => {
-  const raw = run.plan_json as { exportOrder?: unknown } | null;
-  return isVortexExportOrder(raw?.exportOrder) ? raw.exportOrder : null;
+const runCarryStage = async (db: Tx, run: VortexSyncRunRow, modIds: number[]): Promise<void> => {
+  for (const modId of modIds) {
+    const { rows } = await db.query<{ name: string; nexus_mod_id: number | null }>(
+      `SELECT name, nexus_mod_id FROM mods WHERE id = $1`,
+      [modId],
+    );
+    const mod = rows[0];
+    if (!mod) continue;
+    await updateVortexSyncRun(db, run.id, { current_stage: 'carry', current_mod_id: modId });
+    const prev = await findPreviousVortexMod(db, {
+      groupId: run.vortex_group_id,
+      newModId: modId,
+      nexusModId: mod.nexus_mod_id,
+      name: mod.name,
+    });
+    if (prev) await carryOverTranslations(db, modId, prev, run.tgt_lang, run.src_lang);
+    const voice = await reuseSynthesizedVoice(db, modId, run.tgt_lang);
+    if (voice.copied > 0) {
+      invalidateVoiceListContext(modId);
+      log.info(`Vortex sync: copied ${voice.copied} synthesized take(s) into mod ${modId}`);
+    }
+  }
 };
 
-const pluginNameForRow = (
-  row: { name: string; abs_path: string | null; source_folder: string | null },
-  units: VortexPlanUnit[],
-): string | null => {
-  const byFolder = row.source_folder
-    ? units.find((unit) => unit.sourceFolder === row.source_folder)
-    : undefined;
-  if (byFolder?.pluginFileName) return byFolder.pluginFileName;
-  return units.find((unit) => unit.name === row.name)?.pluginFileName ?? null;
+const stageMods = async (db: Tx, run: VortexSyncRunRow, modIds?: number[]) => {
+  const ids =
+    modIds && modIds.length > 0
+      ? modIds
+      : await listCurrentGroupModIds(
+          db,
+          run.vortex_group_id,
+          run.channel as 'all' | 'mods' | 'game',
+        );
+  if (ids.length === 0) return [];
+  const { rows } = await db.query<{ id: number; name: string; game: string }>(
+    `SELECT id, name, game FROM mods WHERE id = ANY($1::int[]) ORDER BY name`,
+    [ids],
+  );
+  return rows;
+};
+
+const runFanOut = async (
+  db: Tx,
+  run: VortexSyncRunRow,
+  params: VortexSyncJobParams,
+  opts: RunOpts,
+): Promise<JobResult> => {
+  const stage = params.stage!;
+  await updateVortexSyncRun(db, run.id, { current_stage: stage });
+  const mods = await stageMods(db, run, params.modIds);
+  if (mods.length === 0) throw new Error('No mods in Vortex group for this stage');
+  const modJobs = await runFanOutStage(db, run, stage, mods, params.options ?? {}, opts, {
+    enqueue: startBackgroundJob,
+    readSnapshot: readJobSnapshot,
+    isBusy: async (kinds, modId) => (await findActiveJobIdForMod(kinds, modId)) != null,
+    stop: requestJobStop,
+    sleep,
+    pollMs: 2000,
+  });
+  const failed = modJobs.filter((job) => job.status === 'failed');
+  const cancelled = modJobs.some((job) => job.status === 'cancelled');
+  const done = modJobs.filter((job) => job.status === 'completed').length;
+  if (cancelled) {
+    await updateVortexSyncRun(db, run.id, { status: 'cancelled', current_stage: null });
+    return { status: 'cancelled', error: null, done, total: modJobs.length };
+  }
+  if (failed.length > 0) {
+    const error = `${stage}: ${failed.map((job) => `${job.name}: ${job.error ?? 'failed'}`).join('; ')}`;
+    await updateVortexSyncRun(db, run.id, { status: 'failed', error, current_stage: null });
+    return { status: 'failed', error, done, total: modJobs.length };
+  }
+  await updateVortexSyncRun(db, run.id, {
+    status: 'completed',
+    current_stage: null,
+    last_completed_stage: stage,
+  });
+  return { status: 'completed', error: null, done, total: modJobs.length };
 };
 
 export const runVortexSyncJob = async (
   db: Tx,
   params: VortexSyncJobParams,
-  opts: { jobId: number; isCancelled: () => boolean },
+  opts: RunOpts,
 ): Promise<JobResult> => {
   const run = await getVortexSyncRun(db, params.runId);
   if (!run) throw new Error(`Vortex sync run ${params.runId} not found`);
-
   await updateVortexSyncRun(db, run.id, { status: 'running', job_id: opts.jobId });
-  const stages = sliceStages(params.from, params.to);
-  const units = planUnits(run);
-  const importedModIds: number[] = [];
-
-  const touch = async (stage: ServerVortexStage, modId?: number | null) => {
-    await updateVortexSyncRun(db, run.id, {
-      current_stage: stage,
-      current_mod_id: modId ?? null,
-    });
-  };
 
   try {
+    if (params.stage) {
+      if (!isFanOutStage(params.stage)) throw new Error(`Not a fan-out stage: ${params.stage}`);
+      return await runFanOut(db, run, params, opts);
+    }
+    const stages = sliceStages(params.from ?? 'import', params.to ?? 'carry');
+    let importedModIds: number[] = [];
     for (const stage of stages) {
       if (opts.isCancelled()) {
         await updateVortexSyncRun(db, run.id, { status: 'cancelled' });
         return { status: 'cancelled', error: null, done: 0, total: stages.length };
       }
-      await touch(stage);
-
-      if (stage === 'import') {
-        for (const unit of units) {
-          if (unit.action === 'skip' && unit.existingModId) {
-            importedModIds.push(unit.existingModId);
-            continue;
-          }
-          if (!unit.existingJobId) continue;
-          const job = await getModImportJob(db, unit.existingJobId);
-          if (!job) continue;
-          if (job.status === 'completed' && job.mod_id) {
-            importedModIds.push(job.mod_id);
-            continue;
-          }
-          log.info(`Vortex sync: importing ${unit.name} (job #${job.id})`);
-          const result = await runModImport(db, job);
-          if (result.mod_id) importedModIds.push(result.mod_id);
-        }
-        const hint = (
-          run.plan_json as { gameRelease?: { versionLabel: string; releaseHash: string } }
-        )?.gameRelease;
-        if (hint?.releaseHash) {
-          const releaseId = await upsertCurrentGameRelease(db, run.vortex_group_id, hint);
-          if (releaseId) {
-            await db.query(
-              `UPDATE mods SET game_release_id = $1,
-                     version_label = COALESCE(NULLIF(version_label, ''), $4)
-               WHERE vortex_group_id = $2 AND channel = 'game' AND id = ANY($3::int[])`,
-              [releaseId, run.vortex_group_id, importedModIds, hint.versionLabel],
-            );
-          }
-        }
-        await markCurrentVortexMods(db, run.vortex_group_id, importedModIds);
-      }
-
-      const targetIds =
-        importedModIds.length > 0
-          ? importedModIds
-          : await listCurrentGroupModIds(
-              db,
-              run.vortex_group_id,
-              run.channel as 'all' | 'mods' | 'game',
-            );
-
+      await updateVortexSyncRun(db, run.id, { current_stage: stage });
+      if (stage === 'import') importedModIds = await runImportStage(db, run);
       if (stage === 'carry') {
-        for (const modId of targetIds) {
-          const { rows } = await db.query<{ name: string; nexus_mod_id: number | null }>(
-            `SELECT name, nexus_mod_id FROM mods WHERE id = $1`,
-            [modId],
-          );
-          const mod = rows[0];
-          if (!mod) continue;
-          const prev = await findPreviousVortexMod(db, {
-            groupId: run.vortex_group_id,
-            newModId: modId,
-            nexusModId: mod.nexus_mod_id,
-            name: mod.name,
-          });
-          if (prev) {
-            await touch('carry', modId);
-            await carryOverTranslations(db, modId, prev, run.tgt_lang, run.src_lang);
-          }
-          await touch('carry', modId);
-          const voice = await reuseSynthesizedVoice(db, modId, run.tgt_lang);
-          if (voice.copied > 0) {
-            invalidateVoiceListContext(modId);
-            log.info(`Vortex sync: copied ${voice.copied} synthesized take(s) into mod ${modId}`);
-          }
-        }
+        const targets =
+          importedModIds.length > 0
+            ? importedModIds
+            : await listCurrentGroupModIds(
+                db,
+                run.vortex_group_id,
+                run.channel as 'all' | 'mods' | 'game',
+              );
+        await runCarryStage(db, run, targets);
       }
-
-      if (stage === 'llm') {
-        const abort = new AbortController();
-        for (const modId of targetIds) {
-          await touch('llm', modId);
-          try {
-            await runLlmTranslateJob(
-              db,
-              {
-                jobId: opts.jobId,
-                modId,
-                srcLang: run.src_lang,
-                targetLang: run.tgt_lang,
-                signal: abort.signal,
-                isCancelled: opts.isCancelled,
-              },
-              () => undefined,
-            );
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            if (!message.includes('No untranslated strings')) throw err;
-            log.info(`Vortex sync: skip LLM for mod ${modId} (nothing to translate)`);
-          }
-        }
-      }
-
-      if (stage === 'export') {
-        const currentIds = await listCurrentGroupModIds(
-          db,
-          run.vortex_group_id,
-          run.channel as 'all' | 'mods' | 'game',
-        );
-        if (currentIds.length === 0) throw new Error('No mods in Vortex group to export');
-        // A run started without an order (an agent-planned import, a UI button)
-        // exports with the load order the agent last reported for the group.
-        const exportOrder =
-          planExportOrder(run) ?? (await getGroupExportOrder(db, run.vortex_group_id));
-        const units = planUnits(run);
-        const rows = await listVortexExportModRows(db, currentIds);
-        const refs = rows.map((row) => ({
-          ...row,
-          pluginFileName: pluginNameForRow(row, units),
-        }));
-        const enabled = filterVortexLangpackMods(refs, exportOrder);
-        if (enabled.length === 0) throw new Error('No enabled Vortex mods to export');
-        if (exportOrder && enabled.length !== refs.length) {
-          log.info(`Vortex export: ${enabled.length}/${refs.length} deployed Vortex mod(s)`);
-        }
-        const applyFileOrder = !exportOrder || exportOrder.applyOrder !== false;
-        const modIds = orderVortexLangpackModIds(
-          enabled,
-          applyFileOrder ? exportOrder : null,
-          readPluginMastersOf,
-        );
-        const sourceFolders = Object.fromEntries(enabled.map((row) => [row.id, row.source_folder]));
-        if (exportOrder) {
-          log.info(
-            `Vortex export: ${exportOrder.plugins.length} plugin(s) in load order, ${exportOrder.fileWinners.length} file winner(s)`,
-          );
-        }
-        const archive = await insertExportArchive(db, {
-          game: run.game,
-          srcLang: run.src_lang,
-          tgtLang: run.tgt_lang,
-          label: `vortex-${run.vortex_group_id}`,
-          fileName: `${run.game}_${run.tgt_lang}_langpack.zip`,
-          modIds,
-          totalCount: modIds.length,
-        });
-        const result = await executeLangpackExport(
-          db,
-          {
-            archiveId: archive.id,
-            srcLang: run.src_lang,
-            targetLang: run.tgt_lang,
-            fileWinners: applyFileOrder ? exportOrder?.fileWinners : undefined,
-            sourceFolders,
-          },
-          { isCancelled: opts.isCancelled, onProgress: () => undefined },
-        );
-        await updateVortexSyncRun(db, run.id, { export_archive_id: archive.id });
-        if (result.status !== 'completed') {
-          throw new Error(result.error ?? `Export ${result.status}`);
-        }
-      }
-
+      if (stage === 'export') await runExportStage(db, run, opts);
       await updateVortexSyncRun(db, run.id, { last_completed_stage: stage });
     }
-
     await updateVortexSyncRun(db, run.id, { status: 'completed', current_stage: null });
     return { status: 'completed', error: null, done: stages.length, total: stages.length };
   } catch (err) {

@@ -57,6 +57,7 @@ import { modAiJobsRoutes } from './routes/modAiJobs';
 import { modVoiceGenerateRoutes } from './routes/modVoiceGenerate';
 import { exportArchivesRoutes } from './routes/exportArchives';
 import { vortexAgentRoutes } from './routes/vortexAgent';
+import { vortexStagesRoutes } from './routes/vortexStages';
 import { vortexSyncRoutes } from './routes/vortexSync';
 import { getAllProjectSettings } from './services/projectSettings';
 import { syncLlmPoolFromProjectSettings } from '../llm/llmProjectSettings';
@@ -158,6 +159,7 @@ await modVoiceGenerateRoutes(app, db);
 await exportArchivesRoutes(app, db);
 await vortexSyncRoutes(app, db);
 await vortexAgentRoutes(app, db);
+await vortexStagesRoutes(app, db);
 
 // Health check — verifies DB connectivity and returns uptime info
 app.get('/api/health', async () => {

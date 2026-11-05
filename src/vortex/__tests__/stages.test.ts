@@ -1,9 +1,11 @@
+import { describe, expect, it } from '@jest/globals';
 import {
   needsVortexFileInventory,
   resolveStageRange,
   serverStagesIn,
   splitVortexPipeline,
-  vortexRangeCrossesTm,
+  vortexFanOutStagesIn,
+  vortexRangeCrossesFanOut,
   vortexWorkerStages,
 } from '../stages';
 
@@ -16,6 +18,10 @@ describe('vortex stages', () => {
       'carry',
       'tm',
       'llm',
+      'verify',
+      'skip',
+      'gender',
+      'voice',
       'export',
     ]);
   });
@@ -28,43 +34,48 @@ describe('vortex stages', () => {
     expect(resolveStageRange('import', 'tm')).toEqual(['import', 'carry', 'tm']);
   });
 
-  it('rejects a backward range', () => {
+  it('rejects a backward range and the retired install stage', () => {
     expect(() => resolveStageRange('llm', 'import')).toThrow(/empty/);
+    expect(() => resolveStageRange(undefined, 'install')).toThrow(/Unknown/);
   });
 
   it('filters server stages', () => {
-    expect(serverStagesIn(['plan', 'upload', 'import', 'export', 'install'])).toEqual([
-      'import',
-      'export',
-    ]);
+    expect(serverStagesIn(['plan', 'upload', 'import', 'export'])).toEqual(['import', 'export']);
   });
 
   it('does not hash the tree for TM-only', () => {
     expect(needsVortexFileInventory(['tm'])).toBe(false);
     expect(needsVortexFileInventory(['carry', 'tm'])).toBe(false);
     expect(needsVortexFileInventory(['import', 'tm'])).toBe(true);
-    expect(vortexWorkerStages(['import', 'carry', 'tm'])).toEqual(['import', 'carry']);
-    expect(vortexWorkerStages(['tm'])).toEqual([]);
   });
 
-  it('splits the pipeline around TM', () => {
+  it('keeps only in-process stages for one vortex-sync job', () => {
+    expect(vortexWorkerStages(['import', 'carry', 'tm', 'llm', 'export'])).toEqual([
+      'import',
+      'carry',
+      'export',
+    ]);
+    expect(vortexWorkerStages(['tm'])).toEqual([]);
+    expect(vortexFanOutStagesIn(['carry', 'tm', 'verify', 'export'])).toEqual(['tm', 'verify']);
+  });
+
+  it('splits the CLI pipeline into before-TM, fan-out and export', () => {
     expect(splitVortexPipeline(['tm'])).toEqual({
       beforeTm: [],
-      wantsTm: true,
-      afterTm: [],
+      fanOut: ['tm'],
+      wantsExport: false,
     });
-    expect(splitVortexPipeline(['import', 'carry', 'tm', 'llm', 'export'])).toEqual({
+    expect(splitVortexPipeline(resolveStageRange('import', 'export'))).toEqual({
       beforeTm: ['import', 'carry'],
-      wantsTm: true,
-      afterTm: ['llm', 'export'],
+      fanOut: ['tm', 'llm', 'verify', 'skip', 'gender', 'voice'],
+      wantsExport: true,
     });
-    expect(splitVortexPipeline(['import', 'carry'])).toEqual({
-      beforeTm: ['import', 'carry'],
-      wantsTm: false,
-      afterTm: [],
-    });
-    expect(vortexRangeCrossesTm(['import', 'carry', 'tm', 'llm'])).toBe(true);
-    expect(vortexRangeCrossesTm(['import', 'tm'])).toBe(false);
-    expect(vortexRangeCrossesTm(['tm', 'llm'])).toBe(false);
+  });
+
+  it('refuses a vortex-sync range that straddles the fan-out stages', () => {
+    expect(vortexRangeCrossesFanOut(resolveStageRange('import', 'export'))).toBe(true);
+    expect(vortexRangeCrossesFanOut(['import', 'carry'])).toBe(false);
+    expect(vortexRangeCrossesFanOut(['export'])).toBe(false);
+    expect(vortexRangeCrossesFanOut(['tm', 'llm'])).toBe(false);
   });
 });
