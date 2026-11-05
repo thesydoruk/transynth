@@ -37,6 +37,7 @@ const PAGES: PageCase[] = [
   { name: 'coherence', path: '/games/fo4/coherence', ready: heading },
   { name: 'reference', path: '/games/fo4/reference', ready: text('Settler 1') },
   { name: 'vortex', path: '/games/fo4/vortex', ready: text('gaming-pc · 0.10.0') },
+  { name: 'video', path: '/games/fo4/video', ready: text('Intro_ru.bk2') },
   { name: 'glossary', path: '/glossary', ready: text('Commonwealth Minutemen General') },
   { name: 'settings: general', path: '/settings?tab=general', ready: heading },
   { name: 'settings: llm', path: '/settings?tab=llm', ready: text(/Qwen3-30B/) },

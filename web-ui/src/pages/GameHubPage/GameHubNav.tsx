@@ -10,6 +10,8 @@ type GameHubNavProps = {
   referenceCount: number | null;
   /** Vortex staging folders an agent or the CLI mirrored; null while loading. */
   vortexGroupCount: number | null;
+  /** Cutscene videos the agent registered; null while loading, undefined for a game without video. */
+  videoCount: number | null | undefined;
 };
 
 /** Translate / Discover / Quality / Reference / Terms — Release lives in the panel above. */
@@ -19,6 +21,7 @@ export const GameHubNav = ({
   modCount,
   referenceCount,
   vortexGroupCount,
+  videoCount,
 }: GameHubNavProps) => {
   const { t } = useTranslation();
 
@@ -76,6 +79,21 @@ export const GameHubNav = ({
               : t('gameHub.vortexMetaEmpty')}
         </span>
       </Link>
+
+      {videoCount !== undefined && (
+        <Link to={`/games/${gameId}/video`} className={s.navCard}>
+          <span className={s.navKicker}>{t('gameHub.workflowRelease')}</span>
+          <h2 className={s.navTitle}>{t('gameHub.videoLink')}</h2>
+          <p className={s.navDesc}>{t('gameHub.videoDesc')}</p>
+          <span className={s.navMeta}>
+            {videoCount === null
+              ? t('common.loading')
+              : videoCount > 0
+                ? t('gameHub.videoMeta', { count: videoCount })
+                : t('gameHub.videoMetaEmpty')}
+          </span>
+        </Link>
+      )}
 
       <Link to="/glossary" className={s.navCard}>
         <span className={s.navKicker}>{t('gameHub.workflowTerms')}</span>

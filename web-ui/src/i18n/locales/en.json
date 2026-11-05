@@ -1513,7 +1513,44 @@
     "vortexLink": "Vortex",
     "vortexDesc": "A Vortex staging folder mirrored by the resident agent: TM runs on its own, the rest is a button here.",
     "vortexMeta": "{{count}} staging folder(s)",
-    "vortexMetaEmpty": "No agent has reported yet"
+    "vortexMetaEmpty": "No agent has reported yet",
+    "videoLink": "Cutscene videos",
+    "videoDesc": "The game's pre-rendered videos: narration separated, translated and dubbed, then written back by the agent.",
+    "videoMeta": "{{count}} video(s) registered",
+    "videoMetaEmpty": "The agent has not scanned the videos yet"
+  },
+  "video": {
+    "title": "Cutscene videos",
+    "description": "The resident agent registers the videos in the game folder and uploads their narration track. Separation, translation and the dub run here; the agent writes the finished track back into the video.",
+    "backToHub": "← Game hub",
+    "empty": {
+      "title": "No videos registered yet",
+      "body": "Turn the video scan on in the agent's config and run a tick; the agent needs ffmpeg and ffprobe on its PATH or named in the config.",
+      "config": "\"videos\": true,\n\"ffmpegPath\": \"ffmpeg\",\n\"ffprobePath\": \"ffprobe\""
+    },
+    "columns": {
+      "file": "Video",
+      "duration": "Length",
+      "tracks": "Audio tracks",
+      "status": "Status",
+      "audio": "Listen"
+    },
+    "tracks": "{{count}} track(s), source {{source}}",
+    "status": {
+      "registered": "waiting for audio",
+      "uploaded": "audio uploaded",
+      "separating": "separating…",
+      "separated": "transcribed",
+      "dubbing": "dubbing…",
+      "dubbed": "dubbed",
+      "packed": "written into the video",
+      "error": "error"
+    },
+    "audio": {
+      "source": "Source narration",
+      "dub": "Dubbed track",
+      "none": "no audio yet"
+    }
   },
   "vortex": {
     "title": "Vortex",

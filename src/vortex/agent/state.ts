@@ -30,6 +30,8 @@ export type AgentState = {
    * runs the stages even when nothing is left to upload.
    */
   resyncNeeded: boolean;
+  /** When the cutscene videos were last scanned and uploaded; null before the first time. */
+  lastVideoScanAt: string | null;
 };
 
 export const emptyAgentState = (): AgentState => ({
@@ -45,6 +47,7 @@ export const emptyAgentState = (): AgentState => ({
   failures: 0,
   retryAfter: null,
   resyncNeeded: false,
+  lastVideoScanAt: null,
 });
 
 export const readAgentState = (file: string): AgentState => {

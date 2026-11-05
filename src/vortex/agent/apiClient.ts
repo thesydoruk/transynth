@@ -10,6 +10,7 @@ import { pipeline } from 'node:stream/promises';
 import { Agent, fetch as undiciFetch } from 'undici';
 import type { VortexFanOutStage } from '../stages';
 import type { VortexAgentHeartbeat, VortexExportOrder, VortexLatestLangpack } from '../types';
+import type { VideoAssetView } from './videoSync';
 
 export type VortexRunView = {
   id: number;
@@ -76,26 +77,37 @@ export const createAgentApi = (opts: { api: string; token?: string }) => {
       body: JSON.stringify(body),
     });
 
-  const putUnitZip = async (runId: number, unitId: string, zipPath: string): Promise<void> => {
-    const blob = await openAsBlob(zipPath, { type: 'application/zip' });
+  /** Multipart PUT of one file from disk, streamed, without a body timeout. */
+  const putFile = async (
+    suffix: string,
+    filePath: string,
+    mime: string,
+    label: string,
+  ): Promise<void> => {
+    const blob = await openAsBlob(filePath, { type: mime });
     const form = new FormData();
-    form.append('file', blob, path.basename(zipPath));
-    const res = await undiciFetch(
-      url(`/api/vortex/sync/${runId}/packs/${encodeURIComponent(unitId)}`),
-      {
-        method: 'PUT',
-        headers: headers(),
-        body: form,
-        dispatcher: uploadAgent,
-      },
-    ).catch((err: unknown) => {
+    form.append('file', blob, path.basename(filePath));
+    const res = await undiciFetch(url(suffix), {
+      method: 'PUT',
+      headers: headers(),
+      body: form,
+      dispatcher: uploadAgent,
+    }).catch((err: unknown) => {
       // `fetch failed` alone says nothing; the cause (ECONNRESET, EPIPE…) does.
       const cause = err instanceof Error && err.cause instanceof Error ? err.cause.message : '';
       const message = err instanceof Error ? err.message : String(err);
-      throw new Error(`Upload ${unitId} failed: ${message}${cause ? ` (${cause})` : ''}`);
+      throw new Error(`Upload ${label} failed: ${message}${cause ? ` (${cause})` : ''}`);
     });
-    if (!res.ok) throw new Error(`Upload ${unitId} failed: ${await res.text()}`);
+    if (!res.ok) throw new Error(`Upload ${label} failed: ${await res.text()}`);
   };
+
+  const putUnitZip = (runId: number, unitId: string, zipPath: string): Promise<void> =>
+    putFile(
+      `/api/vortex/sync/${runId}/packs/${encodeURIComponent(unitId)}`,
+      zipPath,
+      'application/zip',
+      unitId,
+    );
 
   /** Poll a run until it completes; throws on failure or cancellation. */
   const waitRun = async (
@@ -149,5 +161,16 @@ export const createAgentApi = (opts: { api: string; token?: string }) => {
       ),
     downloadLangpack: (runId: number, destPath: string) =>
       downloadFile(`/api/vortex/sync/${runId}/langpack`, destPath),
+    listVideos: (game: string) =>
+      json<{ assets: VideoAssetView[] }>(`/api/video/${encodeURIComponent(game)}`),
+    registerVideo: (game: string, body: Record<string, unknown>) =>
+      post<{ asset: { id: number } }>(`/api/video/${encodeURIComponent(game)}/assets`, body),
+    putVideoAudio: (game: string, id: number, wavPath: string) =>
+      putFile(
+        `/api/video/${encodeURIComponent(game)}/${id}/audio`,
+        wavPath,
+        'audio/wav',
+        `video #${id}`,
+      ),
   };
 };

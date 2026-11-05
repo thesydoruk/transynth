@@ -101,6 +101,9 @@ export const fallout4: CreationEngineTitle = {
     vortexId: 'fallout4',
     exeName: 'Fallout4.exe',
   },
+  // Intro, the four endings and the seven S.P.E.C.I.A.L. films are Bink 2 with
+  // the narration mixed in; the main-menu loop and the logo carry no speech.
+  media: { videoDir: 'Data/Video', videoExtensions: ['.bk2'] },
   prompts: {
     label: 'Fallout 4',
     translateUk: (family) => fo4UkTranslatePrompt(family ?? 'item'),

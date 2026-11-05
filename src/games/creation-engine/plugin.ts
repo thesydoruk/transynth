@@ -34,5 +34,6 @@ export const createCreationEnginePlugin = (title: CreationEngineTitle): GamePlug
     dialog: creationEngineDialogAdapter,
     voice: creationEngineVoiceAdapter,
     deployment: title.deployment,
+    ...(title.media ? { media: title.media } : {}),
   };
 };

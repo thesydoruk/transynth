@@ -1,6 +1,7 @@
 import type { GameId } from '../../types';
 import type { GameCatalogueEntry } from '../contract';
 import type { GameDeploymentAdapter } from '../contract';
+import type { GameMediaAdapter } from '../contract';
 import type { GamePromptAdapter } from '../contract';
 import type { TranslatableSubrecords } from '../../formats/subrecords';
 import type { CompiledRecorddefs } from '../../formats/strings/recorddefs';
@@ -71,6 +72,9 @@ export type CreationEngineTitle = {
 
   /** Vortex deployment data. Every Creation Engine title has one. */
   deployment: GameDeploymentAdapter;
+
+  /** Cutscene videos (Bink); only titles whose videos are dubbed set it. */
+  media?: GameMediaAdapter;
 
   /** Prompts, rules, and glossary. */
   prompts: GamePromptAdapter;
