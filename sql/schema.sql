@@ -1021,6 +1021,25 @@ CREATE TABLE IF NOT EXISTS vortex_sync_runs (
 CREATE INDEX IF NOT EXISTS idx_vortex_sync_runs_group
   ON vortex_sync_runs(vortex_group_id, created_at DESC);
 
+-- The resident Vortex agent: the group's current load order, which stage a run
+-- was started for and by whom, and one heartbeat row per (group, machine).
+ALTER TABLE vortex_groups ADD COLUMN IF NOT EXISTS export_order_json JSONB;
+ALTER TABLE vortex_sync_runs ADD COLUMN IF NOT EXISTS stage TEXT;
+ALTER TABLE vortex_sync_runs ADD COLUMN IF NOT EXISTS started_by TEXT;
+
+CREATE TABLE IF NOT EXISTS vortex_agents (
+  id SERIAL PRIMARY KEY,
+  vortex_group_id INTEGER NOT NULL REFERENCES vortex_groups(id) ON DELETE CASCADE,
+  agent_key TEXT NOT NULL,
+  agent_version TEXT,
+  state TEXT NOT NULL DEFAULT 'idle',
+  state_json JSONB,
+  last_error TEXT,
+  last_sync_at TIMESTAMPTZ,
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (vortex_group_id, agent_key)
+);
+
 ALTER TABLE mods ADD COLUMN IF NOT EXISTS origin TEXT NOT NULL DEFAULT 'manual';
 ALTER TABLE mods ADD COLUMN IF NOT EXISTS vortex_group_id INTEGER REFERENCES vortex_groups(id) ON DELETE SET NULL;
 ALTER TABLE mods ADD COLUMN IF NOT EXISTS channel TEXT;

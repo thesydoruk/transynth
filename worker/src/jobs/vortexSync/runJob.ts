@@ -18,6 +18,7 @@ import {
   upsertCurrentGameRelease,
   type VortexSyncRunRow,
 } from '../../../../src/vortex/db';
+import { getGroupExportOrder } from '../../../../src/vortex/dbAgents';
 import {
   filterVortexLangpackMods,
   isVortexExportOrder,
@@ -196,7 +197,10 @@ export const runVortexSyncJob = async (
           run.channel as 'all' | 'mods' | 'game',
         );
         if (currentIds.length === 0) throw new Error('No mods in Vortex group to export');
-        const exportOrder = planExportOrder(run);
+        // A run started without an order (an agent-planned import, a UI button)
+        // exports with the load order the agent last reported for the group.
+        const exportOrder =
+          planExportOrder(run) ?? (await getGroupExportOrder(db, run.vortex_group_id));
         const units = planUnits(run);
         const rows = await listVortexExportModRows(db, currentIds);
         const refs = rows.map((row) => ({
