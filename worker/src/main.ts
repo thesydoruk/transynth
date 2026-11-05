@@ -32,13 +32,19 @@ import { closeSharedRedis, createRedisConnection } from './core/connection';
 import { subscribeJobControl } from './core/controlChannel';
 import { installVoiceLivePublisher } from './core/voiceLiveChannel';
 import { listActiveJobs } from './core/queue';
-import { queueConcurrency, servedQueueIds, QUEUE_NAME_BY_ID } from './core/jobKinds';
+import {
+  queueConcurrency,
+  queueIdForKind,
+  servedQueueIds,
+  QUEUE_NAME_BY_ID,
+} from './core/jobKinds';
 import { migrateJobsToDedicatedQueues } from './core/migrateJobQueues';
 import { recoverOrphanedLlmJobs, requeueStalledLlmJob } from './core/recoverLlmJobs';
 import {
   recoverOrphanedVoiceGenerateJobs,
   requeueStalledVoiceGenerate,
 } from './core/recoverVoiceJobs';
+import { failVortexRunForJob, recoverInterruptedVortexRuns } from './core/recoverVortexRuns';
 import type { JobData } from './types';
 import { cancelAllActiveRuns, controlActiveRun, processJob } from './processor';
 
@@ -76,6 +82,9 @@ if (servedIds.includes('tts')) {
 if (servedIds.includes('llm')) {
   await recoverOrphanedLlmJobs({ getActiveJobs: activeOnServedQueues });
 }
+if (servedIds.includes(queueIdForKind('vortex-sync'))) {
+  await recoverInterruptedVortexRuns(db);
+}
 
 const startQueueWorker = (
   queueName: string,
@@ -102,6 +111,7 @@ const startQueueWorker = (
     if (job) {
       void requeueStalledVoiceGenerate(job, err);
       void requeueStalledLlmJob(job, err);
+      void failVortexRunForJob(db, job, err);
     }
   });
   return worker;

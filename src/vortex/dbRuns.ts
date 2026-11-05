@@ -26,6 +26,15 @@ export const listVortexSyncRuns = async (
   return rows;
 };
 
+/** Every queued or running run of every group: what a worker reconciles on start. */
+export const listUnfinishedVortexRuns = async (db: Tx): Promise<VortexSyncRunHistoryRow[]> => {
+  const { rows } = await db.query<VortexSyncRunHistoryRow>(
+    `SELECT ${RUN_COLUMNS} FROM vortex_sync_runs
+     WHERE status IN ('queued', 'running') ORDER BY id`,
+  );
+  return rows;
+};
+
 /** The run still planning, queued or running for this group, if any. */
 export const findActiveVortexRun = async (
   db: Tx,
