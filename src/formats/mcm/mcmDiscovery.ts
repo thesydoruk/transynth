@@ -142,8 +142,16 @@ const NON_PACKAGE_DIR_NAMES = new Set([
   '.transynth-extracted',
 ]);
 
-const isExtractRootDir = (dir: string): boolean =>
-  path.basename(dir).toLowerCase().startsWith('_extracted_');
+/**
+ * The folder an archive was unpacked into: `_extracted_<hash>` for uploads and
+ * Nexus downloads, `v<group>_<sha1>` for Vortex units. The search never climbs
+ * past it, so a mod without an Interface folder of its own cannot borrow a
+ * sibling's — every Vortex unit of a group shares one parent folder.
+ */
+const isExtractRootDir = (dir: string): boolean => {
+  const base = path.basename(dir).toLowerCase();
+  return base.startsWith('_extracted_') || /^v\d+_[0-9a-f]{40}$/.test(base);
+};
 
 /** Prefer a sibling/content folder that actually holds MCM or Interface assets. */
 const findPackageRootNearby = (startDir: string): string | null => {

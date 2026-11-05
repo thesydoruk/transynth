@@ -80,6 +80,23 @@ describe('MCM-only translation patches', () => {
 
     fs.rmSync(extract, { recursive: true, force: true });
   });
+
+  it('never leaves a Vortex unit folder for a sibling unit that has an Interface folder', () => {
+    // Every unit of a Vortex group is unpacked into v<group>_<sha1> under one
+    // parent; a Creation Club plugin with no Interface of its own must not pick
+    // up the base game's (or a stray VR patch's) Translate_en.txt next door.
+    const group = fs.mkdtempSync(path.join(os.tmpdir(), 'vortex-group-'));
+    const ccUnit = path.join(group, `v1_${'a'.repeat(40)}`);
+    const neighbour = path.join(group, `v1_${'0'.repeat(40)}`);
+    fs.mkdirSync(path.join(neighbour, 'Interface'), { recursive: true });
+    fs.mkdirSync(ccUnit, { recursive: true });
+    const esl = path.join(ccUnit, 'ccBGSFO4096-AS_Enclave.esl');
+    fs.writeFileSync(esl, Buffer.from('TES4'));
+
+    expect(resolveModDirectoryFromPath(esl)).toBe(ccUnit);
+
+    fs.rmSync(group, { recursive: true, force: true });
+  });
 });
 
 describe('resolveMcmLocaleKey', () => {
