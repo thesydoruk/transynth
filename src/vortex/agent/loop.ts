@@ -163,8 +163,21 @@ export class VortexAgentLoop {
     return true;
   }
 
+  private async heartbeatQuietly(): Promise<void> {
+    try {
+      await this.heartbeat();
+    } catch (err) {
+      log.warn(
+        `vortex-agent: heartbeat failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
   async tick(): Promise<void> {
     const now = Date.now();
+    // Report, and deliver a finished langpack, before any sync: a sync may hold
+    // this tick for the length of a TM run, and the langpack is ready now.
+    await this.heartbeatQuietly();
     try {
       if (this.state.retryAfter && now < Date.parse(this.state.retryAfter)) {
         // still backing off after a failure of the same change
@@ -201,13 +214,7 @@ export class VortexAgentLoop {
       this.journal({ event: 'error', message, retryAfter: this.state.retryAfter });
       log.warn(`vortex-agent: ${message} (retry after ${this.state.retryAfter})`);
     }
-    try {
-      await this.heartbeat();
-    } catch (err) {
-      log.warn(
-        `vortex-agent: heartbeat failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
+    await this.heartbeatQuietly();
   }
 
   async run(): Promise<void> {
