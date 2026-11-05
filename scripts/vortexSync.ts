@@ -4,27 +4,23 @@
  *
  *   npm run vortex:sync -- --staging "D:\\Vortex Mods\\fallout4" --game-dir "D:\\Games\\Fallout4"
  *
- * EXPERIMENTAL, very early. It reads a real staging folder and a real game
- * install, and `--install-staging` writes a mod back into staging, so every run
- * says so out loud — see `EXPERIMENTAL_NOTICE` below.
+ * EXPERIMENTAL. It reads a real staging folder and a real game install; the
+ * resident agent (`npm run vortex:agent`) is the supported way to keep a
+ * staging folder in sync, this CLI is for one-off stage runs.
  */
 // Registers the game plugins; the registry lookups below depend on it.
 import '../src/games';
 import '../src/loadEnv';
 import fs from 'node:fs';
-import { openAsBlob } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { Readable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
-import { Agent, fetch as undiciFetch } from 'undici';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { CONFIG } from '../src/config';
 import { DEFAULT_GAME_ID, allGamePlugins } from '../src/games/registry';
 import { log } from '../src/logger';
-import { extractArchive } from '../src/tools/archiveUtils';
 import type { GameId } from '../src/types';
+import { createAgentApi } from '../src/vortex/agent/apiClient';
 import {
   buildVortexInventory,
   discoverVortexExportOrder,
@@ -39,6 +35,7 @@ import {
   resolveStageRange,
   splitVortexPipeline,
   type ServerVortexStage,
+  type VortexFanOutStage,
 } from '../src/vortex/stages';
 
 /**
@@ -70,7 +67,6 @@ const argv = await yargs(hideBin(process.argv))
   .option('channel', { type: 'string', default: 'all', choices: ['all', 'mods', 'game'] })
   .option('dry-run', { type: 'boolean', default: false })
   .option('out', { type: 'string', describe: 'Write langpack ZIP here' })
-  .option('install-staging', { type: 'boolean', default: false })
   .option('apply-order', {
     type: 'boolean',
     default: true,
@@ -84,47 +80,9 @@ const argv = await yargs(hideBin(process.argv))
   .help()
   .parse();
 
-const headers = (): Record<string, string> => {
-  const token = argv.token || CONFIG.cliToken;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
-
-const apiUrl = (suffix: string): string => `${String(argv.api).replace(/\/+$/, '')}${suffix}`;
-
-const apiJson = async <T>(suffix: string, init?: RequestInit): Promise<T> => {
-  const res = await fetch(apiUrl(suffix), {
-    ...init,
-    headers: {
-      Accept: 'application/json',
-      ...headers(),
-      ...(init?.headers ?? {}),
-    },
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`${res.status} ${suffix}: ${text}`);
-  return text ? (JSON.parse(text) as T) : ({} as T);
-};
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/** File-backed multipart — do not read the zip into RAM (official Voices/Main are multi-GB). */
-const uploadAgent = new Agent({ headersTimeout: 60 * 60 * 1000, bodyTimeout: 0 });
-
-const putUnitZip = async (runId: number, unitId: string, zipPath: string): Promise<void> => {
-  const blob = await openAsBlob(zipPath, { type: 'application/zip' });
-  const form = new FormData();
-  form.append('file', blob, path.basename(zipPath));
-  const res = await undiciFetch(
-    apiUrl(`/api/vortex/sync/${runId}/packs/${encodeURIComponent(unitId)}`),
-    {
-      method: 'PUT',
-      headers: headers(),
-      body: form,
-      dispatcher: uploadAgent,
-    },
-  );
-  if (!res.ok) throw new Error(`Upload ${unitId} failed: ${await res.text()}`);
-};
+const api = createAgentApi({ api: String(argv.api), token: argv.token || CONFIG.cliToken });
+const apiJson = api.json;
+const putUnitZip = api.putUnitZip;
 
 const isDeployableGame = (value: string): value is GameId =>
   (GAME_CHOICES as readonly string[]).includes(value);
@@ -141,8 +99,8 @@ const game = isDeployableGame(argv.game) ? argv.game : DEFAULT_GAME_ID;
  */
 const EXPERIMENTAL_NOTICE =
   'Vortex sync is EXPERIMENTAL and at a very early stage. It reads your staging ' +
-  'folder and game install, and --install-staging writes into staging. Back up ' +
-  'the staging folder first, and try --dry-run before a real run.';
+  'folder and game install. Try --dry-run before a real run; the resident agent ' +
+  '(npm run vortex:agent) is the supported way to keep a staging folder in sync.';
 
 log.warn(EXPERIMENTAL_NOTICE);
 log.info(`Vortex sync stages=${stages.join('→')} channel=${channel} game=${game}`);
@@ -163,17 +121,8 @@ type PlanResponse = {
   }>;
 };
 type GroupRef = { id: number; label: string };
-type TmJobStatus = {
-  jobId: number;
-  status: string;
-  done: number;
-  total: number;
-  applied: number;
-  skipped: number;
-  error: string | null;
-};
 
-const { beforeTm, wantsTm, afterTm } = splitVortexPipeline(stages);
+const { beforeTm, fanOut, wantsExport } = splitVortexPipeline(stages);
 
 let inventory: Awaited<ReturnType<typeof buildVortexInventory>> | null = null;
 let plan: PlanResponse | null = null;
@@ -292,22 +241,11 @@ const ensureRunId = async (): Promise<number> => {
 };
 
 const waitVortexRun = async (runId: number): Promise<void> => {
-  for (;;) {
-    const run = await apiJson<{
-      status: string;
-      current_stage: string | null;
-      last_completed_stage: string | null;
-      error: string | null;
-    }>(`/api/vortex/sync/${runId}`);
+  await api.waitRun(runId, (run) =>
     log.info(
       `  status=${run.status} stage=${run.current_stage ?? run.last_completed_stage ?? '?'}`,
-    );
-    if (run.status === 'completed') return;
-    if (run.status === 'failed' || run.status === 'cancelled') {
-      throw new Error(run.error || run.status);
-    }
-    await sleep(3000);
-  }
+    ),
+  );
 };
 
 const startWorkerStages = async (
@@ -340,43 +278,19 @@ const startWorkerStages = async (
   await waitVortexRun(runId);
 };
 
-const waitTmApply = async (modName: string, jobId: number): Promise<TmJobStatus> => {
-  for (;;) {
-    const job = await apiJson<TmJobStatus>(`/api/tm-apply/${jobId}`);
-    log.info(
-      `  TM ${modName} job #${jobId} status=${job.status} ${job.done}/${job.total} applied=${job.applied}`,
-    );
-    if (job.status === 'completed') return job;
-    if (job.status === 'failed' || job.status === 'cancelled') {
-      throw new Error(job.error || `TM ${modName} ${job.status}`);
-    }
-    await sleep(3000);
-  }
-};
-
-const runTmApplyForGroup = async (): Promise<void> => {
+/** A fan-out stage: one run per stage, the server enqueues the per-mod jobs. */
+const runFanOutStage = async (stage: VortexFanOutStage): Promise<void> => {
   if (!group) throw new Error('No Vortex group');
-  const listed = await apiJson<{ mods: Array<{ id: number; name: string }> }>(
-    `/api/vortex/groups/${group.id}/mods?channel=${encodeURIComponent(channel)}`,
+  const started = await apiJson<{ runId: number; jobId: number }>(
+    `/api/vortex/groups/${group.id}/stage/${stage}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel, startedBy: 'agent' }),
+    },
   );
-  if (listed.mods.length === 0) throw new Error('No mods in Vortex group for TM');
-  log.info(`TM apply: ${listed.mods.length} mod(s) as tm-apply jobs (same as editor)`);
-  for (const mod of listed.mods) {
-    const started = await apiJson<{ jobId: number; modId: number; name: string }>(
-      `/api/mods/${mod.id}/tm-apply`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          srcLang: argv['src-lang'],
-          targetLang: argv['tgt-lang'],
-        }),
-      },
-    );
-    log.info(`Started tm-apply job #${started.jobId} ${mod.name} (#${mod.id})`);
-    const done = await waitTmApply(mod.name, started.jobId);
-    log.info(`  TM ${mod.name} done applied=${done.applied} skipped=${done.skipped}`);
-  }
+  log.info(`Started ${stage} run #${started.runId} (job #${started.jobId})`);
+  await waitVortexRun(started.runId);
 };
 
 const exportStartBody = async (): Promise<Record<string, unknown>> => {
@@ -410,35 +324,15 @@ const exportStartBody = async (): Promise<Record<string, unknown>> => {
 
 const exportOrderBody = await exportStartBody();
 await startWorkerStages(beforeTm, exportOrderBody);
-if (wantsTm) await runTmApplyForGroup();
-await startWorkerStages(afterTm, exportOrderBody);
+for (const stage of fanOut) await runFanOutStage(stage);
+if (wantsExport) await startWorkerStages(['export'], exportOrderBody);
 
-const wantsLangpack = stages.includes('export') || stages.includes('install') || Boolean(argv.out);
-if (wantsLangpack && (argv.out || argv['install-staging'] || stages.includes('install'))) {
+// The langpack is never unpacked into staging behind Vortex's back any more; the
+// agent drops it into Vortex's downloads folder, and `--out` saves a copy here.
+if (argv.out) {
   const runId = await ensureRunId();
-  const res = await fetch(apiUrl(`/api/vortex/sync/${runId}/langpack`), {
-    headers: headers(),
-  });
-  if (!res.ok) throw new Error(`Langpack download failed: ${await res.text()}`);
-  if (!res.body) throw new Error('Langpack download failed: empty body');
-  const dest =
-    argv.out ||
-    path.join(inventory?.stagingPath ?? argv.staging, `fo4_${argv['tgt-lang']}_langpack.zip`);
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  await pipeline(Readable.fromWeb(res.body as never), fs.createWriteStream(dest));
-  const destBytes = fs.statSync(dest).size;
-  log.info(`Langpack saved: ${dest} (${(destBytes / 1024 / 1024).toFixed(1)} MiB)`);
-
-  if (argv['install-staging'] || stages.includes('install')) {
-    const folder = path.join(
-      inventory?.stagingPath ?? argv.staging,
-      `Transynth ${String(argv['tgt-lang']).toUpperCase()} Langpack`,
-    );
-    fs.rmSync(folder, { recursive: true, force: true });
-    fs.mkdirSync(folder, { recursive: true });
-    await extractArchive(dest, folder);
-    log.info(`Installed into staging: ${folder}`);
-  }
+  const destBytes = await api.downloadLangpack(runId, argv.out);
+  log.info(`Langpack saved: ${argv.out} (${(destBytes / 1024 / 1024).toFixed(1)} MiB)`);
 }
 
 log.info('Vortex sync finished.');

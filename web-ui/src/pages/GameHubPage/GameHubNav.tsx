@@ -8,6 +8,8 @@ type GameHubNavProps = {
   modCount: number;
   /** Rows in this game's reference base; null while loading. */
   referenceCount: number | null;
+  /** Vortex staging folders an agent or the CLI mirrored; null while loading. */
+  vortexGroupCount: number | null;
 };
 
 /** Translate / Discover / Quality / Reference / Terms — Release lives in the panel above. */
@@ -16,6 +18,7 @@ export const GameHubNav = ({
   isModsLoading,
   modCount,
   referenceCount,
+  vortexGroupCount,
 }: GameHubNavProps) => {
   const { t } = useTranslation();
 
@@ -58,6 +61,19 @@ export const GameHubNav = ({
             : referenceCount > 0
               ? t('gameHub.referenceMeta', { count: referenceCount })
               : t('gameHub.referenceMetaEmpty')}
+        </span>
+      </Link>
+
+      <Link to={`/games/${gameId}/vortex`} className={s.navCard}>
+        <span className={s.navKicker}>{t('gameHub.workflowRelease')}</span>
+        <h2 className={s.navTitle}>{t('gameHub.vortexLink')}</h2>
+        <p className={s.navDesc}>{t('gameHub.vortexDesc')}</p>
+        <span className={s.navMeta}>
+          {vortexGroupCount === null
+            ? t('common.loading')
+            : vortexGroupCount > 0
+              ? t('gameHub.vortexMeta', { count: vortexGroupCount })
+              : t('gameHub.vortexMetaEmpty')}
         </span>
       </Link>
 

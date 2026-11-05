@@ -1,128 +1,157 @@
-# 16 — Vortex Sync
+# 16 — Vortex: the agent and manual sync
 
 > [!WARNING]
-> **Experimental, and at a very early stage.** This command reads a real Vortex
-> staging folder and a real game installation, and `--install-staging` writes a
-> mod back into staging. Expect rough edges and breaking changes between
-> versions. Back up the staging folder before the first run, start with
-> `--dry-run`, and treat the result as something to check rather than trust.
+> **Experimental.** The agent reads a real Vortex staging folder and a real game
+> installation and writes only into Vortex's downloads folder. Start with
+> `--dry-run` and check the result before relying on it.
 
-Import an unpacked Vortex staging folder and the official game files into a
-**separate group** on the server. The group never overwrites mods uploaded
-through the web UI or pulled from Nexus.
+A Vortex staging folder (unpacked folders after FOMOD) and the official game files land in
+a **separate group** on the server. The group never overwrites mods uploaded through the
+web UI or pulled from Nexus. A **resident agent** on the Vortex machine mirrors it;
+translation and voice start from the Vortex page in the web UI, when their hosts are up.
 
 ---
 
 ## Table of Contents
 
-- [The command](#the-command)
-- [Stages](#stages)
+- [The agent](#the-agent)
+- [The Vortex page](#the-vortex-page)
+- [Manual runs (CLI)](#manual-runs-cli)
 - [The group on the server](#the-group-on-the-server)
 - [Game releases](#game-releases)
 - [Token](#token)
 
 ---
 
-## The command
+## The agent
 
-Run it on the Windows machine that can see both the staging folder and the game:
+### Install
+
+On the Windows machine that sees both the staging folder and the game, in a clone of
+the repository:
 
 ```text
-npm run vortex:sync -- ^
-  --staging "D:\Vortex Mods\fallout4" ^
-  --game-dir "D:\Games\Fallout4" ^
-  --api http://127.0.0.1:3200 ^
-  --game fo4 --tgt-lang uk
+npm run vortex:agent -- --init
 ```
 
-The source is the **unpacked folders** left after FOMOD, not the `.zip` / `.7z`
-files in staging. The zip on the wire is only transport for that tree.
+writes `%APPDATA%\Transynth\vortex-agent.json`. Fill in `gameDir` (the game's install
+folder), `api` (the server) and `token` (the server's `TRANSYNTH_CLI_TOKEN`; an environment
+variable of the same name wins over the file). `stagingPath` and `downloadsDir` default to
+where Vortex keeps them (`%APPDATA%\Vortex\<game>\mods` and
+`%APPDATA%\Vortex\downloads\<game>`); if you moved them in Vortex's settings, put the new
+paths in.
 
-Game and mod BA2/BSA archives are **not unpacked locally** — the ones that are
-needed travel as they are. Only what is being imported, or needed for
-synthesis, is sent:
+```text
+npm run vortex:agent -- --dry-run     # inventory and load order, no server call
+npm run vortex:agent -- --once        # one tick, a sync if needed, exit
+npm run vortex:agent                  # loop until Ctrl+C
+```
 
-- plugins (`.esp` / `.esm` / `.esl`)
-- string tables, `.pex`, MCM / `Translate_*.txt`
-- GNRL `* - Main.ba2`, `* - Interface.ba2`, `* - Voices*.ba2` (and the same as BSA)
-- loose clips under `Sound/Voice/**/*.fuz|xwm|wav`
+To keep the agent alive, register a scheduled task that starts at logon
+(`schtasks /create /sc onlogon /tn TransynthVortexAgent /tr "cmd /c cd /d <clone> && npm run vortex:agent"`)
+with restart on failure, or call `--once` every few minutes.
 
-Meshes, Sounds, Textures, Animations and the rest of the asset dump are not
-uploaded. A folder with no plugin and no MCM/Interface `.txt` — F4SE itself, for
-example — is skipped, because the importer would not register it.
+### What it does on its own
 
-`--dry-run` prints the inventory without calling the API.
+Every `pollSec` (30 s) the agent looks at the staging folder listing and the load-order
+files (`vortex.deployment.msgpack`, `plugins.txt`, `loadorder.txt`). After a change it
+waits `settleSec` (90 s) of quiet, because Vortex installs a mod step by step and deploys
+afterwards, then:
+
+1. hashes the inventory (plugins, string tables, MCM, the needed BA2s, unpacked clips)
+   through a size+mtime cache, so the game's multi-gigabyte archives are read once;
+2. `plan` on the server, `upload` of new or changed units only;
+3. `import` → `carry` (translations and finished takes carried over from the previous
+   version);
+4. `tm` — the same tm-apply jobs as the TM button in the editor; it reads the reference
+   base, so official ESMs, DLC and known mods get reviewed translations at once;
+5. sends the server the current load order and file winners. When only the order changed,
+   it sends just that, without an upload.
+
+`autoStages` in the config is a ceiling: `import`, `carry` or `tm`. The agent never goes
+further, and a config with any other value does not load.
+
+### What it never does
+
+LLM translate, verify, skip-detect, gender-detect, voice, export. The LLM and TTS hosts are
+not always on, so those stages are buttons on the Vortex page; a button stays disabled
+while `/api/services` sees no healthy host of the kind the stage needs.
+
+### The langpack
+
+When the server has a new finished langpack, the agent downloads it into `downloadsDir`
+as `Transynth_<game>_<lang>_langpack_r<N>.zip` (written as `.part`, then renamed), and
+Vortex lists the archive on its Downloads tab and offers to install it. The agent never
+writes into staging and never deletes anything in the downloads folder. Switch it off with
+`"deliverLangpack": false`.
+
+### State and journal
+
+`%LOCALAPPDATA%\Transynth\vortex-agent\`: `state.json` (signatures, last run, delivered
+langpack), `hash-cache.json`, `journal.log` (JSON lines). A failed sync is retried after
+1, 2, 4 … up to 30 minutes; a new change in staging resets the clock. A heartbeat goes out
+every tick: the Vortex page shows the state, the last sync, what is pending, the last error.
 
 ---
 
-## Stages
+## The Vortex page
 
-`plan` → `upload` → `import` → `carry` → `tm` → `llm` → `export` → `install`
+Game hub → the **Vortex** card (`/games/<game>/vortex`): the agent panel, stage buttons
+(Re-run TM, LLM translate, Verify, Skip-detect, Gender-detect, Voice, Export langpack), the
+current run with per-mod progress and a Stop button, run history, the newest langpack to
+download. Each button creates its own run; while one is in progress the others are
+disabled.
 
-`--stage tm` does not hash the staging folder and does not run `vortex-sync`.
-The CLI starts the same `tm-apply` jobs the TM button in the editor does, and
-waits for every mod in the group.
+A `tm`, `llm`, `verify`, `skip`, `gender` or `voice` stage starts, for each mod of the
+group, the same job the editor would, one mod at a time: LLM and TTS see one job each, and
+the editor's badges and stop buttons work as always. `import`, `carry` and `export` run
+inside one `vortex-sync` job.
 
-| Flag                                 | What it does                                                       |
-| ------------------------------------ | ------------------------------------------------------------------ |
-| `--stage tm`                         | Run one stage                                                      |
-| `--from import --to tm`              | Run a contiguous range                                             |
-| `--channel game`                     | Official masters only — a game patch                               |
-| `--channel mods`                     | Staging only                                                       |
-| `--install-staging`                  | Unpack the langpack into staging as `Transynth UK Langpack`        |
-| `--apply-order`                      | Merge the langpack by Vortex load order and file winners (default) |
-| `--no-apply-order`                   | The older alphabetical merge                                       |
-| `--plugins-txt` / `--vortex-profile` | An explicit `plugins.txt` / `loadorder.txt`, or a profile          |
+---
 
-Export reads `%LOCALAPPDATA%\Fallout4\loadorder.txt` and
-`vortex.deployment.msgpack` from staging. The langpack takes the official game
-channel plus only those staging mods whose folder appears in the deployment —
-that is, the ones actually enabled in Vortex. The ESP flag in `plugins.txt` does
-not count. Plugins enter the ZIP in load order, and a path collision goes to
-whichever mod Vortex recorded as the winner for that path. The `en` / `ru` slots
-and the font patch behave as in an ordinary langpack (Ukrainian is unofficial).
-When synthesis has run, `UASoundPack.esp` and an uncompressed
-`UASoundPack - Main.ba2` are added. `--no-apply-order` keeps the alphabetical
-merge but still drops mods that are not deployed.
+## Manual runs (CLI)
+
+`npm run vortex:sync` stays for one-off work:
+
+```text
+npm run vortex:sync -- --staging "<staging>" --game-dir "<game>" --api http://127.0.0.1:3200 --stage tm
+npm run vortex:sync -- --staging "<staging>" --game-dir "<game>" --channel game
+```
+
+Stages: `plan` → `upload` → `import` → `carry` → `tm` → `llm` → `verify` → `skip` →
+`gender` → `voice` → `export`; `--stage` or `--from`/`--to` cut a range. `--channel game`
+imports only the official masters (a game patch), `--channel mods` only the staging folder.
+`--out` saves the langpack to the given file. `--dry-run` prints the inventory without the
+API. There is no `install` stage any more: the agent delivers the langpack through Vortex's
+downloads folder.
 
 ---
 
 ## The group on the server
 
-The group key is the game plus the staging path, so a repeated sync updates the
-same group.
+Group key: game + staging path. A repeated sync updates the same group. Every mod and every
+game master is its own row; a new version (another content hash) does not overwrite the old
+one, the group has `is_current`. Carry-over and the langpack stay inside the group; TM
+reads the whole base and the reference base, writes only into the group. On the Mods page
+the **Local imports** source does not show Vortex mods; they live only in the
+`Vortex · …` group. The editor is the same.
 
-Every mod and every game master is its own row. A new version — a different
-content hash — does not overwrite the old one; the group carries `is_current`
-the way game releases do. Carry-over, TM and the langpack default to current
-versions only. Earlier ones stay archived: they appear in the mod list behind a
-disclosure, with the version in the name.
-
-Carry-over and the langpack stay inside the group. TM reads the whole database
-but writes only into the group.
-
-In the web UI, the **Local imports** source on the Mods page does not show
-Vortex jobs. They live under the `Vortex · …` group. The editor is the same.
-
----
+The langpack follows the load order and the file winners from the deployment manifest: it
+ships the official game channel and only the staging mods whose folder is in the deployment
+(the mod is enabled in Vortex). With synthesis present, `UASoundPack.esp` and
+`UASoundPack - Main.ba2` are added.
 
 ## Game releases
 
-Official ESMs from `Game\Data` that staging does not contain are collected into
-`vortex_game_releases`. The label is the ProductVersion of `Fallout4.exe`. A new
-patch is a new release; the previous one stays for diffing.
-
-```text
-npm run vortex:sync -- --staging ... --game-dir ... --channel game
-```
-
----
+Official ESMs from `Game\Data` that are not in staging are collected in
+`vortex_game_releases`. The label is the ProductVersion of `Fallout4.exe`. A new patch is a
+new release; the previous one stays.
 
 ## Token
 
-When the server sets `TRANSYNTH_CLI_TOKEN`, the CLI has to pass the same value
-via `--token` or the environment variable. GET endpoints — the group list — stay
-open for the UI.
+When the server sets `TRANSYNTH_CLI_TOKEN`, the agent and the CLI pass it on their writes:
+plan, unit uploads, starting a range, heartbeat, load order. The Vortex page's buttons and
+every read are open, like the rest of the app.
 
 After a schema change: `npm run db:init`.
 

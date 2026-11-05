@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { GameId } from '../types';
 import { sha1Hex } from '../utils/hash';
 import { collectNamedPluginFiles } from './collectSubset';
-import { merkleContentHash } from './hashSubset';
+import { merkleContentHash, type FileHasher } from './hashSubset';
 import { readPeProductVersion } from './exeVersion';
 import { exeNameForGame, isOfficialGamePlugin, officialMasterNames } from './gameProfiles';
 import type { VortexGameReleaseHint, VortexInventoryUnit } from './types';
@@ -25,6 +25,7 @@ export const scanGameUnits = async (
   game: GameId,
   gameDir: string,
   stagingPluginNames: Set<string>,
+  hashFile?: FileHasher,
 ): Promise<{
   units: VortexInventoryUnit[];
   gameRelease: VortexGameReleaseHint;
@@ -59,7 +60,7 @@ export const scanGameUnits = async (
     const files = collectNamedPluginFiles(dataDir, actual);
     if (files.length === 0) continue;
     const pluginStem = path.basename(actual, path.extname(actual));
-    const contentHash = await merkleContentHash(files);
+    const contentHash = await merkleContentHash(files, hashFile);
     units.push({
       unitId: `game:${actual.toLowerCase()}`,
       channel: 'game',

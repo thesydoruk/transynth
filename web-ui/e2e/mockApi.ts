@@ -248,6 +248,15 @@ const glossary = Array.from({ length: 12 }, (_, i) => ({
   created_at: NOW,
 }));
 
+const vortexGroup = {
+  id: 1,
+  game: 'fo4',
+  group_key: 'fo4:c:/vortex/fallout4/mods',
+  label: 'Vortex · fallout4',
+  staging_path: 'C:\\Vortex\\fallout4\\mods',
+  game_dir: 'C:\\Games\\Fallout 4',
+};
+
 const reference = Array.from({ length: 10 }, (_, i) => ({
   id: i + 1,
   game: 'fo4',
@@ -515,7 +524,54 @@ const routes: Array<[RegExp, Answer]> = [
   ],
   [/^\/api\/(csv|eet)$/, []],
   [/^\/api\/exports$/, { archives: [] }],
-  [/^\/api\/vortex\/groups$/, { groups: [] }],
+  [/^\/api\/vortex\/groups$/, { groups: [vortexGroup] }],
+  [
+    /^\/api\/vortex\/groups\/\d+\/state$/,
+    {
+      group: vortexGroup,
+      agent: {
+        id: 1,
+        vortex_group_id: 1,
+        agent_key: 'gaming-pc',
+        agent_version: '0.10.0',
+        state: 'idle',
+        state_json: { pollSec: 30, pending: null, lastRunId: 7, delivered: null },
+        last_error: null,
+        last_sync_at: '2026-11-05T01:00:00Z',
+        last_seen_at: new Date().toISOString(),
+      },
+      currentRun: null,
+      latestLangpack: {
+        archiveId: 14,
+        runId: 7,
+        fileName: 'fo4_uk_langpack.zip',
+        byteSize: 2097152,
+      },
+      services: { llm: true, embed: true, tts: false },
+      probedAt: new Date().toISOString(),
+    },
+  ],
+  [
+    /^\/api\/vortex\/groups\/\d+\/runs/,
+    {
+      runs: [
+        {
+          id: 7,
+          vortex_group_id: 1,
+          status: 'completed',
+          stage: 'tm',
+          started_by: 'agent',
+          current_stage: null,
+          last_completed_stage: 'tm',
+          current_mod_id: null,
+          job_id: 501,
+          export_archive_id: 14,
+          error: null,
+          created_at: '2026-11-05T01:00:00Z',
+        },
+      ],
+    },
+  ],
   [/^\/api\/glossary$/, glossary],
   [/^\/api\/reference\/count$/, { count: reference.length }],
   [/^\/api\/reference$/, { rows: reference, total: reference.length }],

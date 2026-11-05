@@ -20,7 +20,6 @@ describe('vortex API ids', () => {
     ['GET', '/api/vortex/groups/abc/latest-run', 'Invalid group id'],
     ['PUT', '/api/vortex/sync/abc/packs/unit-1', 'Invalid run id'],
     ['POST', '/api/vortex/sync/abc/start', 'Invalid run id'],
-    ['GET', '/api/vortex/sync/abc', 'Invalid run id'],
     ['GET', '/api/vortex/sync/abc/langpack', 'Invalid run id'],
   ] as const)('answers 400 to %s %s', async (method, url, error) => {
     const res = await app().inject({ method, url });
@@ -34,6 +33,6 @@ describe('vortex API ids', () => {
     const get = (url: string) => app().inject({ method: 'GET', url });
 
     expect((await get('/api/vortex/groups/999')).statusCode).toBe(404);
-    expect((await get('/api/vortex/sync/999')).statusCode).toBe(404);
+    expect((await get('/api/vortex/sync/999/langpack')).statusCode).toBe(404);
   });
 });

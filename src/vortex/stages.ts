@@ -1,4 +1,15 @@
-/** Ordered Vortex sync stages. Order is fixed; callers may cut a contiguous range. */
+/**
+ * Ordered Vortex sync stages. The order is fixed; callers cut a contiguous range.
+ *
+ * Two kinds of server stage:
+ * - in-process — `import`, `carry`, `export` run inside one `vortex-sync` job;
+ * - fan-out — `tm`, `llm`, `verify`, `skip`, `gender`, `voice` are the same per-mod
+ *   jobs the editor starts, enqueued one mod at a time by a `vortex-sync` job
+ *   that only orchestrates. They keep their own queue (LLM and TTS run one job
+ *   at a time), their 409 guards, and their stop buttons.
+ */
+import type { ServiceKind } from '../services/kinds';
+
 const VORTEX_STAGES = [
   'plan',
   'upload',
@@ -6,8 +17,11 @@ const VORTEX_STAGES = [
   'carry',
   'tm',
   'llm',
+  'verify',
+  'skip',
+  'gender',
+  'voice',
   'export',
-  'install',
 ] as const;
 
 export type VortexStage = (typeof VORTEX_STAGES)[number];
@@ -15,13 +29,55 @@ export type VortexStage = (typeof VORTEX_STAGES)[number];
 export const VORTEX_CHANNELS = ['all', 'mods', 'game'] as const;
 export type VortexChannel = (typeof VORTEX_CHANNELS)[number];
 
-export const SERVER_VORTEX_STAGES = ['import', 'carry', 'tm', 'llm', 'export'] as const;
+export const SERVER_VORTEX_STAGES = [
+  'import',
+  'carry',
+  'tm',
+  'llm',
+  'verify',
+  'skip',
+  'gender',
+  'voice',
+  'export',
+] as const;
 export type ServerVortexStage = (typeof SERVER_VORTEX_STAGES)[number];
+
+export const FAN_OUT_STAGES = ['tm', 'llm', 'verify', 'skip', 'gender', 'voice'] as const;
+export type VortexFanOutStage = (typeof FAN_OUT_STAGES)[number];
+
+/** The per-mod job kind a fan-out stage enqueues. */
+export const STAGE_JOB_KIND = {
+  tm: 'tm-apply',
+  llm: 'llm-translate',
+  verify: 'llm-verify',
+  skip: 'skip-detect',
+  gender: 'gender-detect',
+  voice: 'voice-generate',
+} as const satisfies Record<VortexFanOutStage, string>;
+
+/** Service kinds a stage needs a healthy host for before it is worth starting. */
+export const STAGE_NEEDS: Record<ServerVortexStage, readonly ServiceKind[]> = {
+  import: [],
+  carry: [],
+  tm: [],
+  llm: ['llm', 'embed'],
+  verify: ['llm', 'embed'],
+  skip: ['llm'],
+  gender: ['llm'],
+  voice: ['tts'],
+  export: [],
+};
 
 const STAGE_INDEX = new Map(VORTEX_STAGES.map((stage, index) => [stage, index]));
 
-const isVortexStage = (value: string): value is VortexStage =>
+export const isVortexStage = (value: string): value is VortexStage =>
   STAGE_INDEX.has(value as VortexStage);
+
+export const isServerVortexStage = (value: string): value is ServerVortexStage =>
+  (SERVER_VORTEX_STAGES as readonly string[]).includes(value);
+
+export const isFanOutStage = (value: string): value is VortexFanOutStage =>
+  (FAN_OUT_STAGES as readonly string[]).includes(value);
 
 export const isVortexChannel = (value: string): value is VortexChannel =>
   (VORTEX_CHANNELS as readonly string[]).includes(value);
@@ -46,42 +102,40 @@ export const resolveStageRange = (from?: string, to?: string, single?: string): 
 };
 
 export const serverStagesIn = (stages: readonly VortexStage[]): ServerVortexStage[] =>
-  stages.filter((stage): stage is ServerVortexStage =>
-    (SERVER_VORTEX_STAGES as readonly string[]).includes(stage),
-  );
+  stages.filter((stage): stage is ServerVortexStage => isServerVortexStage(stage));
 
-/** plan/upload/import need a hashed staging inventory. TM/LLM do not. */
+/** plan/upload/import need a hashed staging inventory. The rest do not. */
 export const needsVortexFileInventory = (stages: readonly VortexStage[]): boolean =>
   stages.some((stage) => stage === 'plan' || stage === 'upload' || stage === 'import');
 
-/**
- * Stages that still run inside the vortex-sync worker.
- * `tm` is the same `tm-apply` job as the editor, started by the CLI/API.
- */
+/** Stages one `vortex-sync` job runs in-process; fan-out stages go one by one. */
 export const vortexWorkerStages = (stages: readonly VortexStage[]): ServerVortexStage[] =>
-  serverStagesIn(stages).filter((stage) => stage !== 'tm');
+  serverStagesIn(stages).filter((stage) => !isFanOutStage(stage));
 
-/** TM is a real `tm-apply` job; vortex-sync only runs the stages on each side. */
+export const vortexFanOutStagesIn = (stages: readonly VortexStage[]): VortexFanOutStage[] =>
+  stages.filter((stage): stage is VortexFanOutStage => isFanOutStage(stage));
+
+/**
+ * The CLI runs a range as: in-process stages before TM (import, carry), then
+ * every fan-out stage in order, then export. Kept for the manual CLI.
+ */
 export const splitVortexPipeline = (
   stages: readonly VortexStage[],
 ): {
   beforeTm: ServerVortexStage[];
-  wantsTm: boolean;
-  afterTm: ServerVortexStage[];
-} => {
-  const tmAt = stages.indexOf('tm');
-  if (tmAt < 0) {
-    return { beforeTm: vortexWorkerStages(stages), wantsTm: false, afterTm: [] };
-  }
-  return {
-    beforeTm: vortexWorkerStages(stages.slice(0, tmAt)),
-    wantsTm: true,
-    afterTm: vortexWorkerStages(stages.slice(tmAt + 1)),
-  };
-};
+  fanOut: VortexFanOutStage[];
+  wantsExport: boolean;
+} => ({
+  beforeTm: vortexWorkerStages(stages).filter((stage) => stage !== 'export'),
+  fanOut: vortexFanOutStagesIn(stages),
+  wantsExport: stages.includes('export'),
+});
 
-/** A single vortex-sync job cannot straddle TM (LLM would run before TM apply). */
-export const vortexRangeCrossesTm = (stages: readonly VortexStage[]): boolean => {
-  const { beforeTm, wantsTm, afterTm } = splitVortexPipeline(stages);
-  return wantsTm && beforeTm.length > 0 && afterTm.length > 0;
+/**
+ * One `vortex-sync` job may not straddle a fan-out stage: `import→carry` and
+ * `export` are the only in-process ranges, and fan-out stages sit between them.
+ */
+export const vortexRangeCrossesFanOut = (stages: readonly VortexStage[]): boolean => {
+  const inProcess = vortexWorkerStages(stages);
+  return inProcess.includes('export') && inProcess.some((stage) => stage !== 'export');
 };
