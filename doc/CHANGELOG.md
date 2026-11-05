@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+Vortex, from a command somebody has to remember to a process that watches:
+
+- **A resident agent on the Vortex machine.** `npm run vortex:agent` watches the staging folder and the load-order files, waits for Vortex to finish installing and deploying, hashes the inventory through a size+mtime cache (the game's multi-gigabyte archives are read once), uploads only what changed, runs import, carry-over and TM — which now reaches the reference base, so official ESMs, DLC and known mods come back reviewed — and sends the server the current load order. A change to the order alone sends just the order. A finished langpack is downloaded as `.part` into Vortex's downloads folder and renamed into place, so Vortex offers it on the Downloads tab; nothing is ever written into staging or deleted from downloads. The agent never starts LLM translate, verify, skip-detect, gender-detect, voice or export: `autoStages` parses to `import`, `carry` or `tm` and nothing higher. `--init` writes the config, `--dry-run` scans without a server call, `--once` is one tick for a scheduled task; state, cache and journal live in `%LOCALAPPDATA%\Transynth\vortex-agent`, failures back off from one minute to thirty.
+- **Stages as buttons, run as the editor's own jobs.** `verify`, `skip`, `gender` and `voice` join the stage list after `llm`; `install` is retired. A fan-out stage enqueues, for one mod at a time, the same per-mod job the editor starts, so LLM and TTS keep seeing one job each and the editor keeps its badges and stop buttons; `POST /api/vortex/groups/:id/stage/:stage` refuses to start while a run is active or when the host a stage needs is down (409 with the service name), `POST /api/vortex/sync/:runId/stop` stops the run and its per-mod jobs, `GET /api/vortex/sync/:runId` carries live per-mod progress.
+- **A Vortex page.** `/games/<game>/vortex`: the agent's heartbeat (machine, last seen, what it waits for, last error, delivered langpack), the stage buttons disabled while a run is active or a host is down, the live run with per-mod jobs and Stop, run history, the newest langpack to download. A card on the game hub leads to it.
+- **Server side.** `vortex_agents` (one heartbeat row per group and machine), `vortex_groups.export_order_json`, `vortex_sync_runs.stage` / `started_by`; `POST /api/vortex/agent/heartbeat`, `POST /api/vortex/groups/:id/export-order`, `GET /api/vortex/groups/:id/state` and `/runs`. The CLI token gates only the agent's and the CLI's writes; the page's buttons are as open as the rest of the app.
+
+See [Vortex](eng/16-vortex-sync.md). Run `npm run db:init` after pulling.
+
 ## 0.10.0 — 2026-11-05
 
 One registry for every service, and a controller that swaps them on one GPU:

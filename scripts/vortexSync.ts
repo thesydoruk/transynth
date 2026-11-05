@@ -4,9 +4,9 @@
  *
  *   npm run vortex:sync -- --staging "D:\\Vortex Mods\\fallout4" --game-dir "D:\\Games\\Fallout4"
  *
- * EXPERIMENTAL, very early. It reads a real staging folder and a real game
- * install, and `--install-staging` writes a mod back into staging, so every run
- * says so out loud — see `EXPERIMENTAL_NOTICE` below.
+ * EXPERIMENTAL. It reads a real staging folder and a real game install; the
+ * resident agent (`npm run vortex:agent`) is the supported way to keep a
+ * staging folder in sync, this CLI is for one-off stage runs.
  */
 // Registers the game plugins; the registry lookups below depend on it.
 import '../src/games';
