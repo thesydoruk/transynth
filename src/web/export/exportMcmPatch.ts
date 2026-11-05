@@ -13,7 +13,7 @@ import {
   mcmFileStemFromPath,
   mcmLocaleFromPath,
   mcmTranslationMatchesMod,
-  parseMcmBuffer,
+  parseMcmEntries,
   resolveMcmModPrefix,
   resolveMcmTranslationPrefixes,
   resolveModDirectoryFromPath,
@@ -116,13 +116,9 @@ export const listMcmSourceTranslationFiles = (modPath: string): McmSourceFile[] 
 
   const out: McmSourceFile[] = [];
   for (const file of byStem.values()) {
-    const map = parseMcmBuffer(fs.readFileSync(file.absPath));
-    if (map.size === 0) continue;
-    out.push({
-      relDir: file.relDir,
-      stem: file.stem,
-      entries: [...map.entries()].map(([key, text]) => ({ key, text })),
-    });
+    const entries = parseMcmEntries(fs.readFileSync(file.absPath));
+    if (entries.length === 0) continue;
+    out.push({ relDir: file.relDir, stem: file.stem, entries });
   }
   return out;
 };
@@ -148,7 +144,8 @@ export const exportMcmTranslationFiles = async (
   for (const source of sourceFiles) {
     let changedCount = 0;
     const exportEntries = source.entries.map(({ key, text }) => {
-      const exportText = overlay.get(key) ?? text;
+      // Records are keyed by the trimmed key; the file keeps the key as it is.
+      const exportText = overlay.get(key.trim()) ?? text;
       if (exportText !== text) changedCount++;
       return { key, text: exportText };
     });

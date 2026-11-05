@@ -50,4 +50,30 @@ describe('exportInterfaceTranslateFile', () => {
     expect(text).toContain('ABORT');
     expect(result![0]!.buffer.equals(result![1]!.buffer)).toBe(true);
   });
+
+  it('keeps a key with a trailing space and translates it through its trimmed record path', async () => {
+    const modPath = path.join(tmpDir, 'Fallout4.esm');
+    fs.writeFileSync(modPath, Buffer.from('plugin'));
+    fs.mkdirSync(path.join(tmpDir, 'Interface'), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpDir, 'Interface', 'Translate_en.txt'),
+      writeInterfaceTranslateBuffer([
+        { key: '$ByWhom: ', text: 'By: ' },
+        { key: '$Purchase Credits', text: 'Purchase Credits' },
+        { key: '$Purchase Credits', text: 'Purchase Credits' },
+      ]),
+    );
+
+    const db = makeOverlayDb([
+      { path: 'Interface\\Translate_en\\$ByWhom:', export_text: 'Автор:' },
+    ]);
+    const result = await exportInterfaceTranslateFile(db, 1, modPath, 'en', 'uk', 'fo4');
+
+    const lines = result![0]!.buffer.subarray(2).toString('utf16le').split('\r\n');
+    expect(lines).toEqual([
+      '$ByWhom: \tАвтор:',
+      '$Purchase Credits\tPurchase Credits',
+      '$Purchase Credits\tPurchase Credits',
+    ]);
+  });
 });

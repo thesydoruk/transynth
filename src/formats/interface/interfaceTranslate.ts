@@ -1,4 +1,4 @@
-import { parseMcmBuffer } from '../mcm/mcmTranslations';
+import { parseMcmBuffer, parseMcmEntries } from '../mcm/mcmTranslations';
 import type { InterfaceTranslateEntry } from './types/InterfaceTranslateEntry';
 const UTF16_LE_BOM = Buffer.from([0xff, 0xfe]);
 
@@ -36,5 +36,6 @@ export const writeInterfaceTranslateBuffer = (entries: InterfaceTranslateEntry[]
   return Buffer.concat([UTF16_LE_BOM, Buffer.from(lines, 'utf16le')]);
 };
 
+/** The file's lines verbatim (keys keep their whitespace), for export. */
 export const readInterfaceTranslateEntries = (buf: Buffer): InterfaceTranslateEntry[] =>
-  [...parseInterfaceTranslateBuffer(buf).entries()].map(([key, text]) => ({ key, text }));
+  parseMcmEntries(buf);
