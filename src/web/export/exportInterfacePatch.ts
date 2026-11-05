@@ -83,7 +83,8 @@ export const exportInterfaceTranslateFile = async (
 
   let changedCount = 0;
   const exportEntries = sourceEntries.map(({ key, text }) => {
-    const exportText = overlay.get(key) ?? text;
+    // Records are keyed by the trimmed key; the file keeps the key as it is.
+    const exportText = overlay.get(key.trim()) ?? text;
     if (exportText !== text) changedCount++;
     return { key, text: exportText };
   });

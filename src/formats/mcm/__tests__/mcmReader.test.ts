@@ -2,7 +2,28 @@
  * Unit tests for MCM translation file parser.
  */
 import { describe, it, expect } from '@jest/globals';
-import { parseMcmBuffer, mcmLocaleFromPath } from '..';
+import { parseMcmBuffer, parseMcmEntries, mcmLocaleFromPath } from '..';
+
+describe('parseMcmEntries', () => {
+  it('keeps keys and texts as the file has them, repeats included', () => {
+    const content =
+      '$ByWhom: \tBy: \r\n$DIRT\t\tDIRT\r\n$Dup\tOne\r\n$Dup\tTwo\r\n\r\n; note\r\n$Empty\t\t';
+    expect(parseMcmEntries(Buffer.from(content, 'utf8'))).toEqual([
+      { key: '$ByWhom: ', text: 'By: ' },
+      { key: '$DIRT', text: '\tDIRT' },
+      { key: '$Dup', text: 'One' },
+      { key: '$Dup', text: 'Two' },
+    ]);
+  });
+
+  it('is what parseMcmBuffer trims into record identities', () => {
+    const map = parseMcmBuffer(Buffer.from('$ByWhom: \tBy: \n$DIRT\t\tDIRT', 'utf8'));
+    expect([...map]).toEqual([
+      ['$ByWhom:', 'By:'],
+      ['$DIRT', '\tDIRT'],
+    ]);
+  });
+});
 
 describe('parseMcmBuffer — UTF-8 plain', () => {
   it('parses a basic key-value pair', () => {

@@ -1,4 +1,10 @@
-export { mcmLocaleFromPath, parseMcmBuffer, writeMcmBuffer } from './mcmTranslations';
+export {
+  mcmLocaleFromPath,
+  parseMcmBuffer,
+  parseMcmEntries,
+  writeMcmBuffer,
+} from './mcmTranslations';
+export type { McmEntry } from './mcmTranslations';
 export { loadMcmLocalesFromConfigJson, loadMcmKeyMetaFromConfigJson } from './mcmConfigJson';
 export type { McmConfigJson } from './mcmConfigJson';
 export {

@@ -6,6 +6,7 @@ import {
   interfaceTranslateKeyFromRecordPath,
   interfaceTranslateLocaleFromPath,
   parseInterfaceTranslateBuffer,
+  readInterfaceTranslateEntries,
   writeInterfaceTranslateBuffer,
 } from '../interfaceTranslate';
 
@@ -18,6 +19,16 @@ describe('interfaceTranslate', () => {
     const map = parseInterfaceTranslateBuffer(buf);
     expect(map.get('$10 Mins')).toBe('10 Mins');
     expect(map.get('$ABORT')).toBe('ABORT');
+  });
+
+  it('round-trips a key with a trailing space, which the game matches byte for byte', () => {
+    const entries = [
+      { key: '$ByWhom: ', text: 'By: ' },
+      { key: '$Sorted by: ', text: 'Sorting by: ' },
+    ];
+    const buf = writeInterfaceTranslateBuffer(entries);
+    expect(readInterfaceTranslateEntries(buf)).toEqual(entries);
+    expect(parseInterfaceTranslateBuffer(buf).get('$ByWhom:')).toBe('By:');
   });
 
   it('detects locale from Translate file names', () => {

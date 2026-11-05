@@ -19,22 +19,24 @@
  *   $SettingDifficulty\tDifficulty
  *
  * This module exposes:
- *   - `parseMcmBuffer(buf)` — parses a raw buffer and returns a Map<key, text>.
+ *   - `parseMcmEntries(buf)` — the lines as they are in the file, keys and texts verbatim.
+ *   - `parseMcmBuffer(buf)` — a Map<key, text> with keys and texts trimmed, the form
+ *     imported records use.
  *   - `mcmLocaleFromPath(filePath)` — extracts the locale suffix from a file path/name.
  */
 
+export type McmEntry = { key: string; text: string };
+
 /**
- * Parse an MCM translation file buffer.
+ * Decode an MCM translation file buffer.
  *
  * Automatically detects encoding via BOM:
  *   - 0xFF 0xFE → UTF-16 LE
  *   - 0xEF 0xBB 0xBF → UTF-8 with BOM
  *   - Otherwise → plain UTF-8
  *
- * @param buf - Raw file contents as a Node.js Buffer
- * @returns   Map of `$key` → translated text string
  */
-export const parseMcmBuffer = (buf: Buffer): Map<string, string> => {
+const decodeMcmBuffer = (buf: Buffer): string => {
   let content: string;
 
   if (buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xfe) {
@@ -56,28 +58,41 @@ export const parseMcmBuffer = (buf: Buffer): Map<string, string> => {
     // Plain UTF-8 (no BOM)
     content = buf.toString('utf8');
   }
+  return content;
+};
 
-  const result = new Map<string, string>();
+/**
+ * The `$key<TAB>text` lines of an MCM or Interface translation file, in file
+ * order and verbatim: the game matches keys byte for byte, so a key such as
+ * `$ByWhom: ` keeps its trailing space, and so does a text the UI concatenates
+ * a value onto. Repeated keys stay repeated.
+ */
+export const parseMcmEntries = (buf: Buffer): McmEntry[] => {
+  const entries: McmEntry[] = [];
+  for (const rawLine of decodeMcmBuffer(buf).split(/\r?\n/)) {
+    // Keys start with $; anything else (blank lines, comments) is not an entry.
+    const line = rawLine.trimStart();
+    if (!line.startsWith('$')) continue;
 
-  for (const rawLine of content.split(/\r?\n/)) {
-    const line = rawLine.trim();
-
-    // Skip empty lines and non-key lines (keys must start with $)
-    if (!line || !line.startsWith('$')) continue;
-
-    // Key and value are separated by the first TAB
+    // Key and text are separated by the first TAB; the text may contain more.
     const tabIdx = line.indexOf('\t');
     if (tabIdx < 0) continue;
-
-    const key = line.slice(0, tabIdx).trim();
-    // Value may contain tabs — only split on the first one
-    const value = line.slice(tabIdx + 1);
-
-    if (key && value) {
-      result.set(key, value);
-    }
+    const key = line.slice(0, tabIdx);
+    const text = line.slice(tabIdx + 1);
+    if (key.trim() && text.trim()) entries.push({ key, text });
   }
+  return entries;
+};
 
+/**
+ * Parse an MCM translation file buffer into a Map of `$key` → text, the key
+ * trimmed and the text without trailing whitespace: this is the identity imported
+ * records are stored under, so a key read from a file matches its record path
+ * through `key.trim()`.
+ */
+export const parseMcmBuffer = (buf: Buffer): Map<string, string> => {
+  const result = new Map<string, string>();
+  for (const { key, text } of parseMcmEntries(buf)) result.set(key.trim(), text.trimEnd());
   return result;
 };
 
