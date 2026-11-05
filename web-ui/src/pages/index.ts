@@ -10,6 +10,7 @@ export { ModEditorPage } from './ModEditorPage';
 export { ModsPage } from './ModsPage';
 export { NotFoundPage } from './NotFoundPage';
 export { ReferencePage } from './ReferencePage';
+export { VortexPage } from './VortexPage';
 
 export { SettingsPage } from './SettingsPage';
 export { SystemLogPage } from './SystemLogPage';

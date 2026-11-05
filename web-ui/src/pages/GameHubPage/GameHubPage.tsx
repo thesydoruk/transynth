@@ -112,6 +112,13 @@ export const GameHubPage = () => {
     enabled: !!gameId,
   });
 
+  /** Vortex staging folders mirrored for this game. */
+  const { data: vortexGroups } = useQuery({
+    queryKey: ['vortex-groups', gameId],
+    queryFn: () => api.vortex.groups(gameId),
+    enabled: !!gameId,
+  });
+
   /** Resolved game metadata from catalogue. */
   const game: GameInfo | undefined = useMemo(
     () => games?.find((g) => g.id === gameId),
@@ -234,6 +241,7 @@ export const GameHubPage = () => {
         isModsLoading={isModsLoading}
         modCount={stats?.modCount ?? 0}
         referenceCount={referenceCount?.count ?? null}
+        vortexGroupCount={vortexGroups ? vortexGroups.groups.length : null}
       />
 
       {/* Recent mods quick list */}

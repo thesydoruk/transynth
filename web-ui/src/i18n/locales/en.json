@@ -1509,7 +1509,81 @@
     "referenceLink": "Reference base",
     "referenceDesc": "Translations kept per game, independent of any mod. Editable here.",
     "referenceMeta": "{{count}} reference translations",
-    "referenceMetaEmpty": "Nothing kept yet — promote a finished mod"
+    "referenceMetaEmpty": "Nothing kept yet — promote a finished mod",
+    "vortexLink": "Vortex",
+    "vortexDesc": "A Vortex staging folder mirrored by the resident agent: TM runs on its own, the rest is a button here.",
+    "vortexMeta": "{{count}} staging folder(s)",
+    "vortexMetaEmpty": "No agent has reported yet"
+  },
+  "vortex": {
+    "title": "Vortex",
+    "description": "The resident agent on the Vortex machine mirrors the staging folder, runs import, carry-over and TM on its own, and drops finished langpacks into Vortex's downloads folder. LLM, verify, voice and export start from here, when their hosts are up.",
+    "backToHub": "← Game hub",
+    "group": "Staging folder",
+    "empty": {
+      "title": "No Vortex agent yet",
+      "body": "Install the agent on the machine with Vortex and the game; the group appears after its first heartbeat.",
+      "command": "npm run vortex:agent -- --init\nnpm run vortex:agent -- --dry-run\nnpm run vortex:agent"
+    },
+    "agent": {
+      "title": "Agent",
+      "offline": "offline",
+      "never": "never reported",
+      "staging": "Staging",
+      "gameDir": "Game",
+      "machine": "Machine",
+      "lastSeen": "Last seen",
+      "lastSync": "Last sync",
+      "pending": "Pending",
+      "pendingUnits": "staging changed",
+      "pendingOrder": "load order changed",
+      "settleUntil": "syncs after {{when}} if nothing else changes",
+      "lastError": "Last error",
+      "delivered": "Delivered",
+      "howToStart": "Run npm run vortex:agent on the machine with Vortex; the first heartbeat registers it here.",
+      "states": {
+        "idle": "idle",
+        "scanning": "scanning",
+        "uploading": "uploading",
+        "waiting-server": "waiting for the server",
+        "delivering": "delivering the langpack",
+        "settling": "waiting for staging to settle",
+        "error": "error"
+      }
+    },
+    "langpack": {
+      "latest": "Latest langpack",
+      "none": "none exported yet"
+    },
+    "stages": {
+      "title": "Stages",
+      "hint": "The agent runs import, carry-over and TM by itself. Everything below needs a host that may be switched off, so it only starts from here.",
+      "needsHost": "No healthy {{service}} host — start it, then retry",
+      "busy": "A run is still in progress",
+      "names": {
+        "tm": "Re-run TM",
+        "llm": "LLM translate",
+        "verify": "Verify",
+        "skip": "Skip-detect",
+        "gender": "Gender-detect",
+        "voice": "Voice",
+        "export": "Export langpack"
+      }
+    },
+    "run": {
+      "current": "Run #{{id}} · {{stage}}",
+      "stop": "Stop",
+      "mod": "Mod",
+      "job": "Job",
+      "progress": "Progress",
+      "status": "Status"
+    },
+    "history": {
+      "title": "Previous runs ({{count}})",
+      "stage": "Stage",
+      "startedBy": "Started by",
+      "when": "When"
+    }
   },
   "notFound": {
     "title": "Page not found",
