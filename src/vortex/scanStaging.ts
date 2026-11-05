@@ -7,8 +7,19 @@ import { collectPluginUnitFiles } from './collectSubset';
 import { merkleContentHash, type FileHasher } from './hashSubset';
 import { hasVortexImportAnchor } from './syncWorthy';
 import type { VortexInventoryUnit } from './types';
+import { UA_SOUND_PACK_ESP } from '../web/export/uaSoundPack';
 
 const SKIP_TOP_NAMES = new Set(['.git', 'node_modules', '.transynth-extracted']);
+
+/**
+ * Transynth's own langpack, installed through Vortex, is output, not a mod to
+ * translate: syncing it would upload gigabytes of our voice archive and
+ * register a mod with nothing to translate. Vortex names the mod after the
+ * archive we delivered; a renamed one is still known by the dummy voice plugin.
+ */
+export const isTransynthLangpackFolder = (folderPath: string, folderName: string): boolean =>
+  /^transynth_.+_langpack_r\d+/i.test(folderName) ||
+  fs.existsSync(path.join(folderPath, UA_SOUND_PACK_ESP));
 
 const unitIdFor = (folderName: string, pluginFileName: string | null): string => {
   const stem = pluginFileName
@@ -36,6 +47,7 @@ export const scanStagingUnits = async (
     if (!entry.isDirectory()) continue;
     if (SKIP_TOP_NAMES.has(entry.name.toLowerCase())) continue;
     const folderPath = path.join(stagingPath, entry.name);
+    if (isTransynthLangpackFolder(folderPath, entry.name)) continue;
     const vortex = parseVortexModFolder(entry.name);
     const discovered = discoverModFiles(folderPath);
     const primary = filterPrimaryPlugins(discovered.plugins);

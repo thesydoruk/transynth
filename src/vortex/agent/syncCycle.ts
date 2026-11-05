@@ -102,7 +102,11 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
   log.info(
     `vortex-agent: ${scan.inventory.units.length} unit(s), hash cache ${scan.hashCounters.hits} hit / ${scan.hashCounters.misses} miss`,
   );
-  const unitsChanged = scan.unitsSig !== state.signatures.units || state.lastRunId == null;
+  // After a failed cycle the server's view of the group is unknown (a run that
+  // died in carry leaves the newest mods untranslated), so plan again and run
+  // the stages even when the inventory is the one last synced.
+  const unitsChanged =
+    scan.unitsSig !== state.signatures.units || state.lastRunId == null || state.resyncNeeded;
   const orderChanged = scan.orderSig !== state.signatures.order;
 
   if (!unitsChanged && !orderChanged) return { kind: 'unchanged' };
@@ -131,7 +135,7 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
     plan.units.filter((u) => u.action === 'upload' || u.action === 'update').map((u) => u.unitId),
   );
 
-  if (needed.size === 0 && state.lastRunId != null) {
+  if (needed.size === 0 && state.lastRunId != null && !state.resyncNeeded) {
     // Everything the server knows already; only the order may be new.
     await api.postExportOrder(plan.group.id, scan.exportOrder);
     state.signatures.units = scan.unitsSig;
@@ -167,7 +171,7 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
-  if (uploaded === 0 && rejected.length > 0 && state.lastRunId != null) {
+  if (uploaded === 0 && rejected.length > 0 && state.lastRunId != null && !state.resyncNeeded) {
     state.signatures.units = scan.unitsSig;
     state.signatures.order = scan.orderSig;
     return { kind: 'order-only', groupId: plan.group.id };
@@ -197,5 +201,6 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
   state.signatures.units = scan.unitsSig;
   state.signatures.order = scan.orderSig;
   state.lastSyncAt = new Date().toISOString();
+  state.resyncNeeded = false;
   return { kind: 'synced', groupId: plan.group.id, runId: plan.run.id, uploaded, tmRunId };
 };

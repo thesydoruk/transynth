@@ -59,6 +59,54 @@ describe('vortex inventory', () => {
     expect(inventory.units.find((u) => u.pluginFileName === 'DLCCoast.esm')?.channel).toBe('mods');
   });
 
+  it("leaves Transynth's own langpack out of the staging units", async () => {
+    const staging = path.join(root, 'staging');
+    writeFile(
+      path.join(staging, 'Transynth_fo4_uk_langpack_r19', 'Strings', 'Fallout4_en.STRINGS'),
+    );
+    writeFile(path.join(staging, 'Transynth_fo4_uk_langpack_r19', 'UASoundPack.esp'), 'dummy');
+    writeFile(path.join(staging, 'Renamed Pack', 'UASoundPack.esp'), 'dummy');
+    writeFile(path.join(staging, 'Renamed Pack', 'Strings', 'Fallout4_en.STRINGS'));
+    writeFile(path.join(staging, 'Cool Mod-1-1', 'CoolMod.esp'), 'plugin');
+
+    const units = await scanStagingUnits(staging);
+    expect(units.map((unit) => unit.name)).toEqual(['Cool Mod']);
+  });
+
+  it('hashes a game unit without the files Vortex deployed into Data', async () => {
+    const gameDir = path.join(root, 'game');
+    const data = path.join(gameDir, 'Data');
+    const scan = () =>
+      buildVortexInventory({
+        game: 'fo4',
+        stagingPath: path.join(root, 's'),
+        gameDir,
+        channel: 'game',
+      });
+    writeFile(path.join(data, 'Fallout4.esm'), 'base');
+    const pristine = await scan();
+
+    // Our langpack's strings land in Data; without the manifest they look like the game's own.
+    writeFile(path.join(data, 'Strings', 'Fallout4_en.STRINGS'), 'translated');
+    const unaware = await scan();
+    expect(unaware.units[0]?.files.map((f) => f.relPath)).toEqual([
+      'Fallout4.esm',
+      'Strings/Fallout4_en.STRINGS',
+    ]);
+
+    writeFile(
+      path.join(data, 'vortex.deployment.json'),
+      JSON.stringify({
+        files: [
+          { relPath: 'Strings\\Fallout4_en.STRINGS', source: 'Transynth_fo4_uk_langpack_r19' },
+        ],
+      }),
+    );
+    const aware = await scan();
+    expect(aware.units[0]?.files.map((f) => f.relPath)).toEqual(['Fallout4.esm']);
+    expect(aware.units[0]?.contentHash).toBe(pristine.units[0]?.contentHash);
+  });
+
   it('hashes the same file set stably', async () => {
     const folder = path.join(root, 'mod');
     writeFile(path.join(folder, 'A.esp'), 'a');

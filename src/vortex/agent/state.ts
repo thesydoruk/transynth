@@ -24,6 +24,12 @@ export type AgentState = {
   /** Consecutive failures of the same change; drives the retry backoff. */
   failures: number;
   retryAfter: string | null;
+  /**
+   * The last cycle failed after its plan was made: the server may hold the
+   * units but never finished import, carry or TM for them. The next cycle
+   * runs the stages even when nothing is left to upload.
+   */
+  resyncNeeded: boolean;
 };
 
 export const emptyAgentState = (): AgentState => ({
@@ -38,6 +44,7 @@ export const emptyAgentState = (): AgentState => ({
   lastError: null,
   failures: 0,
   retryAfter: null,
+  resyncNeeded: false,
 });
 
 export const readAgentState = (file: string): AgentState => {
