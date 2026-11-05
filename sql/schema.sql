@@ -626,11 +626,17 @@ CREATE TABLE IF NOT EXISTS reference_translations (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS reference_translations_anchor_key
-  ON reference_translations(game, src_lang, tgt_lang, formid_hex, path, source_text);
+-- The anchor key hashes the source text: a book or terminal entry runs past the
+-- 2704-byte btree row limit, and one such row failed the whole mod's promotion.
+DROP INDEX IF EXISTS reference_translations_anchor_key;
+CREATE UNIQUE INDEX IF NOT EXISTS reference_translations_anchor_md5_key
+  ON reference_translations(game, src_lang, tgt_lang, formid_hex, path, md5(source_text));
 
-CREATE INDEX IF NOT EXISTS idx_reference_translations_text_norm
-  ON reference_translations(game, src_lang, tgt_lang, text_norm);
+-- Equality on text_norm goes through a HASH index for the same reason (see
+-- idx_strings_text_norm); game and languages are filtered separately.
+DROP INDEX IF EXISTS idx_reference_translations_text_norm;
+CREATE INDEX IF NOT EXISTS idx_reference_translations_text_norm_hash
+  ON reference_translations USING HASH(text_norm);
 
 CREATE INDEX IF NOT EXISTS idx_reference_translations_edid
   ON reference_translations(game, src_lang, tgt_lang, edid, path)
