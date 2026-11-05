@@ -100,6 +100,23 @@ describe('BA2 writer', () => {
     }
   });
 
+  it('hashes and flags every entry the way Archive2 does, so the game can find the file', () => {
+    // Values read from the game's own "Fallout4 - Voices.ba2": the engine looks
+    // files up by these hashes, and a standard CRC-32 (0xc929caff / 0xc5526e67)
+    // made it refuse to start.
+    const ba2 = writeBa2([
+      {
+        name: 'Sound/Voice/Fallout4.esm/Announcer_AirportVoice/00112D18_1.fuz',
+        data: Buffer.from('FUZE'),
+      },
+    ]);
+    expect(ba2.readUInt32LE(24).toString(16)).toBe('2aa3a289');
+    expect(ba2.toString('latin1', 28, 32)).toBe('fuz\0');
+    expect(ba2.readUInt32LE(32).toString(16)).toBe('208bc512');
+    expect(ba2.readUInt32LE(36).toString(16)).toBe('100100');
+    expect(ba2.readUInt32LE(24 + 32).toString(16)).toBe('baadf00d');
+  });
+
   it('leaves Sound entries uncompressed even when compressed is requested', () => {
     const payload = Buffer.alloc(256, 0xab);
     const ba2 = writeBa2([

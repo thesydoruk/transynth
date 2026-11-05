@@ -10,15 +10,18 @@
  *     fileCount       : uint32
  *     nameTableOffset : uint64   (absolute offset to the name table)
  *
- *   File entries (36 bytes each):
- *     nameHash   : uint32   CRC-32 of the lowercased stem (filename without extension)
+ *   File entries (36 bytes each), in name order as Archive2 writes them:
+ *     nameHash   : uint32   Archive2's CRC-32 of the lowercased stem (see utils/crc32)
  *     ext        : char[4]  extension bytes, zero-padded
- *     dirHash    : uint32   CRC-32 of the lowercased directory path
- *     flags      : uint32   (0 for uncompressed GNRL)
+ *     dirHash    : uint32   Archive2's CRC-32 of the lowercased directory path
+ *     flags      : uint32   0x100100, as in every archive the game ships
  *     offset     : uint64   absolute offset to raw file data
  *     packedSize : uint32   compressed size (0 = not compressed)
  *     realSize   : uint32   uncompressed data length
- *     align      : uint32   (0)
+ *     align      : uint32   0xBAADF00D, as in every archive the game ships
+ *
+ *   The game finds a file by its hashes, not by the name table, and refused to
+ *   start on an archive with standard CRC-32 hashes and zeroed flags.
  *
  *   Raw file data (concatenated in entry order)
  *
@@ -30,6 +33,8 @@ import { deflateSync, constants as zlibConstants } from 'zlib';
 import { log } from '../../logger';
 import { isSoundArchivePath, isStringsTablePath } from './creationKitArchiveRules';
 import {
+  BA2_ENTRY_ALIGN,
+  BA2_ENTRY_FLAGS,
   BA2_ENTRY_SIZE,
   BA2_HEADER_SIZE,
   BA2_MAGIC,
@@ -123,11 +128,11 @@ const buildHeaderAndEntries = (
     Buffer.from(ext.substring(0, 4)).copy(extBuf);
     extBuf.copy(entries, base + 4);
     entries.writeUInt32LE(crc32(Buffer.from(dir)), base + 8);
-    entries.writeUInt32LE(0, base + 12);
+    entries.writeUInt32LE(BA2_ENTRY_FLAGS, base + 12);
     entries.writeBigUInt64LE(BigInt(offsets[i]!), base + 16);
     entries.writeUInt32LE(prepared[i]!.packedSize, base + 24);
     entries.writeUInt32LE(prepared[i]!.realSize, base + 28);
-    entries.writeUInt32LE(0, base + 32);
+    entries.writeUInt32LE(BA2_ENTRY_ALIGN, base + 32);
   }
   return { header, entries };
 };
