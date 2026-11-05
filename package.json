@@ -28,6 +28,7 @@
     "w3:mimic-dataset": "tsx src/games/witcher3/mimic/exportDataset.ts",
     "w3:voice-pack": "tsx src/games/witcher3/voice/packCli.ts",
     "vortex:sync": "tsx scripts/vortexSync.ts",
+    "vortex:agent": "tsx scripts/vortexAgent.ts",
     "scan:strings": "tsx scripts/scanStrings.ts",
     "voice:clear": "tsx scripts/clearGeneratedVoice.ts",
     "voice:purge-skipped": "tsx scripts/purgeSkippedVoice.ts",

@@ -12,18 +12,15 @@
 import '../src/games';
 import '../src/loadEnv';
 import fs from 'node:fs';
-import { openAsBlob } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { Readable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
-import { Agent, fetch as undiciFetch } from 'undici';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { CONFIG } from '../src/config';
 import { DEFAULT_GAME_ID, allGamePlugins } from '../src/games/registry';
 import { log } from '../src/logger';
 import type { GameId } from '../src/types';
+import { createAgentApi } from '../src/vortex/agent/apiClient';
 import {
   buildVortexInventory,
   discoverVortexExportOrder,
@@ -83,47 +80,9 @@ const argv = await yargs(hideBin(process.argv))
   .help()
   .parse();
 
-const headers = (): Record<string, string> => {
-  const token = argv.token || CONFIG.cliToken;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
-
-const apiUrl = (suffix: string): string => `${String(argv.api).replace(/\/+$/, '')}${suffix}`;
-
-const apiJson = async <T>(suffix: string, init?: RequestInit): Promise<T> => {
-  const res = await fetch(apiUrl(suffix), {
-    ...init,
-    headers: {
-      Accept: 'application/json',
-      ...headers(),
-      ...(init?.headers ?? {}),
-    },
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`${res.status} ${suffix}: ${text}`);
-  return text ? (JSON.parse(text) as T) : ({} as T);
-};
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/** File-backed multipart — do not read the zip into RAM (official Voices/Main are multi-GB). */
-const uploadAgent = new Agent({ headersTimeout: 60 * 60 * 1000, bodyTimeout: 0 });
-
-const putUnitZip = async (runId: number, unitId: string, zipPath: string): Promise<void> => {
-  const blob = await openAsBlob(zipPath, { type: 'application/zip' });
-  const form = new FormData();
-  form.append('file', blob, path.basename(zipPath));
-  const res = await undiciFetch(
-    apiUrl(`/api/vortex/sync/${runId}/packs/${encodeURIComponent(unitId)}`),
-    {
-      method: 'PUT',
-      headers: headers(),
-      body: form,
-      dispatcher: uploadAgent,
-    },
-  );
-  if (!res.ok) throw new Error(`Upload ${unitId} failed: ${await res.text()}`);
-};
+const api = createAgentApi({ api: String(argv.api), token: argv.token || CONFIG.cliToken });
+const apiJson = api.json;
+const putUnitZip = api.putUnitZip;
 
 const isDeployableGame = (value: string): value is GameId =>
   (GAME_CHOICES as readonly string[]).includes(value);
@@ -282,22 +241,11 @@ const ensureRunId = async (): Promise<number> => {
 };
 
 const waitVortexRun = async (runId: number): Promise<void> => {
-  for (;;) {
-    const run = await apiJson<{
-      status: string;
-      current_stage: string | null;
-      last_completed_stage: string | null;
-      error: string | null;
-    }>(`/api/vortex/sync/${runId}`);
+  await api.waitRun(runId, (run) =>
     log.info(
       `  status=${run.status} stage=${run.current_stage ?? run.last_completed_stage ?? '?'}`,
-    );
-    if (run.status === 'completed') return;
-    if (run.status === 'failed' || run.status === 'cancelled') {
-      throw new Error(run.error || run.status);
-    }
-    await sleep(3000);
-  }
+    ),
+  );
 };
 
 const startWorkerStages = async (
@@ -383,16 +331,8 @@ if (wantsExport) await startWorkerStages(['export'], exportOrderBody);
 // agent drops it into Vortex's downloads folder, and `--out` saves a copy here.
 if (argv.out) {
   const runId = await ensureRunId();
-  const res = await fetch(apiUrl(`/api/vortex/sync/${runId}/langpack`), {
-    headers: headers(),
-  });
-  if (!res.ok) throw new Error(`Langpack download failed: ${await res.text()}`);
-  if (!res.body) throw new Error('Langpack download failed: empty body');
-  const dest = argv.out;
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  await pipeline(Readable.fromWeb(res.body as never), fs.createWriteStream(dest));
-  const destBytes = fs.statSync(dest).size;
-  log.info(`Langpack saved: ${dest} (${(destBytes / 1024 / 1024).toFixed(1)} MiB)`);
+  const destBytes = await api.downloadLangpack(runId, argv.out);
+  log.info(`Langpack saved: ${argv.out} (${(destBytes / 1024 / 1024).toFixed(1)} MiB)`);
 }
 
 log.info('Vortex sync finished.');

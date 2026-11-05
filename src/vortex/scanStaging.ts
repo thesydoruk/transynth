@@ -4,7 +4,7 @@ import { filterPrimaryPlugins } from '../import/mod/importAnchor';
 import { discoverModFiles, isPlugin } from '../import/mod/discovery';
 import { parseVortexModFolder } from '../utils/vortexFolder';
 import { collectPluginUnitFiles } from './collectSubset';
-import { merkleContentHash } from './hashSubset';
+import { merkleContentHash, type FileHasher } from './hashSubset';
 import { hasVortexImportAnchor } from './syncWorthy';
 import type { VortexInventoryUnit } from './types';
 
@@ -17,7 +17,10 @@ const unitIdFor = (folderName: string, pluginFileName: string | null): string =>
   return `mods:${folderName}:${stem}`.toLowerCase();
 };
 
-export const scanStagingUnits = async (stagingPath: string): Promise<VortexInventoryUnit[]> => {
+export const scanStagingUnits = async (
+  stagingPath: string,
+  hashFile?: FileHasher,
+): Promise<VortexInventoryUnit[]> => {
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(stagingPath, { withFileTypes: true });
@@ -47,7 +50,7 @@ export const scanStagingUnits = async (stagingPath: string): Promise<VortexInven
         ? path.basename(pluginFileName, path.extname(pluginFileName))
         : null;
       const name = vortex?.modName || pluginStem || entry.name;
-      const contentHash = await merkleContentHash(files);
+      const contentHash = await merkleContentHash(files, hashFile);
       units.push({
         unitId: unitIdFor(entry.name, pluginFileName),
         channel: 'mods',
