@@ -40,8 +40,27 @@ export const createAgentApi = (opts: { api: string; token?: string }) => {
     opts.token ? { Authorization: `Bearer ${opts.token}` } : {};
   const url = (suffix: string): string => `${base}${suffix}`;
 
+  /**
+   * A LAN hiccup (`fetch failed`, a reset) must not fail a sync that is
+   * otherwise fine; the server's own answers (4xx/5xx) are never retried.
+   */
+  const fetchWithRetry = async (
+    input: string,
+    init: RequestInit | undefined,
+    attempts = 3,
+  ): Promise<Response> => {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await fetch(input, init);
+      } catch (err) {
+        if (attempt >= attempts) throw err;
+        await sleep(2000 * attempt);
+      }
+    }
+  };
+
   const json = async <T>(suffix: string, init?: RequestInit): Promise<T> => {
-    const res = await fetch(url(suffix), {
+    const res = await fetchWithRetry(url(suffix), {
       ...init,
       headers: { Accept: 'application/json', ...headers(), ...(init?.headers ?? {}) },
     });
