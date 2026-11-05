@@ -3,10 +3,11 @@ import path from 'node:path';
 import type { GameId } from '../types';
 import { sha1Hex } from '../utils/hash';
 import { collectNamedPluginFiles } from './collectSubset';
+import { discoverVortexDeployment } from './deploymentManifest';
 import { merkleContentHash, type FileHasher } from './hashSubset';
 import { readPeProductVersion } from './exeVersion';
 import { exeNameForGame, isOfficialGamePlugin, officialMasterNames } from './gameProfiles';
-import type { VortexGameReleaseHint, VortexInventoryUnit } from './types';
+import type { VortexGameReleaseHint, VortexInventoryFile, VortexInventoryUnit } from './types';
 
 const resolveGameDataDir = (gameDir: string): string => {
   const direct = path.resolve(gameDir);
@@ -19,6 +20,21 @@ const resolveGameDataDir = (gameDir: string): string => {
   const dataDir = path.join(direct, 'Data');
   if (fs.existsSync(dataDir)) return dataDir;
   return direct;
+};
+
+/**
+ * Files Vortex deployed into Data belong to mods (our own langpack among them),
+ * not to the game: hashing them would make the base game look changed, and
+ * re-import it, every time a mod or the langpack is deployed.
+ */
+const withoutVortexDeployed = (
+  dataDir: string,
+  files: VortexInventoryFile[],
+): VortexInventoryFile[] => {
+  const deployed = discoverVortexDeployment(dataDir);
+  if (!deployed) return files;
+  const deployedPaths = new Set(deployed.files.map((file) => file.relPath.toLowerCase()));
+  return files.filter((file) => !deployedPaths.has(file.relPath.replace(/\\/g, '/').toLowerCase()));
 };
 
 export const scanGameUnits = async (
@@ -57,7 +73,7 @@ export const scanGameUnits = async (
   for (const lower of [...candidates].sort()) {
     const actual = dataEntries.find((name) => name.toLowerCase() === lower);
     if (!actual) continue;
-    const files = collectNamedPluginFiles(dataDir, actual);
+    const files = withoutVortexDeployed(dataDir, collectNamedPluginFiles(dataDir, actual));
     if (files.length === 0) continue;
     const pluginStem = path.basename(actual, path.extname(actual));
     const contentHash = await merkleContentHash(files, hashFile);
