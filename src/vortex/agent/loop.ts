@@ -207,6 +207,7 @@ export class VortexAgentLoop {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.state.failures += 1;
+      this.state.resyncNeeded = true;
       this.state.lastError = message;
       this.state.retryAfter = new Date(now + retryDelayMs(this.state.failures)).toISOString();
       this.agentState = 'error';
