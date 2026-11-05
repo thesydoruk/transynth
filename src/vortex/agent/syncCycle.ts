@@ -121,6 +121,7 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
   ctx.onPhase?.('uploading');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vortex-agent-'));
   let uploaded = 0;
+  const rejected: string[] = [];
   try {
     for (const unit of scan.inventory.units) {
       if (!needed.has(unit.unitId)) continue;
@@ -129,12 +130,26 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
       log.info(
         `vortex-agent: uploading ${unit.name} (${(fs.statSync(zipPath).size / 1048576).toFixed(1)} MiB)`,
       );
-      await api.putUnitZip(plan.run.id, unit.unitId, zipPath);
+      try {
+        await api.putUnitZip(plan.run.id, unit.unitId, zipPath);
+        uploaded += 1;
+      } catch (err) {
+        // A unit the importer cannot register (a folder with nothing to
+        // translate) must not stop the mods it can: note it and move on.
+        const message = err instanceof Error ? err.message : String(err);
+        if (!/\b5\d\d\b|Archive holds no/.test(message)) throw err;
+        log.warn(`vortex-agent: ${unit.name} rejected by the server, skipping: ${message}`);
+        rejected.push(unit.name);
+      }
       fs.rmSync(zipPath, { force: true });
-      uploaded += 1;
     }
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
+  }
+  if (uploaded === 0 && rejected.length > 0 && state.lastRunId != null) {
+    state.signatures.units = scan.unitsSig;
+    state.signatures.order = scan.orderSig;
+    return { kind: 'order-only', groupId: plan.group.id };
   }
 
   ctx.onPhase?.('waiting-server');
