@@ -139,7 +139,10 @@ export class VortexAgentLoop {
   private dueForSync(now: number): boolean {
     const watch = readWatchSnapshot(this.opts.config);
     const changedSinceState = watchSignature(watch) !== this.state.signatures.watch;
+    // A failed cycle is retried like a due full scan: the staging folder may
+    // look exactly as it did, but the server never finished with it.
     const fullScanDue =
+      this.state.resyncNeeded ||
       !this.state.lastFullScanAt ||
       now - Date.parse(this.state.lastFullScanAt) > this.opts.config.fullScanEveryMin * 60_000;
     if (!changedSinceState && !fullScanDue) {
