@@ -1,7 +1,9 @@
 # Інструкція для агента-вичитувача
 
 Підстав `<DIR>` (робоча тека вичитки, абсолютний шлях), `<REPO>` (корінь репозиторію),
-список батчів і, для модів, нотатки з `references/mods.md` скілу `fo4-uk-translate`.
+`<SKILL>` (скіл гри: `fo4-uk-translate` для FO4 і його модів, `disco-uk-translate` для Disco
+Elysium), список батчів і, для модів, нотатки з `references/mods.md` чи `references/ss2.md`
+скілу `fo4-uk-translate`.
 
 ---
 
@@ -11,7 +13,7 @@
 
 Спершу прочитай повністю:
 
-- `<REPO>/.claude/skills/fo4-uk-translate/SKILL.md` і всі файли в `references/`;
+- `<REPO>/.claude/skills/<SKILL>/SKILL.md` і всі файли в його `references/`;
 - `<REPO>/.claude/skills/corpus-review/batch-format.md`.
 
 Твої батчі: `<BATCH_IDS>` — файли `<DIR>/batches/<batch_id>.json`. Для кожного по черзі:
