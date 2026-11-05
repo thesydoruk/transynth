@@ -130,7 +130,7 @@ export const addManualReferenceTranslation = async (
        game, src_lang, tgt_lang, source_text, text_norm, translation, origin, note
      )
      VALUES ($1, $2, $3, $4, $5, $6, 'manual', $7)
-     ON CONFLICT (game, src_lang, tgt_lang, formid_hex, path, source_text) DO UPDATE SET
+     ON CONFLICT (game, src_lang, tgt_lang, formid_hex, path, md5(source_text)) DO UPDATE SET
        translation = EXCLUDED.translation,
        text_norm = EXCLUDED.text_norm,
        origin = 'manual',
@@ -248,7 +248,7 @@ export const promoteTranslationsToReference = async (
        AND t.text <> ''
      ORDER BY ${keySql},
               CASE t.status WHEN 'reviewed' THEN 0 ELSE 1 END, t.updated_at DESC
-     ON CONFLICT (game, src_lang, tgt_lang, formid_hex, path, source_text) DO UPDATE SET
+     ON CONFLICT (game, src_lang, tgt_lang, formid_hex, path, md5(source_text)) DO UPDATE SET
        translation = EXCLUDED.translation,
        text_norm = EXCLUDED.text_norm,
        edid = EXCLUDED.edid,

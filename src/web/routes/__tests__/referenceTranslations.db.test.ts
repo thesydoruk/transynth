@@ -32,6 +32,19 @@ describe('reference API', () => {
       expect(rows).toEqual([{ translation: 'Сховище' }]);
     });
 
+    it('accepts a book-length source: the anchor key hashes the text', async () => {
+      // A terminal entry past the ~2.7 KB btree row limit used to fail the insert
+      // (and the whole mod promotion it was part of).
+      const sourceText = 'The Institute report. '.repeat(400);
+      const first = await add({ ...pair, sourceText, translation: 'Звіт Інституту.' });
+      const again = await add({ ...pair, sourceText, translation: 'Звіт Інституту!' });
+
+      expect(first.statusCode).toBe(201);
+      expect(again.statusCode).toBe(201);
+      const { rows } = await db().query(`SELECT translation FROM reference_translations`);
+      expect(rows).toEqual([{ translation: 'Звіт Інституту!' }]);
+    });
+
     it('stores a Skyrim LE pair in the shared Skyrim base', async () => {
       const res = await add({
         ...pair,
