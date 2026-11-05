@@ -67,6 +67,42 @@ export type VortexExportOrder = {
   applyOrder?: boolean;
 };
 
+export type VortexAgentState =
+  | 'idle'
+  | 'scanning'
+  | 'uploading'
+  | 'waiting-server'
+  | 'delivering'
+  | 'settling'
+  | 'error';
+
+/** What the resident agent reports on every tick (`POST /api/vortex/agent/heartbeat`). */
+export type VortexAgentHeartbeat = {
+  game: GameId;
+  groupKey: string;
+  label: string;
+  stagingPath: string;
+  gameDir: string;
+  /** The machine the agent runs on, usually its hostname. */
+  agentKey: string;
+  agentVersion: string | null;
+  state: VortexAgentState;
+  pollSec: number;
+  pending: { units: number; orderChanged: boolean; settleUntil: string | null } | null;
+  lastSyncAt: string | null;
+  lastRunId: number | null;
+  lastError: string | null;
+  delivered: { archiveId: number; fileName: string; at: string } | null;
+};
+
+/** The newest finished langpack of a group, for the agent to deliver into Vortex. */
+export type VortexLatestLangpack = {
+  archiveId: number;
+  runId: number;
+  fileName: string;
+  byteSize: number | null;
+};
+
 export type VortexPlanPayload = {
   groupKey: string;
   label: string;

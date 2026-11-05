@@ -43,6 +43,25 @@ export const ensureVortexSchema = async (db: Tx): Promise<void> => {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`);
+  // The agent keeps the group's current load order here; a run copies it when it starts.
+  await db.query(`ALTER TABLE vortex_groups ADD COLUMN IF NOT EXISTS export_order_json JSONB`);
+  await db.query(`ALTER TABLE vortex_sync_runs ADD COLUMN IF NOT EXISTS stage TEXT`);
+  await db.query(`ALTER TABLE vortex_sync_runs ADD COLUMN IF NOT EXISTS started_by TEXT`);
+  // One row per (group, machine): the resident agent's heartbeat. Separate from
+  // vortex_groups so a heartbeat every half minute does not reorder the group list.
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS vortex_agents (
+      id SERIAL PRIMARY KEY,
+      vortex_group_id INTEGER NOT NULL REFERENCES vortex_groups(id) ON DELETE CASCADE,
+      agent_key TEXT NOT NULL,
+      agent_version TEXT,
+      state TEXT NOT NULL DEFAULT 'idle',
+      state_json JSONB,
+      last_error TEXT,
+      last_sync_at TIMESTAMPTZ,
+      last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (vortex_group_id, agent_key)
+    )`);
   await db.query(`ALTER TABLE mods ADD COLUMN IF NOT EXISTS origin TEXT NOT NULL DEFAULT 'manual'`);
   await db.query(
     `ALTER TABLE mods ADD COLUMN IF NOT EXISTS vortex_group_id INTEGER REFERENCES vortex_groups(id) ON DELETE SET NULL`,

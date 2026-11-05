@@ -132,12 +132,15 @@ export const insertVortexSyncRun = async (
     tgtLang: string;
     channel: VortexChannel;
     plan: unknown;
+    /** The stage a UI or agent start is for; a CLI plan leaves it empty. */
+    stage?: string | null;
+    startedBy?: 'agent' | 'ui' | 'cli' | null;
   },
 ): Promise<VortexSyncRunRow> => {
   const { rows } = await db.query<VortexSyncRunRow>(
     `INSERT INTO vortex_sync_runs
-       (vortex_group_id, game, src_lang, tgt_lang, channel, status, plan_json)
-     VALUES ($1, $2, $3, $4, $5, 'planning', $6::jsonb)
+       (vortex_group_id, game, src_lang, tgt_lang, channel, status, plan_json, stage, started_by)
+     VALUES ($1, $2, $3, $4, $5, 'planning', $6::jsonb, $7, $8)
      RETURNING id, vortex_group_id, game, src_lang, tgt_lang, channel, status,
                current_stage, last_completed_stage, current_mod_id, job_id,
                export_archive_id, error, plan_json`,
@@ -148,6 +151,8 @@ export const insertVortexSyncRun = async (
       params.tgtLang,
       params.channel,
       JSON.stringify(params.plan),
+      params.stage ?? null,
+      params.startedBy ?? null,
     ],
   );
   return rows[0]!;

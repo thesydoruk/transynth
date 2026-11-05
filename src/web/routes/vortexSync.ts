@@ -37,28 +37,11 @@ import { isVortexExportOrder } from '../../vortex/exportOrder';
 import type { VortexExportOrder, VortexPlanPayload } from '../../vortex/types';
 import type { GameId } from '../../types';
 import { parseRouteId } from './parseRouteId';
-
-const requireCliToken = async (
-  req: { headers: { authorization?: string } },
-  reply: { code: (n: number) => { send: (b: unknown) => unknown } },
-): Promise<boolean> => {
-  if (!CONFIG.cliToken) return true;
-  const expected = `Bearer ${CONFIG.cliToken}`;
-  if (req.headers.authorization !== expected) {
-    reply.code(401).send({ error: 'Unauthorized' });
-    return false;
-  }
-  return true;
-};
+import { registerVortexAgentTokenGate } from './vortexAuth';
 
 export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
   await ensureVortexSchema(db);
-
-  app.addHook('preHandler', async (req, reply) => {
-    if (!req.url.startsWith('/api/vortex')) return;
-    if (req.method === 'GET' || req.method === 'HEAD') return;
-    await requireCliToken(req, reply);
-  });
+  registerVortexAgentTokenGate(app);
 
   app.get('/api/vortex/groups', async (req) => {
     const game = (req.query as { game?: string }).game;
