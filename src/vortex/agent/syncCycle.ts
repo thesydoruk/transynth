@@ -54,6 +54,27 @@ const readExportOrder = (config: AgentConfig): VortexExportOrder => {
   };
 };
 
+/**
+ * Start the group's TM run, or join the one already running: a run a previous
+ * tick (or a manual start) left in progress is the same work, not an error.
+ */
+const startOrJoinTm = async (
+  api: AgentApi,
+  groupId: number,
+  channel: AgentConfig['channel'],
+): Promise<number> => {
+  try {
+    const tm = await api.startStage(groupId, 'tm', { channel, startedBy: 'agent' });
+    return tm.runId;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const active = /^409 .*"runId":(\d+)/.exec(message);
+    if (!active) throw err;
+    log.info(`vortex-agent: joining run #${active[1]} already in progress`);
+    return Number(active[1]);
+  }
+};
+
 /** What the server will be told; the signatures decide whether to tell it. */
 export const scanForSync = async (ctx: SyncContext) => {
   ctx.onPhase?.('scanning');
@@ -168,14 +189,8 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
 
   let tmRunId: number | null = null;
   if (config.autoStages === 'tm') {
-    const tm = await api.startStage(plan.group.id, 'tm', {
-      channel: config.channel,
-      startedBy: 'agent',
-    });
-    tmRunId = tm.runId;
-    await api.waitRun(tm.runId, (run) =>
-      log.info(`vortex-agent: TM run #${tm.runId} ${run.status}`),
-    );
+    tmRunId = await startOrJoinTm(api, plan.group.id, config.channel);
+    await api.waitRun(tmRunId, (run) => log.info(`vortex-agent: TM run #${tmRunId} ${run.status}`));
   }
 
   state.lastRunId = plan.run.id;

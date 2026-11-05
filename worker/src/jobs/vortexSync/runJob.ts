@@ -152,6 +152,18 @@ const runFanOut = async (
     sleep,
     pollMs: 2000,
   });
+  // Voice reuse needs the translations TM just wrote: a carry that ran before
+  // TM found nothing to match, so the takes are copied again here.
+  if (stage === 'tm') {
+    for (const mod of mods) {
+      if (opts.isCancelled()) break;
+      const voice = await reuseSynthesizedVoice(db, mod.id, run.tgt_lang);
+      if (voice.copied > 0) {
+        invalidateVoiceListContext(mod.id);
+        log.info(`Vortex tm: copied ${voice.copied} synthesized take(s) into mod ${mod.id}`);
+      }
+    }
+  }
   const failed = modJobs.filter((job) => job.status === 'failed');
   const cancelled = modJobs.some((job) => job.status === 'cancelled');
   const done = modJobs.filter((job) => job.status === 'completed').length;
