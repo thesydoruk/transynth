@@ -28,6 +28,9 @@ export type VortexSyncRunRow = {
   export_archive_id: number | null;
   error: string | null;
   plan_json: unknown;
+  /** The stage a UI or agent start was for; null for a CLI plan run. */
+  stage: string | null;
+  started_by: string | null;
 };
 
 export const getOrCreateVortexGroup = async (
@@ -143,7 +146,7 @@ export const insertVortexSyncRun = async (
      VALUES ($1, $2, $3, $4, $5, 'planning', $6::jsonb, $7, $8)
      RETURNING id, vortex_group_id, game, src_lang, tgt_lang, channel, status,
                current_stage, last_completed_stage, current_mod_id, job_id,
-               export_archive_id, error, plan_json`,
+               export_archive_id, error, plan_json, stage, started_by`,
     [
       params.groupId,
       params.game,
@@ -165,7 +168,7 @@ export const getLatestVortexSyncRun = async (
   const { rows } = await db.query<VortexSyncRunRow>(
     `SELECT id, vortex_group_id, game, src_lang, tgt_lang, channel, status,
             current_stage, last_completed_stage, current_mod_id, job_id,
-            export_archive_id, error, plan_json
+            export_archive_id, error, plan_json, stage, started_by
      FROM vortex_sync_runs WHERE vortex_group_id = $1
      ORDER BY id DESC LIMIT 1`,
     [groupId],
@@ -180,7 +183,7 @@ export const getVortexSyncRun = async (
   const { rows } = await db.query<VortexSyncRunRow>(
     `SELECT id, vortex_group_id, game, src_lang, tgt_lang, channel, status,
             current_stage, last_completed_stage, current_mod_id, job_id,
-            export_archive_id, error, plan_json
+            export_archive_id, error, plan_json, stage, started_by
      FROM vortex_sync_runs WHERE id = $1`,
     [id],
   );
