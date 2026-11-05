@@ -140,19 +140,29 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
       const zipPath = path.join(groupRoot, `${scoped.replace(/[:\\/]+/g, '_')}.zip`);
       await pipeline(data.file, fs.createWriteStream(zipPath));
 
-      const job = await registerVortexPack(db, {
-        groupId: run.vortex_group_id,
-        fileName: data.filename || `${String(unit.name)}.zip`,
-        zipPath,
-        extractDir: vortexExtractDir(groupRoot, scoped),
-        contentHash,
-        srcLang: run.src_lang,
-        tgtLang: run.tgt_lang,
-        game: run.game as GameId,
-        nexusModId: typeof unit.nexusModId === 'number' ? unit.nexusModId : null,
-        nexusModName: typeof unit.nexusModName === 'string' ? unit.nexusModName : null,
-        sourceFolder: typeof unit.sourceFolder === 'string' ? unit.sourceFolder : null,
-      });
+      const extractDir = vortexExtractDir(groupRoot, scoped);
+      let job: Awaited<ReturnType<typeof registerVortexPack>>;
+      try {
+        job = await registerVortexPack(db, {
+          groupId: run.vortex_group_id,
+          fileName: data.filename || `${String(unit.name)}.zip`,
+          zipPath,
+          extractDir,
+          contentHash,
+          srcLang: run.src_lang,
+          tgtLang: run.tgt_lang,
+          game: run.game as GameId,
+          nexusModId: typeof unit.nexusModId === 'number' ? unit.nexusModId : null,
+          nexusModName: typeof unit.nexusModName === 'string' ? unit.nexusModName : null,
+          sourceFolder: typeof unit.sourceFolder === 'string' ? unit.sourceFolder : null,
+        });
+      } catch (err) {
+        // A unit the importer refuses leaves nothing behind: an unpacked tree
+        // next to the group's real mods would be found by sibling lookups.
+        fs.rmSync(extractDir, { recursive: true, force: true });
+        fs.rmSync(zipPath, { force: true });
+        throw err;
+      }
 
       const units = (plan.units ?? []).map((row) =>
         row.unitId === req.params.unitId
