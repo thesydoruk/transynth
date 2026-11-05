@@ -41,12 +41,18 @@ const isAllowedVoiceFile = (relPath: string, options: CollectLocalizedVoiceOptio
   return key != null && options.exportableKeys.has(key);
 };
 
-/** Collect synthesized localized voice files from `_localize_{hash}/{lang}/`. */
-export const collectLocalizedVoiceFiles = (
+/**
+ * Collect synthesized localized voice files from `_localize_{hash}/{lang}/`.
+ *
+ * The walk is asynchronous on purpose: a base game holds ~100k takes in
+ * thousands of folders on network storage, and a synchronous walk held the
+ * worker's event loop past the job lock, so BullMQ declared the export stalled.
+ */
+export const collectLocalizedVoiceFiles = async (
   modPath: string,
   targetLang: string,
   options: CollectLocalizedVoiceOptions = {},
-): LocalizedVoiceExportEntry[] => {
+): Promise<LocalizedVoiceExportEntry[]> => {
   const extractRoot = resolveModImportExtractRoot(modPath);
   if (!extractRoot) return [];
 
@@ -60,12 +66,12 @@ export const collectLocalizedVoiceFiles = (
     if (!fs.existsSync(pkg.localizeDir)) continue;
 
     const zipPrefix = pkg.folder ? `${pkg.folder}/` : '';
-    const walk = (current: string, relDir: string): void => {
-      for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+    const walk = async (current: string, relDir: string): Promise<void> => {
+      for (const entry of await fs.promises.readdir(current, { withFileTypes: true })) {
         const relPath = relDir ? `${relDir}/${entry.name}` : entry.name;
         const full = path.join(current, entry.name);
         if (entry.isDirectory()) {
-          walk(full, relPath);
+          await walk(full, relPath);
           continue;
         }
         if (!matchesExtension(entry.name, extensions)) continue;
@@ -82,7 +88,7 @@ export const collectLocalizedVoiceFiles = (
       }
     };
 
-    walk(pkg.localizeDir, '');
+    await walk(pkg.localizeDir, '');
   }
 
   files.sort((left, right) =>

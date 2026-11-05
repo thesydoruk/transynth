@@ -14,7 +14,7 @@ afterEach(() => {
 });
 
 describe('collectLocalizedVoiceFiles', () => {
-  it('collects localized .fuz files under Sound/Voice with install-relative paths', () => {
+  it('collects localized .fuz files under Sound/Voice with install-relative paths', async () => {
     const extractRoot = path.join(modStorageRoot(), `_extracted_voice_${Date.now()}`);
     tempDirs.push(extractRoot);
     fs.mkdirSync(extractRoot, { recursive: true });
@@ -34,7 +34,7 @@ describe('collectLocalizedVoiceFiles', () => {
     fs.mkdirSync(path.dirname(voicePath), { recursive: true });
     fs.writeFileSync(voicePath, Buffer.from('fake-fuz'));
 
-    const files = collectLocalizedVoiceFiles(pluginPath, 'uk');
+    const files = await collectLocalizedVoiceFiles(pluginPath, 'uk');
     expect(files).toEqual([
       {
         name: 'Sound/Voice/MyMod.esp/NPCMExample/00123456_1.fuz',
@@ -44,7 +44,7 @@ describe('collectLocalizedVoiceFiles', () => {
     ]);
   });
 
-  it('prefixes package folder for plugins under Data/', () => {
+  it('prefixes package folder for plugins under Data/', async () => {
     const extractRoot = path.join(modStorageRoot(), `_extracted_voice_data_${Date.now()}`);
     tempDirs.push(extractRoot);
     fs.mkdirSync(extractRoot, { recursive: true });
@@ -65,7 +65,7 @@ describe('collectLocalizedVoiceFiles', () => {
     fs.mkdirSync(path.dirname(voicePath), { recursive: true });
     fs.writeFileSync(voicePath, Buffer.from('fake-fuz'));
 
-    const files = collectLocalizedVoiceFiles(pluginPath, 'uk');
+    const files = await collectLocalizedVoiceFiles(pluginPath, 'uk');
     expect(files).toEqual([
       {
         name: 'Data/Sound/Voice/MyMod.esp/00123456_1.fuz',
@@ -75,7 +75,7 @@ describe('collectLocalizedVoiceFiles', () => {
     ]);
   });
 
-  it('keeps only clips whose FormID is in the exportable allowlist', () => {
+  it('keeps only clips whose FormID is in the exportable allowlist', async () => {
     const extractRoot = path.join(modStorageRoot(), `_extracted_voice_filter_${Date.now()}`);
     tempDirs.push(extractRoot);
     fs.mkdirSync(extractRoot, { recursive: true });
@@ -93,13 +93,13 @@ describe('collectLocalizedVoiceFiles', () => {
     fs.writeFileSync(skipPath, Buffer.from('skip'));
     fs.writeFileSync(junkPath, Buffer.from('junk'));
 
-    const files = collectLocalizedVoiceFiles(pluginPath, 'uk', {
+    const files = await collectLocalizedVoiceFiles(pluginPath, 'uk', {
       exportableKeys: new Set(['mymod.esp/123456:1']),
     });
     expect(files.map((file) => file.name)).toEqual(['Sound/Voice/MyMod.esp/NPC/00123456_1.fuz']);
   });
 
-  it('exports a patch take written under its master origin only for the master-origin key', () => {
+  it('exports a patch take written under its master origin only for the master-origin key', async () => {
     const extractRoot = path.join(modStorageRoot(), `_extracted_voice_origin_${Date.now()}`);
     tempDirs.push(extractRoot);
     fs.mkdirSync(extractRoot, { recursive: true });
@@ -119,14 +119,14 @@ describe('collectLocalizedVoiceFiles', () => {
     fs.mkdirSync(path.dirname(takePath), { recursive: true });
     fs.writeFileSync(takePath, Buffer.from('take'));
 
-    const kept = collectLocalizedVoiceFiles(pluginPath, 'uk', {
+    const kept = await collectLocalizedVoiceFiles(pluginPath, 'uk', {
       exportableKeys: new Set(['fallout4.esm/012345:1']),
     });
     expect(kept.map((file) => file.name)).toEqual([
       'Sound/Voice/Fallout4.esm/MaleRough/00012345_1.fuz',
     ]);
 
-    const dropped = collectLocalizedVoiceFiles(pluginPath, 'uk', {
+    const dropped = await collectLocalizedVoiceFiles(pluginPath, 'uk', {
       exportableKeys: new Set(['unofficial fallout 4 patch.esp/012345:1']),
     });
     expect(dropped).toEqual([]);
