@@ -53,55 +53,55 @@ export const VideoSegmentsPanel = ({ gameId, asset, segments, loading, onClose }
         <p className={s.hint}>{t('video.segments.empty')}</p>
       ) : (
         <div className={s.tableWrap}>
-        <table className={s.table}>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>{t('video.segments.time')}</th>
-              <th>{t('video.segments.speaker')}</th>
-              <th>{t('video.segments.source')}</th>
-              <th>{t('video.segments.translation')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {segments.map((seg) => (
-              <tr key={seg.id}>
-                <td className={s.mono}>{seg.idx}</td>
-                <td className={s.mono}>
-                  {formatDuration(seg.start_s)}–{formatDuration(seg.end_s)}
-                  {hasSpeech && (
-                    <audio
-                      controls
-                      preload="none"
-                      className={s.playerSmall}
-                      src={api.video.audioUrl(gameId, asset.id, 'speech', {
-                        from: seg.start_s,
-                        to: seg.end_s,
-                      })}
-                      aria-label={t('video.segments.play', { idx: seg.idx })}
-                    />
-                  )}
-                </td>
-                <td className={s.mono}>{seg.speaker ?? '—'}</td>
-                <td>{seg.source_text}</td>
-                <td>
-                  {seg.translation ? (
-                    <>
-                      {seg.translation}{' '}
-                      <span
-                        className={s[STATUS_CLASS[seg.translation_status ?? ''] ?? 'badgeMuted']}
-                      >
-                        {seg.translation_status}
-                      </span>
-                    </>
-                  ) : (
-                    <span className={s.muted}>{t('video.segments.untranslated')}</span>
-                  )}
-                </td>
+          <table className={s.table}>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>{t('video.segments.time')}</th>
+                <th>{t('video.segments.speaker')}</th>
+                <th>{t('video.segments.source')}</th>
+                <th>{t('video.segments.translation')}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {segments.map((seg) => (
+                <tr key={seg.id}>
+                  <td className={s.mono}>{seg.idx}</td>
+                  <td className={s.mono}>
+                    {formatDuration(seg.start_s)}–{formatDuration(seg.end_s)}
+                    {hasSpeech && (
+                      <audio
+                        controls
+                        preload="none"
+                        className={s.playerSmall}
+                        src={api.video.audioUrl(gameId, asset.id, 'speech', {
+                          from: seg.start_s,
+                          to: seg.end_s,
+                        })}
+                        aria-label={t('video.segments.play', { idx: seg.idx })}
+                      />
+                    )}
+                  </td>
+                  <td className={s.mono}>{seg.speaker ?? '—'}</td>
+                  <td>{seg.source_text}</td>
+                  <td>
+                    {seg.translation ? (
+                      <>
+                        {seg.translation}{' '}
+                        <span
+                          className={s[STATUS_CLASS[seg.translation_status ?? ''] ?? 'badgeMuted']}
+                        >
+                          {seg.translation_status}
+                        </span>
+                      </>
+                    ) : (
+                      <span className={s.muted}>{t('video.segments.untranslated')}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </section>
