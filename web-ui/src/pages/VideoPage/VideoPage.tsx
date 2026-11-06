@@ -53,56 +53,58 @@ export const VideoPage = () => {
         </section>
       ) : (
         <section className={s.panel}>
-          <table className={s.table}>
-            <thead>
-              <tr>
-                <th>{t('video.columns.file')}</th>
-                <th>{t('video.columns.duration')}</th>
-                <th>{t('video.columns.tracks')}</th>
-                <th>{t('video.columns.status')}</th>
-                <th>{t('video.columns.audio')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {p.assets.map((asset) => {
-                const kind = playableKind(asset);
-                return (
-                  <tr key={asset.id}>
-                    <td>
-                      <span className={s.mono}>{asset.file_name}</span>
-                      <span className={s.muted}> · {formatMiB(asset.byte_size)}</span>
-                    </td>
-                    <td>{formatDuration(asset.duration_s)}</td>
-                    <td>
-                      {t('video.tracks', {
-                        count: asset.track_ids.length,
-                        source: asset.source_track_id ?? '—',
-                      })}
-                    </td>
-                    <td>
-                      <span className={s[STATUS_CLASS[asset.status] ?? 'badgeMuted']}>
-                        {t(`video.status.${asset.status}`, { defaultValue: asset.status })}
-                      </span>
-                      {asset.error && <div className={s.errorText}>{asset.error}</div>}
-                    </td>
-                    <td>
-                      {kind ? (
-                        <audio
-                          controls
-                          preload="none"
-                          className={s.player}
-                          src={api.video.audioUrl(gameId, asset.id, kind)}
-                          aria-label={t(`video.audio.${kind}`)}
-                        />
-                      ) : (
-                        <span className={s.muted}>{t('video.audio.none')}</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className={s.tableWrap}>
+            <table className={s.table}>
+              <thead>
+                <tr>
+                  <th>{t('video.columns.file')}</th>
+                  <th>{t('video.columns.duration')}</th>
+                  <th>{t('video.columns.tracks')}</th>
+                  <th>{t('video.columns.status')}</th>
+                  <th>{t('video.columns.audio')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {p.assets.map((asset) => {
+                  const kind = playableKind(asset);
+                  return (
+                    <tr key={asset.id}>
+                      <td>
+                        <span className={s.mono}>{asset.file_name}</span>
+                        <span className={s.muted}> · {formatMiB(asset.byte_size)}</span>
+                      </td>
+                      <td>{formatDuration(asset.duration_s)}</td>
+                      <td>
+                        {t('video.tracks', {
+                          count: asset.track_ids.length,
+                          source: asset.source_track_id ?? '—',
+                        })}
+                      </td>
+                      <td>
+                        <span className={s[STATUS_CLASS[asset.status] ?? 'badgeMuted']}>
+                          {t(`video.status.${asset.status}`, { defaultValue: asset.status })}
+                        </span>
+                        {asset.error && <div className={s.errorText}>{asset.error}</div>}
+                      </td>
+                      <td>
+                        {kind ? (
+                          <audio
+                            controls
+                            preload="none"
+                            className={s.player}
+                            src={api.video.audioUrl(gameId, asset.id, kind)}
+                            aria-label={t(`video.audio.${kind}`)}
+                          />
+                        ) : (
+                          <span className={s.muted}>{t('video.audio.none')}</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
     </div>

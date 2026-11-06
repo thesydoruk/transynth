@@ -94,6 +94,11 @@
   }
 }
 
+/* Six columns do not fit a phone: the table scrolls inside the panel, the page never does. */
+.tableWrap {
+  overflow-x: auto;
+}
+
 .player {
   height: 32px;
   max-width: 260px;

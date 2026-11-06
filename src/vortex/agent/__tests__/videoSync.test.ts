@@ -7,7 +7,7 @@ import { syncVideos, type VideoAssetView } from '../videoSync';
 
 const entry = (fileName: string, fingerprint: string): VideoScanEntry => ({
   fileName,
-  absPath: `C:\\Games\\Data\\Video\\${fileName}`,
+  absPath: path.join('games', 'Data', 'Video', fileName),
   byteSize: 100,
   fingerprint,
   durationS: 10,
