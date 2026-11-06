@@ -6,6 +6,7 @@
  */
 import os from 'node:os';
 import path from 'node:path';
+import { allGamePlugins } from '../../games/registry';
 import { log } from '../../logger';
 import { vortexGroupKey, vortexGroupLabel } from '../groupKey';
 import type { VortexAgentHeartbeat, VortexAgentState } from '../types';
@@ -20,6 +21,8 @@ import { agentDataDir, type AgentConfig } from './config';
 import { loadHashCache, saveHashCache } from './hashCache';
 import { deliverLangpack, looksLikeVortexDownloads, shouldDeliver } from './langpackDelivery';
 import { runSyncCycle } from './syncCycle';
+import { scanVideos } from './videoScan';
+import { syncVideos } from './videoSync';
 import {
   appendJournal,
   readAgentState,
@@ -166,6 +169,52 @@ export class VortexAgentLoop {
     return true;
   }
 
+  /**
+   * The cutscene videos: register them and upload the narration track once per
+   * full-scan interval (they change only when Vortex swaps a file). A failure
+   * here is logged and retried next interval; it never holds up the mod sync.
+   */
+  private async syncVideosQuietly(now: number): Promise<void> {
+    const { config } = this.opts;
+    if (!config.videos) return;
+    const due =
+      this.opts.once ||
+      !this.state.lastVideoScanAt ||
+      now - Date.parse(this.state.lastVideoScanAt) > config.fullScanEveryMin * 60_000;
+    if (!due) return;
+    const media = allGamePlugins().find((p) => p.id === config.game)?.media;
+    if (!media) {
+      log.warn(`vortex-agent: ${config.game} has no cutscene videos to sync; set videos: false`);
+      return;
+    }
+    try {
+      const entries = await scanVideos({
+        gameDir: config.gameDir,
+        media,
+        ffprobePath: config.ffprobePath,
+        ...(config.videoSourceTrack != null ? { preferredTrackId: config.videoSourceTrack } : {}),
+      });
+      const outcome = await syncVideos({
+        game: config.game,
+        agentKey: os.hostname(),
+        entries,
+        api: this.opts.api,
+        ffmpegPath: config.ffmpegPath,
+        log: (line) => log.info(`vortex-agent: ${line}`),
+      });
+      this.state.lastVideoScanAt = new Date().toISOString();
+      this.save();
+      this.journal({ event: 'videos', found: entries.length, ...outcome });
+      log.info(
+        `vortex-agent: videos ${entries.length} found, ${outcome.uploaded} uploaded, ${outcome.skipped} already on the server`,
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.journal({ event: 'videos-error', message });
+      log.warn(`vortex-agent: video sync failed: ${message}`);
+    }
+  }
+
   private async heartbeatQuietly(): Promise<void> {
     try {
       await this.heartbeat();
@@ -181,6 +230,7 @@ export class VortexAgentLoop {
     // Report, and deliver a finished langpack, before any sync: a sync may hold
     // this tick for the length of a TM run, and the langpack is ready now.
     await this.heartbeatQuietly();
+    await this.syncVideosQuietly(now);
     try {
       if (this.state.retryAfter && now < Date.parse(this.state.retryAfter)) {
         // still backing off after a failure of the same change

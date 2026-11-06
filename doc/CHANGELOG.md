@@ -14,6 +14,11 @@ Vortex, from a command somebody has to remember to a process that watches:
 
 See [Vortex](eng/16-vortex-sync.md). Run `npm run db:init` after pulling.
 
+Cutscene videos, the inventory first:
+
+- **The agent registers the game's videos.** With `"videos": true` in its config the agent lists the Bink files of the game's video folder (a plugin declares it through `media`; Fallout 4's twelve films with narration, `Data/Video/*.bk2`), fingerprints each by size, mtime and its first MiB, asks `ffprobe` for the audio tracks — Bink keeps one per language, the id the game picks by — and uploads the lowest (or `videoSourceTrack`) decoded to 48 kHz stereo WAV with `ffmpeg`. A video the server already holds with the same fingerprint is skipped; a swapped file is re-registered and its old audio and dub forgotten. The scan runs once per `fullScanEveryMin` and never holds up the mod sync.
+- **Server side.** `video_assets` and `video_segments`; `GET /api/video/:game`, `POST /api/video/:game/assets` and `PUT /api/video/:game/:id/audio` (the agent's writes, under the CLI token), `GET /api/video/:game/:id/audio/:kind`. A Video page (`/games/<game>/video`) lists the videos with their length, tracks, state and a player for the uploaded narration; a card on the hub leads to it. Separation, the dub and writing the track back come next.
+
 ## 0.10.0 — 2026-11-05
 
 One registry for every service, and a controller that swaps them on one GPU:

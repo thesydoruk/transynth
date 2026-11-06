@@ -526,6 +526,32 @@ const routes: Array<[RegExp, Answer]> = [
   [/^\/api\/exports$/, { archives: [] }],
   [/^\/api\/vortex\/groups$/, { groups: [vortexGroup] }],
   [
+    /^\/api\/video\/fo4$/,
+    {
+      assets: [
+        {
+          id: 1,
+          game: 'fo4',
+          agent_key: 'gaming-pc',
+          file_name: 'Intro_ru.bk2',
+          byte_size: 366088784,
+          fingerprint: 'abc',
+          duration_s: 164.5,
+          track_ids: [0, 1],
+          source_track_id: 0,
+          audio_rel_path: 'fo4/1/source.wav',
+          status: 'uploaded',
+          mod_id: null,
+          dub_rel_path: null,
+          dub_version: null,
+          error: null,
+          created_at: '2026-11-05T18:00:00Z',
+          updated_at: '2026-11-05T18:00:00Z',
+        },
+      ],
+    },
+  ],
+  [
     /^\/api\/vortex\/groups\/\d+\/state$/,
     {
       group: vortexGroup,

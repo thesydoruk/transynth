@@ -46,4 +46,5 @@ export type {
 } from './voice';
 export type { DialogAdapterGroup, DialogParticipantsSqlContext, GameDialogAdapter } from './dialog';
 export type { GameDeploymentAdapter } from './deployment';
+export type { GameMediaAdapter } from './media';
 export type { GamePlugin } from './plugin';

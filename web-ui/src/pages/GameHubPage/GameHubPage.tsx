@@ -119,6 +119,15 @@ export const GameHubPage = () => {
     enabled: !!gameId,
   });
 
+  /** Cutscene videos the agent registered; 404 means the game has no video to dub. */
+  const videos = useQuery({
+    queryKey: ['video-assets', gameId],
+    queryFn: () => api.video.list(gameId),
+    enabled: !!gameId,
+    retry: false,
+  });
+  const videoCount = videos.isError ? undefined : videos.data ? videos.data.assets.length : null;
+
   /** Resolved game metadata from catalogue. */
   const game: GameInfo | undefined = useMemo(
     () => games?.find((g) => g.id === gameId),
@@ -242,6 +251,7 @@ export const GameHubPage = () => {
         modCount={stats?.modCount ?? 0}
         referenceCount={referenceCount?.count ?? null}
         vortexGroupCount={vortexGroups ? vortexGroups.groups.length : null}
+        videoCount={videoCount}
       />
 
       {/* Recent mods quick list */}

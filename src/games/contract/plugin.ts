@@ -8,6 +8,7 @@ import type { GameExportAdapter } from './exporting';
 import type { GameVoiceAdapter } from './voice';
 import type { GameDialogAdapter } from './dialog';
 import type { GameDeploymentAdapter } from './deployment';
+import type { GameMediaAdapter } from './media';
 
 /**
  * Everything Transynth knows about one game.
@@ -53,4 +54,6 @@ export type GamePlugin = {
   readonly dialog?: GameDialogAdapter;
   readonly voice?: GameVoiceAdapter;
   readonly deployment?: GameDeploymentAdapter;
+  /** Cutscene videos to dub; unset for a game without pre-rendered video. */
+  readonly media?: GameMediaAdapter;
 };

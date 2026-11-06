@@ -34,6 +34,15 @@ export type AgentConfig = {
   /** The last stage the agent runs on its own; never beyond TM. */
   autoStages: AgentAutoStage;
   deliverLangpack: boolean;
+  /** Register the game's cutscene videos and upload their narration track. Off by default. */
+  videos: boolean;
+  /** ffmpeg / ffprobe for the video audio; bare names resolve through PATH. */
+  ffmpegPath: string;
+  ffprobePath: string;
+  /** Bink track id to upload when the video has it (the English one); else the lowest id. */
+  videoSourceTrack?: number;
+  /** RAD Video Tools folder (`radvideo64.exe`), for writing the dub back into the video. */
+  radVideoToolsPath?: string;
 };
 
 const AUTO_STAGES: readonly AgentAutoStage[] = ['import', 'carry', 'tm'];
@@ -69,6 +78,9 @@ export const configTemplate = (game: GameId = 'fo4'): AgentConfig => ({
   fullScanEveryMin: 360,
   autoStages: 'tm',
   deliverLangpack: true,
+  videos: false,
+  ffmpegPath: 'ffmpeg',
+  ffprobePath: 'ffprobe',
 });
 
 const isDeployableGame = (value: unknown): value is GameId =>
@@ -110,6 +122,13 @@ export const parseAgentConfig = (
       ? (r.autoStages as AgentAutoStage)
       : 'tm',
     deliverLangpack: r.deliverLangpack !== false,
+    videos: r.videos === true,
+    ffmpegPath: str('ffmpegPath') || template.ffmpegPath,
+    ffprobePath: str('ffprobePath') || template.ffprobePath,
+    ...(Number.isInteger(r.videoSourceTrack) && (r.videoSourceTrack as number) >= 0
+      ? { videoSourceTrack: r.videoSourceTrack as number }
+      : {}),
+    ...(str('radVideoToolsPath') ? { radVideoToolsPath: str('radVideoToolsPath') } : {}),
   };
   if (!config.gameDir) problems.push('gameDir is required (the game install folder)');
   if (r.autoStages !== undefined && !AUTO_STAGES.includes(r.autoStages as AgentAutoStage)) {

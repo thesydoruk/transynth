@@ -21,5 +21,6 @@ export * from './llmJobs';
 export * from './pexVoice';
 export * from './exports';
 export * from './vortex';
+export * from './video';
 export * from './services';
 export * from './fleet';
