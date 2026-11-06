@@ -46,6 +46,8 @@ export const JOB_KIND_SPECS: Record<JobKind, JobKindSpec> = {
   'eet-import': { queue: 'cpu', needs: [] },
   'langpack-export': { queue: 'cpu', needs: [] },
   'vortex-sync': { queue: 'cpu', needs: [] },
+  // One cutscene at a time through audio-intel's batch lane (separation + transcription).
+  'video-separate': { queue: 'separate', needs: ['separate', 'asr'] },
 };
 
 const jobKindSpec = (kind: JobKind): JobKindSpec => {

@@ -59,6 +59,7 @@ import { exportArchivesRoutes } from './routes/exportArchives';
 import { vortexAgentRoutes } from './routes/vortexAgent';
 import { vortexStagesRoutes } from './routes/vortexStages';
 import { videoRoutes } from './routes/video';
+import { videoJobRoutes } from './routes/videoJobs';
 import { vortexSyncRoutes } from './routes/vortexSync';
 import { getAllProjectSettings } from './services/projectSettings';
 import { syncLlmPoolFromProjectSettings } from '../llm/llmProjectSettings';
@@ -162,6 +163,7 @@ await vortexSyncRoutes(app, db);
 await vortexAgentRoutes(app, db);
 await vortexStagesRoutes(app, db);
 await videoRoutes(app, db);
+await videoJobRoutes(app, db);
 
 // Health check — verifies DB connectivity and returns uptime info
 app.get('/api/health', async () => {

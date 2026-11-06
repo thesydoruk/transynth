@@ -35,6 +35,7 @@ export const JOB_KINDS = [
   'eet-import',
   'langpack-export',
   'vortex-sync',
+  'video-separate',
 ] as const;
 
 export type JobKind = (typeof JOB_KINDS)[number];

@@ -4,11 +4,14 @@
  * agent, `speech.wav` / `background.wav` from the separation, `dub_<lang>.wav`).
  */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { PATHS } from '../paths';
+import { execFileAsync } from '../utils/execFile';
 import { ensureDir } from '../utils/file';
+import { resolveFfmpegPath } from '../voice/voiceToolPaths';
 import type { VideoAssetRow, VideoAudioKind } from './types';
 
 export const videoAssetDir = (asset: Pick<VideoAssetRow, 'game' | 'id'>): string =>
@@ -42,6 +45,32 @@ export const storeVideoSourceAudio = async (
   await pipeline(stream, fs.createWriteStream(part));
   fs.renameSync(part, dest);
   return { relPath, bytes: fs.statSync(dest).size };
+};
+
+/**
+ * Cut `[fromS, toS]` out of a WAV into a temporary file (the segment preview on
+ * the Video page). The caller removes the file once it is sent.
+ */
+export const sliceWavToTemp = async (file: string, fromS: number, toS: number): Promise<string> => {
+  const out = path.join(
+    os.tmpdir(),
+    `transynth-slice-${process.pid}-${Date.now()}-${Math.round(fromS * 1000)}.wav`,
+  );
+  await execFileAsync(resolveFfmpegPath(), [
+    '-y',
+    '-v',
+    'error',
+    '-ss',
+    fromS.toFixed(3),
+    '-to',
+    toS.toFixed(3),
+    '-i',
+    file,
+    '-c:a',
+    'pcm_s16le',
+    out,
+  ]);
+  return out;
 };
 
 /** The on-disk file of one audio kind, or null when the asset has none yet. */

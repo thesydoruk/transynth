@@ -13,7 +13,8 @@ import type { Tx } from '../../db';
 import { allGamePlugins } from '../../games/registry';
 import { log } from '../../logger';
 import type { GameId } from '../../types';
-import { storeVideoSourceAudio, videoAudioFile } from '../../video/audioStore';
+import { probeKindsHealthy } from '../../services/kindHealth';
+import { sliceWavToTemp, storeVideoSourceAudio, videoAudioFile } from '../../video/audioStore';
 import {
   getVideoAsset,
   listVideoAssets,
@@ -27,6 +28,9 @@ import {
   type VideoAudioKind,
 } from '../../video/types';
 import { parseRouteId } from './parseRouteId';
+
+/** The hosts the Video page shows a light for: separation, ASR, TTS. */
+const VIDEO_SERVICE_KINDS = ['separate', 'asr', 'tts'] as const;
 
 const isMediaGame = (value: unknown): value is GameId =>
   typeof value === 'string' && allGamePlugins().some((p) => p.id === value && p.media);
@@ -67,7 +71,11 @@ export const videoRoutes = async (app: FastifyInstance, db: Tx) => {
 
   app.get<{ Params: { game: string } }>('/api/video/:game', async (req, reply) => {
     if (!isMediaGame(req.params.game)) return reply.code(404).send({ error: 'No videos' });
-    return { assets: await listVideoAssets(db, req.params.game) };
+    const [assets, services] = await Promise.all([
+      listVideoAssets(db, req.params.game),
+      probeKindsHealthy(VIDEO_SERVICE_KINDS),
+    ]);
+    return { assets, services };
   });
 
   app.post<{ Params: { game: string } }>('/api/video/:game/assets', async (req, reply) => {
@@ -107,25 +115,35 @@ export const videoRoutes = async (app: FastifyInstance, db: Tx) => {
     },
   );
 
-  app.get<{ Params: { game: string; id: string; kind: string } }>(
-    '/api/video/:game/:id/audio/:kind',
-    async (req, reply) => {
-      const id = parseRouteId(req.params.id);
-      if (id === null) return reply.code(400).send({ error: 'Invalid video id' });
-      const kind = req.params.kind as VideoAudioKind;
-      if (!VIDEO_AUDIO_KINDS.includes(kind)) return reply.code(400).send({ error: 'Invalid kind' });
-      const asset = await getVideoAsset(db, id);
-      if (!asset || asset.game !== req.params.game) {
-        return reply.code(404).send({ error: 'Not found' });
-      }
-      const file = videoAudioFile(asset, kind);
-      if (!file) return reply.code(404).send({ error: `No ${kind} audio yet` });
-      const size = fs.statSync(file).size;
-      return reply
-        .header('Content-Type', 'audio/wav')
-        .header('Content-Length', String(size))
-        .header('Content-Disposition', `inline; filename="${kind}.wav"`)
-        .send(fs.createReadStream(file));
-    },
-  );
+  app.get<{
+    Params: { game: string; id: string; kind: string };
+    Querystring: { from?: string; to?: string };
+  }>('/api/video/:game/:id/audio/:kind', async (req, reply) => {
+    const id = parseRouteId(req.params.id);
+    if (id === null) return reply.code(400).send({ error: 'Invalid video id' });
+    const kind = req.params.kind as VideoAudioKind;
+    if (!VIDEO_AUDIO_KINDS.includes(kind)) return reply.code(400).send({ error: 'Invalid kind' });
+    const asset = await getVideoAsset(db, id);
+    if (!asset || asset.game !== req.params.game) {
+      return reply.code(404).send({ error: 'Not found' });
+    }
+    const file = videoAudioFile(asset, kind);
+    if (!file) return reply.code(404).send({ error: `No ${kind} audio yet` });
+
+    // `?from=&to=` plays one phrase: the slice is cut to a temp file and removed after.
+    const from = Number(req.query.from);
+    const to = Number(req.query.to);
+    const slice = req.query.from != null || req.query.to != null;
+    if (slice && !(Number.isFinite(from) && Number.isFinite(to) && from >= 0 && to > from)) {
+      return reply.code(400).send({ error: 'from and to must be seconds with from < to' });
+    }
+    const toSend = slice ? await sliceWavToTemp(file, from, to) : file;
+    const stream = fs.createReadStream(toSend);
+    if (slice) stream.on('close', () => fs.rmSync(toSend, { force: true }));
+    return reply
+      .header('Content-Type', 'audio/wav')
+      .header('Content-Length', String(fs.statSync(toSend).size))
+      .header('Content-Disposition', `inline; filename="${kind}.wav"`)
+      .send(stream);
+  });
 };

@@ -17,6 +17,8 @@ type RawSegment = {
   end?: number;
   text?: string;
   confidence?: number | null;
+  speaker_id?: string | null;
+  speaker?: string | null;
 };
 
 const asFinite = (value: unknown): number | null =>
@@ -29,11 +31,13 @@ const parseSpeechSegments = (raw: unknown): AudioIntelSpeechSegment[] => {
     if (entry?.kind && entry.kind !== 'speech') continue;
     const text = typeof entry.text === 'string' ? entry.text.trim() : '';
     if (!text) continue;
+    const speaker = entry.speaker_id ?? entry.speaker;
     segments.push({
       start: asFinite(entry.start) ?? 0,
       end: asFinite(entry.end) ?? 0,
       text,
       confidence: asFinite(entry.confidence),
+      ...(typeof speaker === 'string' && speaker ? { speaker } : {}),
     });
   }
   return segments;
