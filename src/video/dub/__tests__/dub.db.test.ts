@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
+import { afterAll, beforeEach, describe, expect, it } from '@jest/globals';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -41,7 +41,7 @@ describe('dubVideo', () => {
 
   let videoId: number;
   let stringIds: number[];
-  beforeAll(async () => {
+  beforeEach(async () => {
     const asset = await registerVideoAsset(db(), 'fo4', {
       fileName: 'Intro_ru.bk2',
       byteSize: 10,
