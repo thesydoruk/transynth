@@ -1105,3 +1105,5 @@ CREATE TABLE IF NOT EXISTS video_segments (
 -- What a segment's take was made from (translation + slot), so a dub re-run
 -- synthesizes only the segments that changed.
 ALTER TABLE video_segments ADD COLUMN IF NOT EXISTS take_version TEXT;
+-- The dub version the agent last wrote into the video file.
+ALTER TABLE video_assets ADD COLUMN IF NOT EXISTS packed_version TEXT;

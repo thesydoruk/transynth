@@ -53,6 +53,8 @@ export type VideoAssetRow = {
   mod_id: number | null;
   dub_rel_path: string | null;
   dub_version: string | null;
+  /** The dub version the agent last wrote into the video; null until it did. */
+  packed_version: string | null;
   error: string | null;
   created_at: Date;
   updated_at: Date;

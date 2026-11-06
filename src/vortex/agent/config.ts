@@ -41,8 +41,11 @@ export type AgentConfig = {
   ffprobePath: string;
   /** Bink track id to upload when the video has it (the English one); else the lowest id. */
   videoSourceTrack?: number;
-  /** RAD Video Tools folder (`radvideo64.exe`), for writing the dub back into the video. */
-  radVideoToolsPath?: string;
+  /**
+   * Folder holding `radvideo64.exe`, which writes the dub back into the video.
+   * The agent downloads the RAD Video Tools there itself when the folder has none.
+   */
+  radVideoToolsPath: string;
 };
 
 const AUTO_STAGES: readonly AgentAutoStage[] = ['import', 'carry', 'tm'];
@@ -81,6 +84,7 @@ export const configTemplate = (game: GameId = 'fo4'): AgentConfig => ({
   videos: false,
   ffmpegPath: 'ffmpeg',
   ffprobePath: 'ffprobe',
+  radVideoToolsPath: path.join(agentDataDir(), 'radtools'),
 });
 
 const isDeployableGame = (value: unknown): value is GameId =>
@@ -128,7 +132,7 @@ export const parseAgentConfig = (
     ...(Number.isInteger(r.videoSourceTrack) && (r.videoSourceTrack as number) >= 0
       ? { videoSourceTrack: r.videoSourceTrack as number }
       : {}),
-    ...(str('radVideoToolsPath') ? { radVideoToolsPath: str('radVideoToolsPath') } : {}),
+    radVideoToolsPath: str('radVideoToolsPath') || template.radVideoToolsPath,
   };
   if (!config.gameDir) problems.push('gameDir is required (the game install folder)');
   if (r.autoStages !== undefined && !AUTO_STAGES.includes(r.autoStages as AgentAutoStage)) {

@@ -9,7 +9,12 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { Agent, fetch as undiciFetch } from 'undici';
 import type { VortexFanOutStage } from '../stages';
-import type { VortexAgentHeartbeat, VortexExportOrder, VortexLatestLangpack } from '../types';
+import type {
+  VideoPackTask,
+  VortexAgentHeartbeat,
+  VortexExportOrder,
+  VortexLatestLangpack,
+} from '../types';
 import type { VideoAssetView } from './videoSync';
 
 export type VortexRunView = {
@@ -26,6 +31,8 @@ export type HeartbeatReply = {
   ok: boolean;
   groupId: number;
   latestLangpack: VortexLatestLangpack | null;
+  /** Videos whose finished dub is not in the game's file yet; absent on an older server. */
+  videoTasks?: VideoPackTask[];
 };
 
 export type AgentApi = ReturnType<typeof createAgentApi>;
@@ -172,5 +179,9 @@ export const createAgentApi = (opts: { api: string; token?: string }) => {
         'audio/wav',
         `video #${id}`,
       ),
+    downloadVideoDub: (game: string, id: number, destPath: string) =>
+      downloadFile(`/api/video/${encodeURIComponent(game)}/${id}/audio/dub`, destPath),
+    postVideoPacked: (game: string, id: number, body: { dubVersion: string }) =>
+      post<{ ok: boolean }>(`/api/video/${encodeURIComponent(game)}/${id}/packed`, body),
   };
 };
