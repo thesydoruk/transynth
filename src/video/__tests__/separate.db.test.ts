@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
+import { afterAll, beforeEach, describe, expect, it } from '@jest/globals';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -57,6 +57,7 @@ const fakeDeps = (
   },
   remove: async () => {
     calls.push('remove');
+    return true;
   },
 });
 
@@ -65,7 +66,7 @@ describe('separateVideo', () => {
   afterAll(() => fs.rmSync(uploads, { recursive: true, force: true }));
 
   let videoId: number;
-  beforeAll(async () => {
+  beforeEach(async () => {
     const asset = await registerVideoAsset(db(), 'fo4', {
       fileName: 'Intro_ru.bk2',
       byteSize: 10,

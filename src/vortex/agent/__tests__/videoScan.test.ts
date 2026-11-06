@@ -10,7 +10,7 @@ import {
   videoFingerprint,
 } from '../videoScan';
 
-const media = { videoDir: 'Data/Video', videoExtensions: ['.bk2'] };
+const media = { videoDir: 'Data/Video', videoExtensions: ['.bk2'], packDir: 'Video' };
 
 /** What ffprobe prints for a S.P.E.C.I.A.L. film: one Bink 2 video, five language tracks. */
 const specialProbe = JSON.stringify({

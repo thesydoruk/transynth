@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
+import { afterAll, beforeEach, describe, expect, it } from '@jest/globals';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -12,6 +12,7 @@ const { registerVideoAsset, setVideoAssetAudio, getVideoAsset } = await import('
 const { replaceVideoSegments, listVideoSegments } = await import('../../segments');
 const { videoAudioRelPath, resolveVideoAudioPath } = await import('../../audioStore');
 const { dubVideo } = await import('..');
+const { disposeServicePools } = await import('../../../services/pools');
 
 /** A 16-bit mono WAV of `seconds` at 22.05 kHz (silence), enough for wavDurationSec. */
 const wavOf = (seconds: number): Buffer => {
@@ -37,11 +38,15 @@ const wavOf = (seconds: number): Buffer => {
 
 describe('dubVideo', () => {
   const db = useTestDb();
-  afterAll(() => fs.rmSync(uploads, { recursive: true, force: true }));
+  // loadVoiceProjectSettings builds the TTS pool, whose health timer would log after the run.
+  afterAll(() => {
+    disposeServicePools();
+    fs.rmSync(uploads, { recursive: true, force: true });
+  });
 
   let videoId: number;
   let stringIds: number[];
-  beforeAll(async () => {
+  beforeEach(async () => {
     const asset = await registerVideoAsset(db(), 'fo4', {
       fileName: 'Intro_ru.bk2',
       byteSize: 10,
@@ -111,9 +116,11 @@ describe('dubVideo', () => {
     const synthesized: string[] = [];
     const synthesize = async (
       text: string,
-      refs: Array<{ wavPath: string; speakerText?: string | null }>,
+      refs: string | Array<{ wavPath: string; speakerText?: string | null }>,
     ) => {
-      synthesized.push(`${text} <- ${refs.map((r) => r.speakerText).join(' | ')}`);
+      synthesized.push(
+        `${text} <- ${(Array.isArray(refs) ? refs : []).map((r) => r.speakerText).join(' | ')}`,
+      );
       // The second phrase's take is 4 s for a 3 s slot (up to the next phrase at 20 s it fits).
       return {
         wav: wavOf(text.startsWith('Війна ніколи') ? 4 : 1.2),

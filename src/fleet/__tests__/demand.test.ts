@@ -19,8 +19,10 @@ describe('fleet demand', () => {
     expect(demand.tts).toEqual({ waiting: 2, active: 1 });
     expect(demand.llm).toEqual({ waiting: 0, active: 1 });
     expect(demand.embed).toEqual({ waiting: 0, active: 1 });
-    expect(demand.asr).toBeUndefined(); // no job kind needs asr yet (stage 3 adds media kinds)
-    expect(demand.tools).toBeUndefined();
+    // The separate queue (video-separate) needs asr and separate; it is idle here.
+    expect(demand.asr).toEqual({ waiting: 0, active: 0 });
+    expect(demand.separate).toEqual({ waiting: 0, active: 0 });
+    expect(demand.tools).toBeUndefined(); // no job kind declares the tools pool
   });
 
   it('counts a kind a job signals it is waiting for as one active job', async () => {
