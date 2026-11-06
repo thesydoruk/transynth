@@ -123,8 +123,18 @@ describe('separateVideo', () => {
       [first.modId],
     );
     expect(records).toEqual([
-      { edid: 'Intro_ru#000', path: 'INFO\\NAM1', formid_hex: expect.stringMatching(/0000$/) },
-      { edid: 'Intro_ru#001', path: 'INFO\\NAM1', formid_hex: expect.stringMatching(/0001$/) },
+      // Not a hex number: a FormID a real plugin cannot have, so the TM's anchor match
+      // never pairs narration with a game record.
+      {
+        edid: 'Intro_ru#000',
+        path: 'INFO\\NAM1',
+        formid_hex: expect.stringMatching(/^V[0-9A-F]{4}0000$/),
+      },
+      {
+        edid: 'Intro_ru#001',
+        path: 'INFO\\NAM1',
+        formid_hex: expect.stringMatching(/^V[0-9A-F]{4}0001$/),
+      },
     ]);
     const { rows: mods } = await db().query(`SELECT name, origin, game FROM mods WHERE id = $1`, [
       first.modId,

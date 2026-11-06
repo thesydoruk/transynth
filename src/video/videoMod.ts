@@ -21,8 +21,13 @@ export const VIDEO_MOD_NAME = 'Video';
 const VIDEO_RECORD_SIGNATURE = 'INFO';
 const VIDEO_RECORD_PATH = 'INFO\\NAM1';
 
+/**
+ * `V` + the asset id: a FormID no plugin can have. A plain hex number collided
+ * with real Fallout 4 records, and the TM's anchor match (FormID + path) then
+ * copied their translations onto the narration.
+ */
 export const videoFormIdPrefix = (videoId: number): string =>
-  videoId.toString(16).toUpperCase().padStart(4, '0');
+  `V${videoId.toString(16).toUpperCase().padStart(4, '0')}`;
 
 export const videoPhraseFormId = (videoId: number, idx: number): string =>
   `${videoFormIdPrefix(videoId)}${idx.toString(16).toUpperCase().padStart(4, '0')}`;
@@ -58,16 +63,29 @@ export const writeVideoPhrasesToMod = async (
   phrases: readonly VideoPhrase[],
 ): Promise<Map<number, number>> => {
   const prefix = videoFormIdPrefix(opts.videoId);
+  // This video's records: by FormID prefix, and by EDID for rows an older FormID
+  // scheme wrote (those are dropped below, their translations with them).
   const { rows: existing } = await db.query<ExistingString>(
     `SELECT r.formid_hex, s.id AS string_id, s.text_norm
      FROM records r JOIN strings s ON s.record_id = r.id AND s.lang = $3
-     WHERE r.mod_id = $1 AND r.signature = $4 AND r.formid_hex LIKE $2`,
-    [opts.modId, `${prefix}%`, opts.srcLang, VIDEO_RECORD_SIGNATURE],
+     WHERE r.mod_id = $1 AND r.signature = $4
+       AND (r.formid_hex LIKE $2 OR r.edid LIKE $5)`,
+    [
+      opts.modId,
+      `${prefix}%`,
+      opts.srcLang,
+      VIDEO_RECORD_SIGNATURE,
+      `${videoPhraseEdid(opts.fileName, 0).replace(/#000$/, '#')}%`,
+    ],
   );
-  const byFormId = new Map(existing.map((row) => [row.formid_hex, row]));
+  const byFormId = new Map(
+    existing.filter((row) => row.formid_hex.startsWith(prefix)).map((row) => [row.formid_hex, row]),
+  );
 
   const stringIds = new Map<number, number>();
-  const staleFormIds: string[] = [];
+  const staleFormIds = existing
+    .filter((row) => !row.formid_hex.startsWith(prefix))
+    .map((row) => row.formid_hex);
   const toInsert: VideoPhrase[] = [];
   const wanted = new Set<string>();
   for (const phrase of phrases) {
