@@ -48,6 +48,7 @@ export const JOB_KIND_SPECS: Record<JobKind, JobKindSpec> = {
   'vortex-sync': { queue: 'cpu', needs: [] },
   // One cutscene at a time through audio-intel's batch lane (separation + transcription).
   'video-separate': { queue: 'separate', needs: ['separate', 'asr'] },
+  'video-dub': { queue: 'tts', needs: ['tts'] },
 };
 
 const jobKindSpec = (kind: JobKind): JobKindSpec => {

@@ -48,6 +48,7 @@ export type VideoSegment = {
   string_id: number | null;
   take_rel_path: string | null;
   take_similarity: number | null;
+  take_version: string | null;
   tempo: number | null;
   overrun: boolean;
   translation: string | null;

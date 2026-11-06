@@ -1539,7 +1539,9 @@
     "tracks": "{{count}} track(s), source {{source}}",
     "actions": {
       "separate": "Separate & transcribe",
-      "reseparate": "Separate again"
+      "reseparate": "Separate again",
+      "dub": "Dub",
+      "redub": "Dub changes"
     },
     "needsHost": "No healthy {{service}} host right now",
     "segments": {
@@ -1552,7 +1554,11 @@
       "source": "Source",
       "translation": "Translation",
       "untranslated": "not translated",
-      "play": "Play phrase {{idx}}"
+      "play": "Play phrase {{idx}}",
+      "take": "Take",
+      "similarity": "Voice similarity of the take",
+      "tempo": "Sped up to fit the slot",
+      "overrun": "too long"
     },
     "status": {
       "registered": "waiting for audio",

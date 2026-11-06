@@ -1101,3 +1101,7 @@ CREATE TABLE IF NOT EXISTS video_segments (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (video_id, idx)
 );
+
+-- What a segment's take was made from (translation + slot), so a dub re-run
+-- synthesizes only the segments that changed.
+ALTER TABLE video_segments ADD COLUMN IF NOT EXISTS take_version TEXT;

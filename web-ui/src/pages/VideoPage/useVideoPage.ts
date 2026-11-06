@@ -7,6 +7,8 @@ const BUSY = new Set(['separating', 'dubbing']);
 
 /** Statuses from which a (re)separation may start. */
 const SEPARATABLE = new Set(['uploaded', 'separated', 'dubbed', 'packed', 'error']);
+/** Statuses from which a dub may start: the speech track exists. */
+const DUBBABLE = new Set(['separated', 'dubbed', 'packed', 'error']);
 
 /** The cutscene videos of a game; polls faster while a job runs on one of them. */
 export const useVideoPage = (gameId: string) => {
@@ -49,6 +51,22 @@ export const useVideoPage = (gameId: string) => {
     return { ok: !missing, missing: missing ?? null };
   };
 
+  const dub = useMutation({
+    mutationFn: ({ id, scope }: { id: number; scope: string }) => api.video.dub(gameId, id, scope),
+    onSuccess: () => {
+      setError(null);
+      void qc.invalidateQueries({ queryKey: ['video-assets', gameId] });
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  /** A dub needs a separated video with a translation somewhere, and a TTS host. */
+  const canDub = (asset: VideoAsset): { ok: boolean; missing: string | null } => {
+    if (!DUBBABLE.has(asset.status) || dub.isPending) return { ok: false, missing: null };
+    if (services.tts === false) return { ok: false, missing: 'tts' };
+    return { ok: true, missing: null };
+  };
+
   return {
     assets,
     services,
@@ -61,6 +79,8 @@ export const useVideoPage = (gameId: string) => {
     segmentsLoading: segments.isLoading,
     separate: (id: number) => separate.mutate(id),
     canSeparate,
+    dub: (id: number, scope = 'changed') => dub.mutate({ id, scope }),
+    canDub,
   };
 };
 

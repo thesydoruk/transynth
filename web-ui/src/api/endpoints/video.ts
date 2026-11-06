@@ -21,6 +21,15 @@ export const videoEndpoints = {
   separateStatus: (jobId: number) => req<VideoJobStatus>(`/api/video-separate/${jobId}`),
   stopSeparate: (jobId: number) =>
     req<{ ok: true }>(`/api/video-separate/${jobId}/stop`, { method: 'POST' }),
+  /** `scope`: `all`, `changed` (default) or `segment:<idx>`. */
+  dub: (game: string, id: number, scope = 'changed') =>
+    req<{ ok: true; jobId: number; videoId: number }>(`${base(game)}/${id}/dub`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scope }),
+    }),
+  dubStatus: (jobId: number) => req<VideoJobStatus>(`/api/video-dub/${jobId}`),
+  stopDub: (jobId: number) => req<{ ok: true }>(`/api/video-dub/${jobId}/stop`, { method: 'POST' }),
   /** The URL the player streams one audio kind of a video from, or a slice of it. */
   audioUrl: (
     game: string,

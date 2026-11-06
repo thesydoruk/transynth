@@ -6,6 +6,8 @@
  *   GET  /api/video-separate/:jobId           — job status
  *   POST /api/video-separate/:jobId/stop
  *   GET  /api/video/:game/:id/segments        — the phrases with their translations
+ *   POST /api/video/:game/:id/dub             — takes + mix (`scope`: all | changed | segment:<idx>)
+ *   GET  /api/video-dub/:jobId, POST …/stop
  */
 import type { FastifyInstance } from 'fastify';
 import { CONFIG } from '../../config';
@@ -15,6 +17,7 @@ import { probeKindsHealthy } from '../../services/kindHealth';
 import { readJobStatus, stopJobOfKind } from '../../../worker/src/api/jobStatus';
 import { startBackgroundJob } from '../../../worker/src/api/startBackgroundJob';
 import { getVideoAsset, setVideoAssetStatus } from '../../video/db';
+import { parseDubScope } from '../../video/dub';
 import { listVideoSegments } from '../../video/segments';
 import { parseRouteId } from './parseRouteId';
 
@@ -58,6 +61,59 @@ export const videoJobRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.send({ ok: true, jobId, videoId: asset.id });
     },
   );
+
+  app.post<{ Params: { game: string; id: string }; Body: { scope?: string; tgtLang?: string } }>(
+    '/api/video/:game/:id/dub',
+    async (req, reply) => {
+      const id = parseRouteId(req.params.id);
+      if (id === null) return reply.code(400).send({ error: 'Invalid video id' });
+      const scope = parseDubScope(req.body?.scope);
+      if (!scope)
+        return reply.code(400).send({ error: 'scope must be all, changed or segment:<idx>' });
+      const asset = await getVideoAsset(db, id);
+      if (!asset || asset.game !== req.params.game) {
+        return reply.code(404).send({ error: 'Not found' });
+      }
+      if (BUSY_STATUSES.has(asset.status)) {
+        return reply.code(409).send({ error: `Video is ${asset.status}` });
+      }
+      if (asset.status === 'registered' || asset.status === 'uploaded') {
+        return reply.code(409).send({ error: 'Separate the video before dubbing it' });
+      }
+      const health = await probeKindsHealthy(['tts']);
+      if (!health.tts)
+        return reply.code(409).send({ error: 'No healthy tts host', missing: 'tts' });
+      const params = {
+        videoId: asset.id,
+        tgtLang: req.body?.tgtLang?.trim() || CONFIG.defaultTgtLang,
+        scope: req.body?.scope ?? 'changed',
+      };
+      const jobId = await startBackgroundJob(
+        { kind: 'video-dub', modId: null, params },
+        { videoId: asset.id, stage: 'queued' },
+      );
+      await setVideoAssetStatus(db, asset.id, 'dubbing');
+      log.info(`Video #${asset.id} ${asset.file_name}: dub job #${jobId} (${params.scope})`);
+      return reply.send({ ok: true, jobId, videoId: asset.id });
+    },
+  );
+
+  app.get<{ Params: { jobId: string } }>('/api/video-dub/:jobId', async (req, reply) => {
+    const jobId = parseRouteId(req.params.jobId);
+    if (jobId === null) return reply.code(400).send({ error: 'Invalid jobId' });
+    const status = await readJobStatus(jobId, ['video-dub']);
+    if (!status) return reply.code(404).send({ error: 'Job not found' });
+    return status;
+  });
+
+  app.post<{ Params: { jobId: string } }>('/api/video-dub/:jobId/stop', async (req, reply) => {
+    const jobId = parseRouteId(req.params.jobId);
+    if (jobId === null) return reply.code(400).send({ error: 'Invalid jobId' });
+    if (!(await stopJobOfKind(jobId, ['video-dub']))) {
+      return reply.code(404).send({ error: 'Running dub job not found' });
+    }
+    return reply.send({ ok: true });
+  });
 
   app.get<{ Params: { jobId: string } }>('/api/video-separate/:jobId', async (req, reply) => {
     const jobId = parseRouteId(req.params.jobId);

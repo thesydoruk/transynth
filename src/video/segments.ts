@@ -71,11 +71,39 @@ export type VideoSegmentRow = {
   string_id: number | null;
   take_rel_path: string | null;
   take_similarity: number | null;
+  take_version: string | null;
   tempo: number | null;
   overrun: boolean;
   /** The current translation of the segment's string, when the mod has one. */
   translation: string | null;
   translation_status: string | null;
+};
+
+/** Record a synthesized take (or clear it) for one segment. */
+export const setSegmentTake = async (
+  db: Tx,
+  segmentId: number,
+  take: { relPath: string | null; similarity: number | null; version: string | null },
+): Promise<void> => {
+  await db.query(
+    `UPDATE video_segments
+        SET take_rel_path = $2, take_similarity = $3, take_version = $4,
+            tempo = NULL, overrun = FALSE, updated_at = NOW()
+      WHERE id = $1`,
+    [segmentId, take.relPath, take.similarity, take.version],
+  );
+};
+
+/** Record how the take was placed on the timeline. */
+export const setSegmentFit = async (
+  db: Tx,
+  segmentId: number,
+  fit: { tempo: number | null; overrun: boolean },
+): Promise<void> => {
+  await db.query(
+    `UPDATE video_segments SET tempo = $2, overrun = $3, updated_at = NOW() WHERE id = $1`,
+    [segmentId, fit.tempo, fit.overrun],
+  );
 };
 
 /** Replace a video's segments with the phrases of a fresh transcription. */
@@ -111,7 +139,7 @@ export const listVideoSegments = async (
 ): Promise<VideoSegmentRow[]> => {
   const { rows } = await db.query<VideoSegmentRow>(
     `SELECT v.id, v.video_id, v.idx, v.start_s, v.end_s, v.speaker, v.source_text, v.string_id,
-            v.take_rel_path, v.take_similarity, v.tempo, v.overrun,
+            v.take_rel_path, v.take_similarity, v.take_version, v.tempo, v.overrun,
             t.text AS translation, t.status AS translation_status
      FROM video_segments v
      LEFT JOIN translations t ON t.src_string_id = v.string_id AND t.target_lang = $2
