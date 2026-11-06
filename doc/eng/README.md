@@ -32,6 +32,7 @@ components, and development tooling.
 | 15  | [Technology Stack](15-technology-stack.md)     | Runtime, backend, frontend, database, AI, tooling, Docker                                                                                   |
 | 16  | [Vortex](16-vortex-sync.md)                    | A resident agent mirrors the Vortex staging folder and runs import, carry and TM; the rest are buttons on the Vortex page. **Experimental** |
 | 17  | [Adding a Game](17-adding-a-game.md)           | The game plugin contract and how to write one                                                                                               |
+| 18  | [Dubbing the cutscenes](18-video-dubbing.md)   | The narration of pre-rendered videos: separation, translation as a mod, takes cloned from the video, the mix. **Experimental**              |
 
 ---
 

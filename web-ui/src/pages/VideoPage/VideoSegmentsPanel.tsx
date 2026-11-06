@@ -61,6 +61,7 @@ export const VideoSegmentsPanel = ({ gameId, asset, segments, loading, onClose }
                 <th>{t('video.segments.speaker')}</th>
                 <th>{t('video.segments.source')}</th>
                 <th>{t('video.segments.translation')}</th>
+                <th>{t('video.segments.take')}</th>
               </tr>
             </thead>
             <tbody>
@@ -96,6 +97,27 @@ export const VideoSegmentsPanel = ({ gameId, asset, segments, loading, onClose }
                       </>
                     ) : (
                       <span className={s.muted}>{t('video.segments.untranslated')}</span>
+                    )}
+                  </td>
+                  <td className={s.mono}>
+                    {seg.take_rel_path ? (
+                      <>
+                        {seg.take_similarity != null && (
+                          <span title={t('video.segments.similarity')}>
+                            {seg.take_similarity.toFixed(2)}
+                          </span>
+                        )}
+                        {seg.tempo != null && seg.tempo > 1 && (
+                          <span className={s.badgeInfo} title={t('video.segments.tempo')}>
+                            ×{seg.tempo.toFixed(2)}
+                          </span>
+                        )}
+                        {seg.overrun && (
+                          <span className={s.badgeError}>{t('video.segments.overrun')}</span>
+                        )}
+                      </>
+                    ) : (
+                      <span className={s.muted}>—</span>
                     )}
                   </td>
                 </tr>

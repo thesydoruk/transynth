@@ -77,6 +77,7 @@ export const VideoPage = () => {
                 {p.assets.map((asset) => {
                   const kind = playableKind(asset);
                   const gate = p.canSeparate(asset);
+                  const dubGate = p.canDub(asset);
                   return (
                     <tr key={asset.id} className={asset.id === p.selected?.id ? s.rowSelected : ''}>
                       <td>
@@ -132,6 +133,19 @@ export const VideoPage = () => {
                               ? 'video.actions.reseparate'
                               : 'video.actions.separate',
                           )}
+                        </Button>{' '}
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          disabled={!dubGate.ok}
+                          title={
+                            dubGate.missing
+                              ? t('video.needsHost', { service: dubGate.missing.toUpperCase() })
+                              : undefined
+                          }
+                          onClick={() => p.dub(asset.id)}
+                        >
+                          {t(asset.dub_rel_path ? 'video.actions.redub' : 'video.actions.dub')}
                         </Button>
                       </td>
                     </tr>

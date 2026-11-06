@@ -36,6 +36,7 @@ export const JOB_KINDS = [
   'langpack-export',
   'vortex-sync',
   'video-separate',
+  'video-dub',
 ] as const;
 
 export type JobKind = (typeof JOB_KINDS)[number];

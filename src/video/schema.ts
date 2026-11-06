@@ -40,4 +40,6 @@ export const ensureVideoSchema = async (db: Tx): Promise<void> => {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE (video_id, idx)
     )`);
+  // What the take was made from (translation + slot), so a dub re-run synthesizes only what changed.
+  await db.query(`ALTER TABLE video_segments ADD COLUMN IF NOT EXISTS take_version TEXT`);
 };
