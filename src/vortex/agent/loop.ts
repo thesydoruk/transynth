@@ -10,7 +10,7 @@ import { allGamePlugins } from '../../games/registry';
 import { log } from '../../logger';
 import { vortexGroupKey, vortexGroupLabel } from '../groupKey';
 import type { VortexAgentHeartbeat, VortexAgentState } from '../types';
-import type { AgentApi } from './apiClient';
+import type { AgentApi, HeartbeatReply } from './apiClient';
 import {
   diffWatchSnapshots,
   readWatchSnapshot,
@@ -20,7 +20,9 @@ import {
 import { agentDataDir, type AgentConfig } from './config';
 import { loadHashCache, saveHashCache } from './hashCache';
 import { deliverLangpack, looksLikeVortexDownloads, shouldDeliver } from './langpackDelivery';
+import { ensureRadVideoExe } from './radTools';
 import { runSyncCycle } from './syncCycle';
+import { packVideos } from './videoPack';
 import { scanVideos } from './videoScan';
 import { syncVideos } from './videoSync';
 import {
@@ -110,6 +112,7 @@ export class VortexAgentLoop {
   private async heartbeat(): Promise<void> {
     const reply = await this.opts.api.heartbeat(this.heartbeatBody());
     this.state.groupId = reply.groupId;
+    await this.packVideosQuietly(reply.videoTasks);
     if (!this.opts.config.deliverLangpack) return;
     if (!shouldDeliver(reply.latestLangpack, this.state.deliveredArchiveId)) return;
     this.agentState = 'delivering';
@@ -136,6 +139,50 @@ export class VortexAgentLoop {
       `vortex-agent: langpack ${delivered.fileName} ${delivered.skipped ? 'already' : ''} in Vortex downloads`,
     );
     this.agentState = 'idle';
+  }
+
+  /**
+   * Finished dubs go into the game's own video files and, as one archive, into
+   * Vortex's downloads. The RAD tools are fetched the first time they are needed.
+   * A failure is logged and retried on the next heartbeat that still lists the video.
+   */
+  private async packVideosQuietly(tasks: HeartbeatReply['videoTasks']): Promise<void> {
+    const { config } = this.opts;
+    if (!config.videos || !tasks?.length) return;
+    const media = allGamePlugins().find((p) => p.id === config.game)?.media;
+    if (!media) return;
+    const pending = tasks.filter((t) => this.state.packedVideos[t.fileName] !== t.dubVersion);
+    if (pending.length === 0) return;
+    this.agentState = 'delivering';
+    try {
+      const radVideoExe = await ensureRadVideoExe({
+        toolsDir: config.radVideoToolsPath,
+        log: (line) => log.info(`vortex-agent: RAD tools: ${line}`),
+      });
+      const outcome = await packVideos({
+        game: config.game,
+        tgtLang: config.tgtLang,
+        gameDir: config.gameDir,
+        media,
+        tasks: pending,
+        api: this.opts.api,
+        radVideoExe,
+        ffprobePath: config.ffprobePath,
+        packDir: path.join(agentDataDir(), 'videopack', config.game),
+        downloadsDir: config.downloadsDir,
+        state: this.state,
+        log: (line) => log.info(`vortex-agent: ${line}`),
+      });
+      this.save();
+      this.journal({ event: 'videopack', ...outcome });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.save();
+      this.journal({ event: 'videopack-error', message });
+      log.warn(`vortex-agent: videopack failed: ${message}`);
+    } finally {
+      this.agentState = 'idle';
+    }
   }
 
   /** Did staging change, and has it been quiet long enough to sync? */

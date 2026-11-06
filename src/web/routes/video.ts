@@ -6,6 +6,7 @@
  *   PUT  /api/video/:game/:id/audio         — the agent uploads the source track as WAV (token)
  *   GET  /api/video/:game/:id               — one video
  *   GET  /api/video/:game/:id/audio/:kind   — source | speech | background | dub as audio/wav
+ *   POST /api/video/:game/:id/packed        — the agent wrote this dub version into the video (token)
  */
 import fs from 'node:fs';
 import type { FastifyInstance } from 'fastify';
@@ -20,6 +21,7 @@ import {
   listVideoAssets,
   registerVideoAsset,
   setVideoAssetAudio,
+  setVideoAssetPacked,
 } from '../../video/db';
 import { ensureVideoSchema } from '../../video/schema';
 import {
@@ -112,6 +114,25 @@ export const videoRoutes = async (app: FastifyInstance, db: Tx) => {
       await setVideoAssetAudio(db, asset.id, stored.relPath);
       log.info(`Video #${asset.id} ${asset.file_name}: source audio ${stored.bytes} bytes`);
       return reply.send({ ok: true, bytes: stored.bytes });
+    },
+  );
+
+  app.post<{ Params: { game: string; id: string }; Body: { dubVersion?: string } }>(
+    '/api/video/:game/:id/packed',
+    async (req, reply) => {
+      const id = parseRouteId(req.params.id);
+      if (id === null) return reply.code(400).send({ error: 'Invalid video id' });
+      const dubVersion = typeof req.body?.dubVersion === 'string' ? req.body.dubVersion : '';
+      if (!dubVersion) return reply.code(400).send({ error: 'dubVersion is required' });
+      const asset = await getVideoAsset(db, id);
+      if (!asset || asset.game !== req.params.game) {
+        return reply.code(404).send({ error: 'Not found' });
+      }
+      await setVideoAssetPacked(db, asset.id, dubVersion);
+      log.info(
+        `Video #${asset.id} ${asset.file_name}: dub ${dubVersion.slice(0, 12)} written by the agent`,
+      );
+      return reply.send({ ok: true, current: asset.dub_version === dubVersion });
     },
   );
 

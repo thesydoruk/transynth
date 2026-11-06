@@ -1,11 +1,22 @@
 /** Rows of `video_assets`: registration by the agent, listing for the page. */
+import fs from 'node:fs';
 import type { Tx } from '../db';
 import type { GameId } from '../types';
+import type { VideoPackTask } from '../vortex/types';
+import { resolveVideoAudioPath } from './audioStore';
 import type { VideoAssetRegistration, VideoAssetRow, VideoAssetStatus } from './types';
 
+const videoAudioByteSize = (relPath: string): number | null => {
+  try {
+    return fs.statSync(resolveVideoAudioPath(relPath)).size;
+  } catch {
+    return null;
+  }
+};
+
 const COLUMNS = `id, game, agent_key, file_name, byte_size, fingerprint, duration_s, track_ids,
-  source_track_id, audio_rel_path, status, mod_id, dub_rel_path, dub_version, error,
-  created_at, updated_at`;
+  source_track_id, audio_rel_path, status, mod_id, dub_rel_path, dub_version, packed_version,
+  error, created_at, updated_at`;
 
 const fromRow = (row: Record<string, unknown>): VideoAssetRow =>
   ({
@@ -41,6 +52,8 @@ export const registerVideoAsset = async (
                            THEN video_assets.dub_rel_path ELSE NULL END,
        dub_version = CASE WHEN video_assets.fingerprint = EXCLUDED.fingerprint
                           THEN video_assets.dub_version ELSE NULL END,
+       packed_version = CASE WHEN video_assets.fingerprint = EXCLUDED.fingerprint
+                             THEN video_assets.packed_version ELSE NULL END,
        status = CASE WHEN video_assets.fingerprint = EXCLUDED.fingerprint
                      THEN video_assets.status ELSE 'registered' END,
        error = CASE WHEN video_assets.fingerprint = EXCLUDED.fingerprint
@@ -86,6 +99,46 @@ export const setVideoAssetAudio = async (
       WHERE id = $1`,
     [id, audioRelPath],
   );
+};
+
+/** The videos of a game whose finished dub is not in the file yet, for the agent's heartbeat. */
+export const listVideoPackTasks = async (db: Tx, game: GameId): Promise<VideoPackTask[]> => {
+  const { rows } = await db.query<{
+    id: number;
+    file_name: string;
+    dub_version: string;
+    dub_rel_path: string;
+  }>(
+    `SELECT id, file_name, dub_version, dub_rel_path FROM video_assets
+     WHERE game = $1 AND dub_rel_path IS NOT NULL AND dub_version IS NOT NULL
+       AND status IN ('dubbed', 'packed')
+       AND packed_version IS DISTINCT FROM dub_version
+     ORDER BY file_name`,
+    [game],
+  );
+  return rows.map((row) => ({
+    videoId: row.id,
+    fileName: row.file_name,
+    dubVersion: row.dub_version,
+    byteSize: videoAudioByteSize(row.dub_rel_path),
+  }));
+};
+
+/** The agent wrote this dub version into the video. */
+export const setVideoAssetPacked = async (
+  db: Tx,
+  id: number,
+  dubVersion: string,
+): Promise<boolean> => {
+  const { rowCount } = await db.query(
+    `UPDATE video_assets
+        SET packed_version = $2,
+            status = CASE WHEN dub_version = $2 THEN 'packed' ELSE status END,
+            updated_at = NOW()
+      WHERE id = $1`,
+    [id, dubVersion],
+  );
+  return (rowCount ?? 0) > 0;
 };
 
 export const setVideoAssetStatus = async (

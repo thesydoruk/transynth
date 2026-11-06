@@ -89,7 +89,9 @@ writes into staging and never deletes anything in the downloads folder. Switch i
 
 With `"videos": true` the agent registers the game's cutscene videos once per
 `fullScanEveryMin` and uploads their narration track (`ffmpegPath`, `ffprobePath`,
-`videoSourceTrack`); the rest happens on the Video page. See
+`videoSourceTrack`), writes finished dubs back into the videos with the RAD Video Tools it
+installs itself into `radVideoToolsPath` (`--install-rad-tools` does it ahead of time), and
+drops a videopack into Vortex's downloads. The rest happens on the Video page. See
 [Dubbing the cutscenes](18-video-dubbing.md).
 
 ### State and journal

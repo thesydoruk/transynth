@@ -32,6 +32,10 @@ export type AgentState = {
   resyncNeeded: boolean;
   /** When the cutscene videos were last scanned and uploaded; null before the first time. */
   lastVideoScanAt: string | null;
+  /** Video file name → the dub version the agent wrote into it. */
+  packedVideos: Record<string, string>;
+  /** Number of the last videopack archive delivered to Vortex. */
+  videopackSeq: number;
 };
 
 export const emptyAgentState = (): AgentState => ({
@@ -48,6 +52,8 @@ export const emptyAgentState = (): AgentState => ({
   retryAfter: null,
   resyncNeeded: false,
   lastVideoScanAt: null,
+  packedVideos: {},
+  videopackSeq: 0,
 });
 
 export const readAgentState = (file: string): AgentState => {

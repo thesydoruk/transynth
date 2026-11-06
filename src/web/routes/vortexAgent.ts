@@ -1,8 +1,9 @@
 /**
  * The resident Vortex agent's routes and the group state the Vortex page reads.
  *
- *   POST /api/vortex/agent/heartbeat        — agent state (token); returns the group id
- *                                             and the newest langpack to deliver
+ *   POST /api/vortex/agent/heartbeat        — agent state (token); returns the group id,
+ *                                             the newest langpack to deliver and the videos
+ *                                             whose dub is waiting to be written
  *   POST /api/vortex/groups/:id/export-order — the group's current load order (token)
  *   GET  /api/vortex/groups/:id/state        — group, agent, current run, langpack,
  *                                             which service kinds have a healthy host
@@ -25,6 +26,8 @@ import { findActiveVortexRun, listVortexSyncRuns } from '../../vortex/dbRuns';
 import { isVortexExportOrder } from '../../vortex/exportOrder';
 import { vortexGroupKey, vortexGroupLabel } from '../../vortex/groupKey';
 import { ensureVortexSchema } from '../../vortex/schema';
+import { listVideoPackTasks } from '../../video/db';
+import { ensureVideoSchema } from '../../video/schema';
 import type { VortexAgentHeartbeat, VortexAgentState, VortexExportOrder } from '../../vortex/types';
 import { parseRouteId } from './parseRouteId';
 
@@ -96,8 +99,12 @@ export const parseHeartbeat = (
   };
 };
 
+const gameHasMedia = (game: GameId): boolean =>
+  allGamePlugins().some((p) => p.id === game && p.media);
+
 export const vortexAgentRoutes = async (app: FastifyInstance, db: Tx) => {
   await ensureVortexSchema(db);
+  await ensureVideoSchema(db);
 
   app.post('/api/vortex/agent/heartbeat', async (req, reply) => {
     const parsed = parseHeartbeat(req.body);
@@ -114,8 +121,17 @@ export const vortexAgentRoutes = async (app: FastifyInstance, db: Tx) => {
     if (beat.state === 'error') {
       log.warn(`Vortex agent ${beat.agentKey} on group #${group.id}: ${beat.lastError ?? 'error'}`);
     }
-    const latestLangpack = await getLatestGroupLangpack(db, group.id);
-    return reply.send({ ok: true, groupId: group.id, agentId: agent.id, latestLangpack });
+    const [latestLangpack, videoTasks] = await Promise.all([
+      getLatestGroupLangpack(db, group.id),
+      gameHasMedia(beat.game) ? listVideoPackTasks(db, beat.game) : Promise.resolve([]),
+    ]);
+    return reply.send({
+      ok: true,
+      groupId: group.id,
+      agentId: agent.id,
+      latestLangpack,
+      videoTasks,
+    });
   });
 
   app.post<{ Params: { id: string }; Body: { exportOrder?: VortexExportOrder } }>(

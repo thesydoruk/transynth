@@ -24,6 +24,7 @@ export type VideoAsset = {
   mod_id: number | null;
   dub_rel_path: string | null;
   dub_version: string | null;
+  packed_version: string | null;
   error: string | null;
   created_at: string;
   updated_at: string;

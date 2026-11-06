@@ -20,7 +20,7 @@ translation as for any mod: TM, LLM, verify, editor
    ↓
 dub (Fish Speech): a take per phrase, cloned from the video itself → mix over the background → dub_uk.wav
    ↓
-agent: binkmix → Video/<file>.bk2 → videopack in Vortex's downloads   (in progress)
+agent: binkmix → Video/<file>.bk2 → videopack in Vortex's downloads
 ```
 
 ---
@@ -103,15 +103,28 @@ Every take carries a version of its translation and slot: **Dub changes** re-syn
 only the phrases that were retranslated or moved (`scope: changed`; `all` and
 `segment:<index>` exist too). The mix is rebuilt every time from all the takes.
 
-## Writing it back (in progress)
+## Writing it back
 
-Only the RAD Video Tools encode Bink 2 (Windows, free for non-commercial use):
-`radvideo64.exe binkmix` replaces an audio track of a finished `.bk2` by its id without
-re-encoding the video. The agent will receive the finished track through its heartbeat,
-replace every track of the video with it, put `Video/<file>.bk2` into
-`Transynth_<game>_<lang>_videopack_r<N>.zip` and drop it into Vortex's downloads next to
-the langpack (a separate archive: the videos weigh gigabytes). The tools' folder is
-`radVideoToolsPath` in the agent config.
+Only the RAD Video Tools encode Bink 2 (Windows, free for non-commercial use). The agent
+installs them itself: RAD's permanent link serves a 7z archive (password `RAD`, printed on
+the download page) holding an NSIS installer holding `radvideo64.exe`. The agent unpacks
+both layers in-process (7-Zip compiled to WASM), never runs the installer, and keeps the one
+executable in `radVideoToolsPath` (default `%LOCALAPPDATA%\Transynth\vortex-agent\radtools`)
+— on first need, or ahead of time with `npm run vortex:agent -- --install-rad-tools`.
+
+The heartbeat tells the agent which videos have a finished dub not yet in their file. For
+each, the agent downloads `dub_uk.wav`, reads the video's track ids with `ffprobe` and runs
+`radvideo64.exe BinkMix <video> <wav> <out> /TrackID<id> /SoundCompress4 /Overwrite /AutoClose`
+once per track (each pass reading the previous one's output), so the game hears the dub
+whatever language it runs in; the picture is not re-encoded (Fallout 4's intro, two tracks:
+4 s). On an error the mixer shows a dialog and waits for a click, so every pass runs under
+a timeout and counts only with exit code 0 and an output file. The result goes to
+`%LOCALAPPDATA%\Transynth\vortex-agent\videopack\<game>\Video\<file>.bk2`, the agent reports
+it (`POST /api/video/:game/:id/packed`, state "written into the video") and, once every
+pending video is done, zips the whole folder into
+`Transynth_<game>_<lang>_videopack_r<N>.zip` in Vortex's downloads — a mod of its own next
+to the langpack, because the videos weigh gigabytes. Vortex deploys `Video\*.bk2` over the
+game's files. The agent never writes into the game folder.
 
 ## API
 
@@ -124,6 +137,7 @@ the langpack (a separate archive: the videos weigh gigabytes). The tools' folder
 | GET    | `/api/video/:game/:id/segments`                       | The phrases with translation and takes                      |
 | POST   | `/api/video/:game/:id/separate`                       | The `video-separate` job (409: busy or no host)             |
 | POST   | `/api/video/:game/:id/dub`                            | The `video-dub` job, body `{ "scope": "changed" }`          |
+| POST   | `/api/video/:game/:id/packed`                         | The agent wrote this dub version into the video (token)     |
 | GET    | `/api/video-separate/:jobId`, `/api/video-dub/:jobId` | Job status; `POST …/stop` stops it                          |
 
 Tables: `video_assets` (video, fingerprint, tracks, state, mod, dub) and `video_segments`

@@ -78,6 +78,41 @@ describe('video API', () => {
     expect(swapped.asset).toMatchObject({ status: 'registered', audio_rel_path: null });
   });
 
+  it('records the dub version the agent wrote into the video', async () => {
+    const { asset } = (
+      await app().inject({ method: 'POST', url: '/api/video/fo4/assets', payload: intro })
+    ).json();
+    await db().query(
+      `UPDATE video_assets SET dub_rel_path = 'fo4/1/dub_uk.wav', dub_version = 'v2', status = 'dubbed' WHERE id = $1`,
+      [asset.id],
+    );
+    const stale = await app().inject({
+      method: 'POST',
+      url: `/api/video/fo4/${asset.id}/packed`,
+      payload: { dubVersion: 'v1' },
+    });
+    expect(stale.json()).toEqual({ ok: true, current: false });
+    let row = (await app().inject({ method: 'GET', url: `/api/video/fo4/${asset.id}` })).json()
+      .asset;
+    expect(row).toMatchObject({ status: 'dubbed', packed_version: 'v1' });
+
+    const current = await app().inject({
+      method: 'POST',
+      url: `/api/video/fo4/${asset.id}/packed`,
+      payload: { dubVersion: 'v2' },
+    });
+    expect(current.json()).toEqual({ ok: true, current: true });
+    row = (await app().inject({ method: 'GET', url: `/api/video/fo4/${asset.id}` })).json().asset;
+    expect(row).toMatchObject({ status: 'packed', packed_version: 'v2' });
+
+    const bad = await app().inject({
+      method: 'POST',
+      url: `/api/video/fo4/${asset.id}/packed`,
+      payload: {},
+    });
+    expect(bad.statusCode).toBe(400);
+  });
+
   it('refuses bad input', async () => {
     const bad = await app().inject({
       method: 'POST',

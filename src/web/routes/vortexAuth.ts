@@ -19,6 +19,7 @@ const AGENT_WRITE_PATTERNS: readonly RegExp[] = [
   // The agent registers the game's cutscene videos and uploads their audio.
   /^\/api\/video\/[^/]+\/assets$/,
   /^\/api\/video\/[^/]+\/[^/]+\/audio$/,
+  /^\/api\/video\/[^/]+\/[^/]+\/packed$/,
 ];
 
 /** True for the requests an agent or CLI makes that change server state. */

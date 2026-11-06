@@ -8,4 +8,6 @@ export type GameMediaAdapter = {
   readonly videoDir: string;
   /** Lower-case extensions (with the dot) of the videos in that folder. */
   readonly videoExtensions: readonly string[];
+  /** Where a dubbed video goes inside a mod the mod manager deploys (`Video` for a Data-rooted mod). */
+  readonly packDir: string;
 };

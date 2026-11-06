@@ -42,4 +42,6 @@ export const ensureVideoSchema = async (db: Tx): Promise<void> => {
     )`);
   // What the take was made from (translation + slot), so a dub re-run synthesizes only what changed.
   await db.query(`ALTER TABLE video_segments ADD COLUMN IF NOT EXISTS take_version TEXT`);
+  // The dub version the agent last wrote into the video; differs from dub_version until it does.
+  await db.query(`ALTER TABLE video_assets ADD COLUMN IF NOT EXISTS packed_version TEXT`);
 };
