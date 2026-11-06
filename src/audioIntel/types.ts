@@ -3,6 +3,8 @@ export type AudioIntelSpeechSegment = {
   end: number;
   text: string;
   confidence: number | null;
+  /** Diarization label (`SPEAKER_00`…), present when the service ran speakers. */
+  speaker?: string;
 };
 
 export type AudioIntelTranscript = {

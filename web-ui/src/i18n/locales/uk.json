@@ -1535,9 +1535,27 @@
       "duration": "Тривалість",
       "tracks": "Аудіодоріжки",
       "status": "Стан",
-      "audio": "Прослухати"
+      "audio": "Прослухати",
+      "actions": "Дії"
     },
     "tracks": "Доріжок: {{count}}, джерело {{source}}",
+    "actions": {
+      "separate": "Відокремити й транскрибувати",
+      "reseparate": "Відокремити знову"
+    },
+    "needsHost": "Зараз немає справного хоста {{service}}",
+    "segments": {
+      "title": "Фрази ролика {{file}}",
+      "progress": "Перекладено {{translated}} з {{count}}",
+      "openMod": "Відкрити в редакторі",
+      "empty": "Фраз ще немає — спершу відокремте ролик.",
+      "time": "Час",
+      "speaker": "Спікер",
+      "source": "Оригінал",
+      "translation": "Переклад",
+      "untranslated": "не перекладено",
+      "play": "Відтворити фразу {{idx}}"
+    },
     "status": {
       "registered": "очікує звук",
       "uploaded": "звук надіслано",

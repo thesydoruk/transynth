@@ -1,8 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../api';
+import { Button } from '../../components/Button';
 import { PageHeader } from '../../components/PageHeader';
 import { formatDuration, formatMiB, playableKind, useVideoPage } from './useVideoPage';
+import { VideoSegmentsPanel } from './VideoSegmentsPanel';
 import s from './VideoPage.module.scss';
 
 const STATUS_CLASS: Record<string, string> = {
@@ -15,6 +17,9 @@ const STATUS_CLASS: Record<string, string> = {
   packed: 'badgeOk',
   error: 'badgeError',
 };
+
+/** A video that was separated once is offered the run again, not the first one. */
+const RESEPARATE_STATUSES = new Set(['separated', 'dubbing', 'dubbed', 'packed', 'error']);
 
 /**
  * The cutscene videos the resident agent found in the game folder, with the
@@ -40,6 +45,9 @@ export const VideoPage = () => {
       {p.error && (
         <div className={s.errorBar} role="alert">
           {p.error}
+          <button type="button" className={s.linkButton} onClick={p.clearError}>
+            {t('common.cancel')}
+          </button>
         </div>
       )}
 
@@ -62,15 +70,23 @@ export const VideoPage = () => {
                   <th>{t('video.columns.tracks')}</th>
                   <th>{t('video.columns.status')}</th>
                   <th>{t('video.columns.audio')}</th>
+                  <th>{t('video.columns.actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {p.assets.map((asset) => {
                   const kind = playableKind(asset);
+                  const gate = p.canSeparate(asset);
                   return (
-                    <tr key={asset.id}>
+                    <tr key={asset.id} className={asset.id === p.selected?.id ? s.rowSelected : ''}>
                       <td>
-                        <span className={s.mono}>{asset.file_name}</span>
+                        <button
+                          type="button"
+                          className={s.linkButton}
+                          onClick={() => p.select(asset.id === p.selected?.id ? null : asset.id)}
+                        >
+                          <span className={s.mono}>{asset.file_name}</span>
+                        </button>
                         <span className={s.muted}> · {formatMiB(asset.byte_size)}</span>
                       </td>
                       <td>{formatDuration(asset.duration_s)}</td>
@@ -99,6 +115,25 @@ export const VideoPage = () => {
                           <span className={s.muted}>{t('video.audio.none')}</span>
                         )}
                       </td>
+                      <td>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled={!gate.ok}
+                          title={
+                            gate.missing
+                              ? t('video.needsHost', { service: gate.missing.toUpperCase() })
+                              : undefined
+                          }
+                          onClick={() => p.separate(asset.id)}
+                        >
+                          {t(
+                            RESEPARATE_STATUSES.has(asset.status)
+                              ? 'video.actions.reseparate'
+                              : 'video.actions.separate',
+                          )}
+                        </Button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -106,6 +141,16 @@ export const VideoPage = () => {
             </table>
           </div>
         </section>
+      )}
+
+      {p.selected && (
+        <VideoSegmentsPanel
+          gameId={gameId}
+          asset={p.selected}
+          segments={p.segments}
+          loading={p.segmentsLoading}
+          onClose={() => p.select(null)}
+        />
       )}
     </div>
   );

@@ -1533,9 +1533,27 @@
       "duration": "Length",
       "tracks": "Audio tracks",
       "status": "Status",
-      "audio": "Listen"
+      "audio": "Listen",
+      "actions": "Actions"
     },
     "tracks": "{{count}} track(s), source {{source}}",
+    "actions": {
+      "separate": "Separate & transcribe",
+      "reseparate": "Separate again"
+    },
+    "needsHost": "No healthy {{service}} host right now",
+    "segments": {
+      "title": "Phrases of {{file}}",
+      "progress": "{{translated}} of {{count}} translated",
+      "openMod": "Open in the editor",
+      "empty": "No phrases yet — separate the video first.",
+      "time": "Time",
+      "speaker": "Speaker",
+      "source": "Source",
+      "translation": "Translation",
+      "untranslated": "not translated",
+      "play": "Play phrase {{idx}}"
+    },
     "status": {
       "registered": "waiting for audio",
       "uploaded": "audio uploaded",

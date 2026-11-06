@@ -49,7 +49,7 @@ describe('VideoPage', () => {
 
   it('explains how to turn the scan on when nothing is registered', async () => {
     const { api } = await import('../../api');
-    vi.spyOn(api.video, 'list').mockResolvedValue({ assets: [] });
+    vi.spyOn(api.video, 'list').mockResolvedValue({ assets: [], services: {} });
     await renderPage();
 
     expect(await screen.findByText('No videos registered yet')).toBeInTheDocument();
@@ -72,6 +72,7 @@ describe('VideoPage', () => {
           duration_s: 137.9,
         },
       ],
+      services: { separate: false, asr: true, tts: true },
     });
     await renderPage();
 
@@ -87,5 +88,12 @@ describe('VideoPage', () => {
     expect(screen.getByText('5 track(s), source 1')).toBeInTheDocument();
     expect(screen.getByText('waiting for audio')).toBeInTheDocument();
     expect(screen.getByText('no audio yet')).toBeInTheDocument();
+
+    // Separation needs audio-intel's batch lane; it is down in this fixture.
+    const buttons = screen.getAllByRole('button', { name: 'Separate & transcribe' });
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0]).toBeDisabled();
+    expect(buttons[0]).toHaveAttribute('title', 'No healthy SEPARATE host right now');
+    expect(buttons[1]).toBeDisabled();
   });
 });

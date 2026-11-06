@@ -30,3 +30,37 @@ export type VideoAsset = {
 };
 
 export type VideoAudioKind = 'source' | 'speech' | 'background' | 'dub';
+
+/** Which hosts the video stages need are up right now. */
+export type VideoServices = Partial<Record<'separate' | 'asr' | 'tts', boolean>>;
+
+export type VideoListResponse = { assets: VideoAsset[]; services: VideoServices };
+
+/** One transcribed phrase of a video and the state of its translation. */
+export type VideoSegment = {
+  id: number;
+  video_id: number;
+  idx: number;
+  start_s: number;
+  end_s: number;
+  speaker: string | null;
+  source_text: string;
+  string_id: number | null;
+  take_rel_path: string | null;
+  take_similarity: number | null;
+  tempo: number | null;
+  overrun: boolean;
+  translation: string | null;
+  translation_status: string | null;
+};
+
+export type VideoJobStatus = {
+  jobId: number;
+  status: 'running' | 'completed' | 'cancelled' | 'failed';
+  done: number;
+  total: number;
+  error: string | null;
+  videoId?: number;
+  stage?: string;
+  phrases?: number;
+};
