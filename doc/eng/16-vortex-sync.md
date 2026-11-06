@@ -85,6 +85,13 @@ Vortex lists the archive on its Downloads tab and offers to install it. The agen
 writes into staging and never deletes anything in the downloads folder. Switch it off with
 `"deliverLangpack": false`.
 
+### Videos
+
+With `"videos": true` the agent registers the game's cutscene videos once per
+`fullScanEveryMin` and uploads their narration track (`ffmpegPath`, `ffprobePath`,
+`videoSourceTrack`); the rest happens on the Video page. See
+[Dubbing the cutscenes](18-video-dubbing.md).
+
 ### State and journal
 
 `%LOCALAPPDATA%\Transynth\vortex-agent\`: `state.json` (signatures, last run, delivered

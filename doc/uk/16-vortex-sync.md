@@ -70,6 +70,12 @@ LLM-переклад, перевірка, skip-detect, gender-detect, озвуч
 показує архів у вкладці Downloads та пропонує встановити. У стейдж агент нічого не пише і
 в теці завантажень нічого не видаляє. Вимкнути: `"deliverLangpack": false`.
 
+### Ролики
+
+З `"videos": true` агент раз на `fullScanEveryMin` реєструє ролики з папки гри і надсилає
+їхню нараційну доріжку (`ffmpegPath`, `ffprobePath`, `videoSourceTrack`); решта — на
+сторінці Video. Див. [Дубляж роликів](18-video-dubbing.md).
+
 ### Стан і журнал
 
 `%LOCALAPPDATA%\Transynth\vortex-agent\`: `state.json` (сигнатури, останній прогін,
