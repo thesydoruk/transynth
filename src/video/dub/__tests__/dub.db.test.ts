@@ -12,6 +12,7 @@ const { registerVideoAsset, setVideoAssetAudio, getVideoAsset } = await import('
 const { replaceVideoSegments, listVideoSegments } = await import('../../segments');
 const { videoAudioRelPath, resolveVideoAudioPath } = await import('../../audioStore');
 const { dubVideo } = await import('..');
+const { disposeServicePools } = await import('../../../services/pools');
 
 /** A 16-bit mono WAV of `seconds` at 22.05 kHz (silence), enough for wavDurationSec. */
 const wavOf = (seconds: number): Buffer => {
@@ -37,7 +38,11 @@ const wavOf = (seconds: number): Buffer => {
 
 describe('dubVideo', () => {
   const db = useTestDb();
-  afterAll(() => fs.rmSync(uploads, { recursive: true, force: true }));
+  // loadVoiceProjectSettings builds the TTS pool, whose health timer would log after the run.
+  afterAll(() => {
+    disposeServicePools();
+    fs.rmSync(uploads, { recursive: true, force: true });
+  });
 
   let videoId: number;
   let stringIds: number[];
