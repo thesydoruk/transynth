@@ -53,7 +53,9 @@ describe('job kind specs', () => {
     expect(JOB_KIND_SPECS['voice-generate'].needs).toContain('tts');
     expect(JOB_KIND_SPECS['llm-translate'].needs).toContain('llm');
     expect(JOB_KIND_SPECS['mod-import'].needs).toEqual([]);
-    expect(kindsOnQueue('tts')).toEqual(['voice-generate']);
+    expect(kindsOnQueue('tts')).toEqual(['voice-generate', 'video-dub']);
+    expect(kindsOnQueue('separate')).toEqual(['video-separate']);
+    expect(JOB_KIND_SPECS['video-separate'].needs).toEqual(['separate', 'asr']);
   });
 
   it('keeps the historical queue names and lists every queue once', () => {

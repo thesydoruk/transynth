@@ -57,6 +57,7 @@ const fakeDeps = (
   },
   remove: async () => {
     calls.push('remove');
+    return true;
   },
 });
 

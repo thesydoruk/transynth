@@ -111,9 +111,11 @@ describe('dubVideo', () => {
     const synthesized: string[] = [];
     const synthesize = async (
       text: string,
-      refs: Array<{ wavPath: string; speakerText?: string | null }>,
+      refs: string | Array<{ wavPath: string; speakerText?: string | null }>,
     ) => {
-      synthesized.push(`${text} <- ${refs.map((r) => r.speakerText).join(' | ')}`);
+      synthesized.push(
+        `${text} <- ${(Array.isArray(refs) ? refs : []).map((r) => r.speakerText).join(' | ')}`,
+      );
       // The second phrase's take is 4 s for a 3 s slot (up to the next phrase at 20 s it fits).
       return {
         wav: wavOf(text.startsWith('Війна ніколи') ? 4 : 1.2),

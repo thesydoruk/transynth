@@ -7,7 +7,7 @@
  */
 import { separateVideo } from '../../../../src/video/separate';
 import { runTrackedJob } from '../../runTrackedJob';
-import type { JobHandler } from '../../types';
+import type { JobEvent, JobHandler } from '../../types';
 
 export type VideoSeparateJobParams = {
   videoId: number;
@@ -17,7 +17,7 @@ export type VideoSeparateJobParams = {
 
 export const videoSeparateHandler: JobHandler = (db, ctx) => {
   const params = ctx.data.params as VideoSeparateJobParams;
-  return runTrackedJob(ctx, async (onEvent) => {
+  return runTrackedJob(ctx, async (onEvent: (event: JobEvent) => void) => {
     onEvent({ type: 'started', videoId: params.videoId });
     try {
       const outcome = await separateVideo(db, {

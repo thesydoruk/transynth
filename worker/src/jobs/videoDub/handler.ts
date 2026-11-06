@@ -5,7 +5,7 @@
  */
 import { dubVideo, parseDubScope } from '../../../../src/video/dub';
 import { runTrackedJob } from '../../runTrackedJob';
-import type { JobHandler } from '../../types';
+import type { JobEvent, JobHandler } from '../../types';
 
 export type VideoDubJobParams = {
   videoId: number;
@@ -16,7 +16,7 @@ export type VideoDubJobParams = {
 export const videoDubHandler: JobHandler = (db, ctx) => {
   const params = ctx.data.params as VideoDubJobParams;
   const scope = parseDubScope(params.scope) ?? { kind: 'changed' as const };
-  return runTrackedJob(ctx, async (onEvent) => {
+  return runTrackedJob(ctx, async (onEvent: (event: JobEvent) => void) => {
     onEvent({ type: 'started', videoId: params.videoId });
     let last = { done: 0, total: 0 };
     try {
