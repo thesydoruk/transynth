@@ -9,7 +9,7 @@ describe('dub ffmpeg helpers', () => {
     expect(parseLoudnormJson('nothing here')).toBeNull();
   });
 
-  it('delays every take to its start, sums them at the narration loudness, then adds the background', () => {
+  it('delays every take to its start, sums them at the narration loudness (back at 48 kHz), then adds the background', () => {
     const graph = buildMixFilterGraph(
       [
         { wav: 'a.wav', startS: 0.5 },
@@ -20,7 +20,7 @@ describe('dub ffmpeg helpers', () => {
     expect(graph.split(';\n')).toEqual([
       '[1:a]aresample=48000,aformat=sample_fmts=s16:channel_layouts=stereo,adelay=500|500[t0]',
       '[2:a]aresample=48000,aformat=sample_fmts=s16:channel_layouts=stereo,adelay=12250|12250[t1]',
-      '[t0][t1]amix=inputs=2:normalize=0:dropout_transition=0,loudnorm=I=-19.7:TP=-1.5:LRA=11[speech]',
+      '[t0][t1]amix=inputs=2:normalize=0:dropout_transition=0,loudnorm=I=-19.7:TP=-1.5:LRA=11,aresample=48000,aformat=sample_fmts=s16:channel_layouts=stereo[speech]',
       '[0:a]aresample=48000,aformat=sample_fmts=s16:channel_layouts=stereo[bg]',
       '[bg][speech]amix=inputs=2:normalize=0:dropout_transition=0:duration=first[out]',
     ]);

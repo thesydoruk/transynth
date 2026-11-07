@@ -110,8 +110,12 @@ export const buildMixFilterGraph = (
     );
     labels.push(`[${label}]`);
   });
+  // loudnorm works at 192 kHz and hands that on; Bink keeps the rate in 16 bits,
+  // so the bus goes back to 48 kHz before the mix.
   const loud =
-    opts.speechLufs == null ? '' : `,loudnorm=I=${opts.speechLufs.toFixed(1)}:TP=-1.5:LRA=11`;
+    opts.speechLufs == null
+      ? ''
+      : `,loudnorm=I=${opts.speechLufs.toFixed(1)}:TP=-1.5:LRA=11,aresample=48000,aformat=sample_fmts=s16:channel_layouts=stereo`;
   if (takes.length === 1) lines.push(`${labels[0]}anull${loud}[speech]`);
   else
     lines.push(
@@ -128,7 +132,11 @@ export const buildMixFilterGraph = (
   return lines.join(';\n');
 };
 
-/** Write the mix: background (when present) plus the takes at their offsets → 48 kHz stereo WAV. */
+/**
+ * Write the mix: background (when present) plus the takes at their offsets →
+ * 48 kHz 16-bit stereo WAV, the one form binkmix writes into a Bink 2 file
+ * the game's own runtime plays.
+ */
 export const mixDubTrack = async (
   ffmpeg: FfmpegRunner,
   opts: {
@@ -157,6 +165,8 @@ export const mixDubTrack = async (
     script,
     '-map',
     '[out]',
+    '-ar',
+    '48000',
     '-c:a',
     'pcm_s16le',
     opts.outWav,

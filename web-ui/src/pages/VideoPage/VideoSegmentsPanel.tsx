@@ -26,6 +26,12 @@ export const VideoSegmentsPanel = ({ gameId, asset, segments, loading, onClose }
   const { t } = useTranslation();
   const translated = segments.filter((seg) => seg.translation).length;
   const hasSpeech = asset.status !== 'registered' && asset.status !== 'uploaded';
+  const hasDub = asset.dub_rel_path != null;
+  /** The dub from a phrase's start to the next phrase: the whole take, overrun included. */
+  const dubRange = (i: number) => ({
+    from: segments[i]!.start_s,
+    to: segments[i + 1]?.start_s ?? asset.duration_s ?? segments[i]!.end_s + 5,
+  });
 
   return (
     <section className={s.panel} aria-labelledby="video-segments-title">
@@ -65,7 +71,7 @@ export const VideoSegmentsPanel = ({ gameId, asset, segments, loading, onClose }
               </tr>
             </thead>
             <tbody>
-              {segments.map((seg) => (
+              {segments.map((seg, i) => (
                 <tr key={seg.id}>
                   <td className={s.mono}>{seg.idx}</td>
                   <td className={s.mono}>
@@ -114,6 +120,15 @@ export const VideoSegmentsPanel = ({ gameId, asset, segments, loading, onClose }
                         )}
                         {seg.overrun && (
                           <span className={s.badgeError}>{t('video.segments.overrun')}</span>
+                        )}
+                        {hasDub && (
+                          <audio
+                            controls
+                            preload="none"
+                            className={s.playerSmall}
+                            src={api.video.audioUrl(gameId, asset.id, 'dub', dubRange(i))}
+                            aria-label={t('video.segments.playTake', { idx: seg.idx })}
+                          />
                         )}
                       </>
                     ) : (
