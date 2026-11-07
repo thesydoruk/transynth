@@ -26,13 +26,33 @@ export type PackVideoOptions = {
 
 export type PackVideoOutcome = { packedRelPath: string; dubVersion: string; bytes: number };
 
+/**
+ * One call to the tools pool, tried twice: on the first production run the first
+ * pass on each host hung until the timeout and the retry went through in seconds,
+ * so a transport error or a timeout is not the end of the job.
+ */
 const poolMix = async (req: BinkMixRequest): Promise<number> => {
   const tools = servicePool('tools');
   if (tools.hosts().length === 0) {
     throw new Error('No bethesda-tools instance: none in the fleet and BETHESDA_TOOLS_URL unset');
   }
   await ensureDependencyHealthy('tools');
-  return tools.run((host) => binkMixViaRemote(host, req));
+  try {
+    return await tools.run((host) => binkMixViaRemote(host, req));
+  } catch (err) {
+    if (!isRetryableMixError(err)) throw err;
+    log.warn(
+      `BinkMix failed once (${err instanceof Error ? err.message : String(err)}); trying again`,
+    );
+    await ensureDependencyHealthy('tools');
+    return tools.run((host) => binkMixViaRemote(host, req));
+  }
+};
+
+/** A hung or unreachable host, not a refused request (a 4xx names what is wrong with the input). */
+export const isRetryableMixError = (err: unknown): boolean => {
+  const message = err instanceof Error ? err.message : String(err);
+  return !/HTTP 4\d\d/.test(message);
 };
 
 export const packVideo = async (db: Tx, opts: PackVideoOptions): Promise<PackVideoOutcome> => {

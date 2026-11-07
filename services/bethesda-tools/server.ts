@@ -79,7 +79,9 @@ const binkMix = createBinkMixHandler({
   wine: WINE,
   exe: RADVIDEO_EXE,
   env: wineEnv(BINK_PREFIX, 'win64'),
-  timeoutMs: Math.max(TIMEOUT_MS, 15 * 60_000),
+  // A pass takes seconds (3.5 s per track on Fallout 4's intro); a pass that has not
+  // returned in minutes is a dialog waiting for a click, and the caller retries.
+  timeoutMs: Number.parseInt(process.env.BETHESDA_TOOLS_BINK_TIMEOUT_MS ?? '300000', 10),
 });
 
 const pool = createWineSlotPool(WINEPREFIX_ROOT, WINE_SERVERS, PER_WINE);

@@ -145,11 +145,12 @@ keeps the one file at `/opt/bethesda/radvideo64.exe`, and gives it its own 64-bi
 prefix beside the 32-bit ones. The tool is a windowed program: without a display Wine
 cannot create its window and it exits 0 having done nothing, so every pass runs under a
 virtual X display (`xvfb-run`); on an error it shows a dialog and waits for a click, so
-every pass runs under a timeout and counts only with exit code 0 and an output file.
-`GET /health` reports it as `tools.bink`.
+every pass runs under a timeout (five minutes, `BETHESDA_TOOLS_BINK_TIMEOUT_MS`) and counts
+only with exit code 0 and an output file. `GET /health` reports it as `tools.bink`.
 
 A finished dub hands itself on to **`video-pack`** (the `cpu` queue, waits for a healthy
-`tools` host): the video and `dub_uk.wav` go to `POST /v1/binkmix` of the sidecar as one
+`tools` host; a call that times out or cannot reach the host is made once more): the video
+and `dub_uk.wav` go to `POST /v1/binkmix` of the sidecar as one
 multipart request (`trackIds`, `video`, `sound`), which runs
 `radvideo64.exe BinkMix <video> <wav> <out> /TrackID<id> /SoundCompress4 /Overwrite /AutoClose`
 once per track (every pass reads the previous pass's output), so the game hears the dub

@@ -9,8 +9,11 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { Agent, fetch as undiciFetch, FormData } from 'undici';
 
-/** BinkMix takes seconds per track on a LAN; the ceiling covers a slow host and the transfer. */
-const BINKMIX_TIMEOUT_MS = 15 * 60_000;
+/**
+ * BinkMix takes seconds per track; the sidecar gives a pass five minutes before it
+ * gives up on a dialog, and this waits a little longer than that plus the transfer.
+ */
+const BINKMIX_TIMEOUT_MS = 6 * 60_000;
 
 const mixAgent = new Agent({ headersTimeout: BINKMIX_TIMEOUT_MS, bodyTimeout: BINKMIX_TIMEOUT_MS });
 
