@@ -135,6 +135,25 @@ export const MediaTab = ({ gameId, modId }: MediaTabProps) => {
                               : 'video.actions.separate',
                           )}
                         </Button>{' '}
+                        {RESEPARATE_STATUSES.has(asset.status) && (
+                          <>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              disabled={!gate.ok}
+                              title={
+                                gate.missing
+                                  ? t('video.needsHost', {
+                                      service: gate.missing.toUpperCase(),
+                                    })
+                                  : t('video.actions.refreshTracksHint')
+                              }
+                              onClick={() => p.separate(asset.id, true)}
+                            >
+                              {t('video.actions.refreshTracks')}
+                            </Button>{' '}
+                          </>
+                        )}
                         <Button
                           variant="primary"
                           size="sm"

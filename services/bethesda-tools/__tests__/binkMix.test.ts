@@ -89,7 +89,7 @@ describe('binkmix', () => {
     expect(calls[1]![4]).toMatch(/\\out\.bk2$/);
     expect(calls[1]!.slice(5)).toEqual([
       '/TrackID1',
-      '/SoundCompress4',
+      '/SoundCompress0',
       '/Overwrite',
       '/AutoClose',
     ]);

@@ -22,7 +22,7 @@ import {
 import { log } from '../logger';
 import { resolveVideoAudioPath, videoAudioRelPath } from './audioStore';
 import { getVideoAsset, setVideoAssetStatus } from './db';
-import { mergeSegmentsIntoPhrases, replaceVideoSegments } from './segments';
+import { listVideoSegments, mergeSegmentsIntoPhrases, replaceVideoSegments } from './segments';
 import { syncVideoRecords } from './videoRecords';
 
 export type SeparateVideoDeps = {
@@ -43,9 +43,18 @@ export type SeparateVideoOptions = {
   videoId: number;
   srcLang: string;
   tgtLang: string;
+  /**
+   * Replace only the speech and background tracks: the phrases, their
+   * translations and takes stay as they are (a better separation model, the
+   * same transcript). A video without phrases is separated in full anyway.
+   */
+  keepPhrases?: boolean;
   signal?: AbortSignal;
   onStage?: (stage: string) => void;
 };
+
+/** The states that survive a tracks-only run; anything else ends as `separated`. */
+const STATES_WITH_WORK = new Set(['separated', 'dubbing', 'dubbed', 'packing', 'packed']);
 
 export type SeparateVideoOutcome = { modId: number; phrases: number; speakers: number };
 
@@ -96,6 +105,16 @@ export const separateVideo = async (
     fs.writeFileSync(path.join(dir, 'separation.json'), JSON.stringify(summarize(result), null, 2));
 
     opts.onStage?.('writing');
+    const existing = opts.keepPhrases ? await listVideoSegments(db, asset.id, opts.tgtLang) : [];
+    if (existing.length > 0) {
+      // Tracks only: the transcript, the records and the takes are left alone.
+      const status = STATES_WITH_WORK.has(asset.status) ? asset.status : 'separated';
+      await setVideoAssetStatus(db, asset.id, status);
+      log.info(
+        `Video #${asset.id} ${asset.file_name}: tracks refreshed, ${existing.length} phrase(s) kept, ${result.elapsed_s ?? '?'} s on audio-intel`,
+      );
+      return { modId: asset.mod_id, phrases: existing.length, speakers: result.speakers.length };
+    }
     const phrases = mergeSegmentsIntoPhrases(result.segments);
     await replaceVideoSegments(db, asset.id, phrases, new Map());
     await syncVideoRecords(db, asset, opts.srcLang, opts.tgtLang);

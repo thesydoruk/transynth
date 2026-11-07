@@ -13,6 +13,8 @@ export type VideoSeparateJobParams = {
   videoId: number;
   srcLang: string;
   tgtLang: string;
+  /** Replace the tracks only; phrases, translations and takes stay. */
+  keepPhrases?: boolean;
 };
 
 export const videoSeparateHandler: JobHandler = (db, ctx) => {

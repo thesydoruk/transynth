@@ -2,7 +2,8 @@
  * The jobs a mod's video goes through, and the phrases they produce.
  *
  *   POST /api/mods/:id/video/:videoId/separate   — separate + transcribe (409 while busy or
- *                                                  when audio-intel has no healthy host)
+ *                                                  when audio-intel has no healthy host);
+ *                                                  `keepPhrases` replaces the tracks only
  *   POST /api/mods/:id/video/:videoId/dub        — takes + mix (`scope`: all | changed |
  *                                                  segment:<idx>); a finished dub goes on
  *                                                  to `video-pack` by itself
@@ -40,38 +41,41 @@ const ids = (params: VideoParams): [number, number] | null => {
 };
 
 export const registerModVideoJobRoutes = async (app: FastifyInstance, db: Tx) => {
-  app.post<{ Params: VideoParams; Body: { srcLang?: string; tgtLang?: string } }>(
-    '/api/mods/:id/video/:videoId/separate',
-    async (req, reply) => {
-      const pair = ids(req.params);
-      if (!pair) return reply.code(400).send({ error: 'Invalid id' });
-      const asset = await getVideoAssetOfMod(db, ...pair);
-      if (!asset) return reply.code(404).send({ error: 'Not found' });
-      if (!asset.audio_rel_path) {
-        return reply.code(409).send({ error: 'The agent has not uploaded the video yet' });
-      }
-      if (BUSY_STATUSES.has(asset.status)) {
-        return reply.code(409).send({ error: `Video is ${asset.status}` });
-      }
-      const health = await probeKindsHealthy(SEPARATE_NEEDS);
-      const missing = SEPARATE_NEEDS.find((kind) => !health[kind]);
-      if (missing) {
-        return reply.code(409).send({ error: `No healthy ${missing} host`, missing });
-      }
-      const params = {
-        videoId: asset.id,
-        srcLang: req.body?.srcLang?.trim() || CONFIG.defaultSrcLang,
-        tgtLang: req.body?.tgtLang?.trim() || CONFIG.defaultTgtLang,
-      };
-      const jobId = await startBackgroundJob(
-        { kind: 'video-separate', modId: asset.mod_id, params },
-        { videoId: asset.id, stage: 'queued' },
-      );
-      await setVideoAssetStatus(db, asset.id, 'separating');
-      log.info(`Video #${asset.id} ${asset.file_name}: separation job #${jobId}`);
-      return reply.send({ ok: true, jobId, videoId: asset.id });
-    },
-  );
+  app.post<{
+    Params: VideoParams;
+    Body: { srcLang?: string; tgtLang?: string; keepPhrases?: boolean };
+  }>('/api/mods/:id/video/:videoId/separate', async (req, reply) => {
+    const pair = ids(req.params);
+    if (!pair) return reply.code(400).send({ error: 'Invalid id' });
+    const asset = await getVideoAssetOfMod(db, ...pair);
+    if (!asset) return reply.code(404).send({ error: 'Not found' });
+    if (!asset.audio_rel_path) {
+      return reply.code(409).send({ error: 'The agent has not uploaded the video yet' });
+    }
+    if (BUSY_STATUSES.has(asset.status)) {
+      return reply.code(409).send({ error: `Video is ${asset.status}` });
+    }
+    const health = await probeKindsHealthy(SEPARATE_NEEDS);
+    const missing = SEPARATE_NEEDS.find((kind) => !health[kind]);
+    if (missing) {
+      return reply.code(409).send({ error: `No healthy ${missing} host`, missing });
+    }
+    const params = {
+      videoId: asset.id,
+      srcLang: req.body?.srcLang?.trim() || CONFIG.defaultSrcLang,
+      tgtLang: req.body?.tgtLang?.trim() || CONFIG.defaultTgtLang,
+      keepPhrases: req.body?.keepPhrases === true,
+    };
+    const jobId = await startBackgroundJob(
+      { kind: 'video-separate', modId: asset.mod_id, params },
+      { videoId: asset.id, stage: 'queued' },
+    );
+    await setVideoAssetStatus(db, asset.id, 'separating');
+    log.info(
+      `Video #${asset.id} ${asset.file_name}: separation job #${jobId}${params.keepPhrases ? ' (tracks only)' : ''}`,
+    );
+    return reply.send({ ok: true, jobId, videoId: asset.id });
+  });
 
   app.post<{ Params: VideoParams; Body: { scope?: string; tgtLang?: string } }>(
     '/api/mods/:id/video/:videoId/dub',

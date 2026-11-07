@@ -22,8 +22,12 @@ import { toWinePath } from './wineSlots';
 
 const execFileAsync = promisify(execFile);
 
-/** Bink Audio quality 4: "best" in RAD's own scale (0 = biggest, 6 = very lossy). */
-const SOUND_COMPRESS_LEVEL = 4;
+/**
+ * Bink Audio compression level 0, the one Bethesda shipped: remixing the intro's own
+ * English track gave 366.26 MB at level 0 against the original's 366.09 MB, 364.8 at
+ * level 2 and 363.1 at level 4, and level 4 cut everything above 8 kHz by 10 dB.
+ */
+const SOUND_COMPRESS_LEVEL = 0;
 const BINK_MAX_SAMPLE_RATE = 0xffff;
 const WAVE_FORMAT_PCM = 1;
 const WAVE_FORMAT_EXTENSIBLE = 0xfffe;

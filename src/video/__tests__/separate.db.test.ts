@@ -167,6 +167,42 @@ describe('separateVideo', () => {
     expect(again[1]!.string_id).not.toBe(segments[1]!.string_id);
   });
 
+  it('with keepPhrases replaces the tracks and leaves the phrases, takes and status alone', async () => {
+    await separateVideo(
+      db(),
+      { videoId, srcLang: 'en', tgtLang: 'uk' },
+      fakeDeps([{ start: 0.5, end: 2, text: 'War.', speaker: 'SPEAKER_00' }], []),
+    );
+    const before = await listVideoSegments(db(), videoId, 'uk');
+    await db().query(
+      `UPDATE video_segments SET take_rel_path = 'assets/1/takes/0000.wav', take_version = 'tv' WHERE video_id = $1`,
+      [videoId],
+    );
+    await db().query(`UPDATE video_assets SET status = 'packed' WHERE id = $1`, [videoId]);
+    const speech = resolveVideoAudioPath(
+      videoAudioRelPath((await getVideoAsset(db(), videoId))!, 'speech'),
+    );
+    const stamp = fs.statSync(speech).mtimeMs;
+    fs.writeFileSync(speech, 'old');
+
+    const calls: string[] = [];
+    const outcome = await separateVideo(
+      db(),
+      { videoId, srcLang: 'en', tgtLang: 'uk', keepPhrases: true },
+      // A transcript that differs: it must not reach the phrases.
+      fakeDeps([{ start: 0.6, end: 4, text: 'War never changes.', speaker: 'SPEAKER_00' }], calls),
+    );
+    expect(outcome).toEqual({ modId, phrases: 1, speakers: 1 });
+    expect(calls).toContain('download speech.wav -> speech.wav');
+    expect(fs.readFileSync(speech, 'utf8')).toBe('wav:speech.wav');
+    expect(fs.statSync(speech).mtimeMs).toBeGreaterThanOrEqual(stamp);
+    const after = await listVideoSegments(db(), videoId, 'uk');
+    expect(after.map((s) => [s.id, s.source_text, s.take_rel_path, s.string_id])).toEqual(
+      before.map((s) => [s.id, s.source_text, 'assets/1/takes/0000.wav', s.string_id]),
+    );
+    expect((await getVideoAsset(db(), videoId))!.status).toBe('packed');
+  });
+
   it('marks the asset as failed when the lane fails, and still removes the job', async () => {
     const calls: string[] = [];
     const deps = fakeDeps([], calls);

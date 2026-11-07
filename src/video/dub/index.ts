@@ -36,8 +36,10 @@ export type DubScope = { kind: 'all' } | { kind: 'changed' } | { kind: 'segment'
  * its format) must reach the game as a new dub even when no take changed.
  * 2: the mix went back to 48 kHz after loudnorm (the first mixes were 192 kHz,
  * which Bink's 16-bit rate field turned into silence in the game).
+ * 3: the background is audio-intel's gated bed (the original outside speech) and
+ * the video is written at Bink's compression level 0, so every mix is remade.
  */
-const MIX_FORMAT_VERSION = 'mix2';
+const MIX_FORMAT_VERSION = 'mix3';
 
 export const parseDubScope = (raw: unknown): DubScope | null => {
   if (raw == null || raw === 'changed') return { kind: 'changed' };
