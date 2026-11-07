@@ -23,6 +23,7 @@ import { log } from '../logger';
 import { resolveVideoAudioPath, videoAudioRelPath } from './audioStore';
 import { getVideoAsset, setVideoAssetStatus } from './db';
 import { listVideoSegments, mergeSegmentsIntoPhrases, replaceVideoSegments } from './segments';
+import type { VideoAssetRow, VideoAssetStatus } from './types';
 import { syncVideoRecords } from './videoRecords';
 
 export type SeparateVideoDeps = {
@@ -54,7 +55,11 @@ export type SeparateVideoOptions = {
 };
 
 /** The states that survive a tracks-only run; anything else ends as `separated`. */
-const STATES_WITH_WORK = new Set(['separated', 'dubbing', 'dubbed', 'packing', 'packed']);
+/** The status a video with phrases is in once its dub and its packed copy are accounted for. */
+const statusOfWork = (asset: VideoAssetRow): VideoAssetStatus => {
+  if (asset.packed_version && asset.packed_version === asset.dub_version) return 'packed';
+  return asset.dub_version ? 'dubbed' : 'separated';
+};
 
 export type SeparateVideoOutcome = { modId: number; phrases: number; speakers: number };
 
@@ -107,9 +112,9 @@ export const separateVideo = async (
     opts.onStage?.('writing');
     const existing = opts.keepPhrases ? await listVideoSegments(db, asset.id, opts.tgtLang) : [];
     if (existing.length > 0) {
-      // Tracks only: the transcript, the records and the takes are left alone.
-      const status = STATES_WITH_WORK.has(asset.status) ? asset.status : 'separated';
-      await setVideoAssetStatus(db, asset.id, status);
+      // Tracks only: the transcript, the records and the takes are left alone. The route
+      // has already written `separating`, so the status comes back from what is on disk.
+      await setVideoAssetStatus(db, asset.id, statusOfWork(asset));
       log.info(
         `Video #${asset.id} ${asset.file_name}: tracks refreshed, ${existing.length} phrase(s) kept, ${result.elapsed_s ?? '?'} s on audio-intel`,
       );
