@@ -151,8 +151,8 @@ export class VortexAgentLoop {
     if (!config.videos || !tasks?.length) return;
     const media = allGamePlugins().find((p) => p.id === config.game)?.media;
     if (!media) return;
-    const pending = tasks.filter((t) => this.state.packedVideos[t.fileName] !== t.dubVersion);
-    if (pending.length === 0) return;
+    // Every listed video goes through packVideos: one it wrote in an earlier tick is
+    // reported again rather than mixed again, so the loop does not filter here.
     this.agentState = 'delivering';
     try {
       const radVideoExe = await ensureRadVideoExe({
@@ -164,7 +164,7 @@ export class VortexAgentLoop {
         tgtLang: config.tgtLang,
         gameDir: config.gameDir,
         media,
-        tasks: pending,
+        tasks,
         api: this.opts.api,
         ownNames: ownDeployedVideoNames(config.stagingPath, config.game, media),
         radVideoExe,
