@@ -95,10 +95,22 @@ export type VortexAgentHeartbeat = {
   delivered: { archiveId: number; fileName: string; at: string } | null;
 };
 
+/** A video of one of the group's mods whose narration track the agent has not uploaded yet. */
+export type VideoUploadTask = {
+  videoId: number;
+  modId: number;
+  fileName: string;
+  /** sha1 of the video file: how the agent finds it in its inventory. */
+  fingerprint: string;
+  sourceTrackId: number | null;
+};
+
 /** A video whose finished dub the agent has not written into the file yet. */
 export type VideoPackTask = {
   videoId: number;
+  modId: number;
   fileName: string;
+  fingerprint: string;
   dubVersion: string;
   byteSize: number | null;
 };

@@ -1,12 +1,13 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { api } from '../../api';
-import type { VideoAsset, VideoSegment } from '../../api';
-import { formatDuration } from './useVideoPage';
-import s from './VideoPage.module.scss';
+import { api } from '../../../../../../api';
+import type { VideoAsset, VideoSegment } from '../../../../../../api';
+import { formatDuration } from './useMediaTab';
+import s from './MediaTab.module.scss';
 
 type Props = {
   gameId: string;
+  modId: number;
   asset: VideoAsset;
   segments: VideoSegment[];
   loading: boolean;
@@ -22,7 +23,7 @@ const STATUS_CLASS: Record<string, string> = {
 };
 
 /** The transcribed phrases of one video: timing, speaker, source, translation, a player per phrase. */
-export const VideoSegmentsPanel = ({ gameId, asset, segments, loading, onClose }: Props) => {
+export const MediaSegmentsPanel = ({ gameId, modId, asset, segments, loading, onClose }: Props) => {
   const { t } = useTranslation();
   const translated = segments.filter((seg) => seg.translation).length;
   const hasSpeech = asset.status !== 'registered' && asset.status !== 'uploaded';
@@ -44,11 +45,9 @@ export const VideoSegmentsPanel = ({ gameId, asset, segments, loading, onClose }
             {t('video.segments.progress', { translated, count: segments.length })}
           </span>
         )}
-        {asset.mod_id != null && (
-          <Link to={`/games/${gameId}/mods/${asset.mod_id}`} className={s.btnGhost}>
-            {t('video.segments.openMod')}
-          </Link>
-        )}
+        <Link to={`/games/${gameId}/mods/${modId}?signature=VIDEO`} className={s.btnGhost}>
+          {t('video.segments.openStrings')}
+        </Link>
         <button type="button" className={s.linkButton} onClick={onClose}>
           {t('common.close')}
         </button>
@@ -81,7 +80,7 @@ export const VideoSegmentsPanel = ({ gameId, asset, segments, loading, onClose }
                         controls
                         preload="none"
                         className={s.playerSmall}
-                        src={api.video.audioUrl(gameId, asset.id, 'speech', {
+                        src={api.video.audioUrl(modId, asset.id, 'speech', {
                           from: seg.start_s,
                           to: seg.end_s,
                         })}
@@ -126,7 +125,7 @@ export const VideoSegmentsPanel = ({ gameId, asset, segments, loading, onClose }
                             controls
                             preload="none"
                             className={s.playerSmall}
-                            src={api.video.audioUrl(gameId, asset.id, 'dub', dubRange(i))}
+                            src={api.video.audioUrl(modId, asset.id, 'dub', dubRange(i))}
                             aria-label={t('video.segments.playTake', { idx: seg.idx })}
                           />
                         )}

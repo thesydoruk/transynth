@@ -11,11 +11,11 @@ import { Agent, fetch as undiciFetch } from 'undici';
 import type { VortexFanOutStage } from '../stages';
 import type {
   VideoPackTask,
+  VideoUploadTask,
   VortexAgentHeartbeat,
   VortexExportOrder,
   VortexLatestLangpack,
 } from '../types';
-import type { VideoAssetView } from './videoSync';
 
 export type VortexRunView = {
   id: number;
@@ -31,7 +31,9 @@ export type HeartbeatReply = {
   ok: boolean;
   groupId: number;
   latestLangpack: VortexLatestLangpack | null;
-  /** Videos whose finished dub is not in the game's file yet; absent on an older server. */
+  /** Videos the import registered whose narration track the agent has not uploaded yet. */
+  videoUploads?: VideoUploadTask[];
+  /** Videos whose finished dub is not in the game's file yet. */
   videoTasks?: VideoPackTask[];
 };
 
@@ -168,20 +170,11 @@ export const createAgentApi = (opts: { api: string; token?: string }) => {
       ),
     downloadLangpack: (runId: number, destPath: string) =>
       downloadFile(`/api/vortex/sync/${runId}/langpack`, destPath),
-    listVideos: (game: string) =>
-      json<{ assets: VideoAssetView[] }>(`/api/video/${encodeURIComponent(game)}`),
-    registerVideo: (game: string, body: Record<string, unknown>) =>
-      post<{ asset: { id: number } }>(`/api/video/${encodeURIComponent(game)}/assets`, body),
-    putVideoAudio: (game: string, id: number, wavPath: string) =>
-      putFile(
-        `/api/video/${encodeURIComponent(game)}/${id}/audio`,
-        wavPath,
-        'audio/wav',
-        `video #${id}`,
-      ),
-    downloadVideoDub: (game: string, id: number, destPath: string) =>
-      downloadFile(`/api/video/${encodeURIComponent(game)}/${id}/audio/dub`, destPath),
-    postVideoPacked: (game: string, id: number, body: { dubVersion: string }) =>
-      post<{ ok: boolean }>(`/api/video/${encodeURIComponent(game)}/${id}/packed`, body),
+    putVideoAudio: (modId: number, id: number, wavPath: string) =>
+      putFile(`/api/mods/${modId}/video/${id}/audio`, wavPath, 'audio/wav', `video #${id}`),
+    downloadVideoDub: (modId: number, id: number, destPath: string) =>
+      downloadFile(`/api/mods/${modId}/video/${id}/audio/dub`, destPath),
+    postVideoPacked: (modId: number, id: number, body: { dubVersion: string }) =>
+      post<{ ok: boolean }>(`/api/mods/${modId}/video/${id}/packed`, body),
   };
 };

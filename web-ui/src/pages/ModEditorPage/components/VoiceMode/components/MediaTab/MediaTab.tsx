@@ -1,11 +1,9 @@
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
-import { api } from '../../api';
-import { Button } from '../../components/Button';
-import { PageHeader } from '../../components/PageHeader';
-import { formatDuration, formatMiB, playableKind, useVideoPage } from './useVideoPage';
-import { VideoSegmentsPanel } from './VideoSegmentsPanel';
-import s from './VideoPage.module.scss';
+import { api } from '../../../../../../api';
+import { Button } from '../../../../../../components/Button';
+import { formatDuration, formatMiB, playableKind, useMediaTab } from './useMediaTab';
+import { MediaSegmentsPanel } from './MediaSegmentsPanel';
+import s from './MediaTab.module.scss';
 
 const STATUS_CLASS: Record<string, string> = {
   registered: 'badgeMuted',
@@ -21,27 +19,21 @@ const STATUS_CLASS: Record<string, string> = {
 /** A video that was separated once is offered the run again, not the first one. */
 const RESEPARATE_STATUSES = new Set(['separated', 'dubbing', 'dubbed', 'packed', 'error']);
 
+export interface MediaTabProps {
+  gameId: string;
+  modId: number;
+}
+
 /**
- * The cutscene videos the resident agent found in the game folder, with the
- * audio it uploaded and how far the dub got. Route: /games/:gameId/video.
+ * The mod's cutscene videos: the audio the agent uploaded, how far the dub
+ * got, the buttons that move it on, and the phrases of the selected video.
  */
-export const VideoPage = () => {
+export const MediaTab = ({ gameId, modId }: MediaTabProps) => {
   const { t } = useTranslation();
-  const { gameId = '' } = useParams<{ gameId: string }>();
-  const p = useVideoPage(gameId);
+  const p = useMediaTab(modId);
 
   return (
-    <div className={s.page}>
-      <PageHeader
-        title={t('video.title')}
-        description={t('video.description')}
-        actions={
-          <Link to={`/games/${gameId}`} className={s.btnGhost}>
-            {t('video.backToHub')}
-          </Link>
-        }
-      />
-
+    <div className={s.tab}>
       {p.error && (
         <div className={s.errorBar} role="alert">
           {p.error}
@@ -109,7 +101,7 @@ export const VideoPage = () => {
                             controls
                             preload="none"
                             className={s.player}
-                            src={api.video.audioUrl(gameId, asset.id, kind)}
+                            src={api.video.audioUrl(modId, asset.id, kind)}
                             aria-label={t(`video.audio.${kind}`)}
                           />
                         ) : (
@@ -158,8 +150,9 @@ export const VideoPage = () => {
       )}
 
       {p.selected && (
-        <VideoSegmentsPanel
+        <MediaSegmentsPanel
           gameId={gameId}
+          modId={modId}
           asset={p.selected}
           segments={p.segments}
           loading={p.segmentsLoading}

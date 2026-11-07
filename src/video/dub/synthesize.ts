@@ -32,12 +32,12 @@ export const takeTextOf = (seg: VideoSegmentRow): string | null => {
 };
 
 export type SynthesizeSegmentOptions = {
-  asset: { id: number; game: string; duration_s: number | null };
+  asset: { id: number; duration_s: number | null };
   segments: readonly VideoSegmentRow[];
   seg: VideoSegmentRow;
   text: string;
   speechWav: string;
-  /** Takes are written here as `takes/<idx>.wav`, relative paths stored as `<game>/<id>/takes/…`. */
+  /** Takes are written here as `takes/<idx>.wav`, relative paths stored as `assets/<id>/takes/…`. */
   assetDir: string;
   assetRelDir: string;
   workDir: string;

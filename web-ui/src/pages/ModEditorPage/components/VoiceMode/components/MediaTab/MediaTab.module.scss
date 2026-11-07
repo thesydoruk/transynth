@@ -1,9 +1,10 @@
-/* ── VideoPage — SCSS Module ─────────────────────────────────────────────── */
+/* ── MediaTab — the videos of a mod inside the voice editor ─────────────── */
 
-.page {
-  padding: 24px 32px;
-  max-width: 1100px;
-  margin: 0 auto;
+.tab {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 20px;
 }
 
 .panel {

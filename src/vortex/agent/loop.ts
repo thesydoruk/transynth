@@ -1,15 +1,18 @@
 /**
  * The watch loop: a cheap look at staging every tick, a settle window after a
  * change (Vortex installs step by step, then deploys), one sync when it is
- * quiet, a heartbeat every tick, and the langpack delivery when the server has
- * a new one. Errors go to the journal and back off; a new change resets that.
+ * quiet, a heartbeat every tick, and the deliveries the heartbeat asks for:
+ * the langpack, the narration tracks of new videos, the dubs written back
+ * into the videos. Errors go to the journal and back off; a new change resets
+ * that.
  */
 import os from 'node:os';
 import path from 'node:path';
 import { allGamePlugins } from '../../games/registry';
 import { log } from '../../logger';
 import { vortexGroupKey, vortexGroupLabel } from '../groupKey';
-import type { VortexAgentHeartbeat, VortexAgentState } from '../types';
+import type { VortexAgentHeartbeat, VortexAgentState, VortexInventory } from '../types';
+import { isVideoRelPath } from '../videoFiles';
 import type { AgentApi, HeartbeatReply } from './apiClient';
 import {
   diffWatchSnapshots,
@@ -18,13 +21,12 @@ import {
   type WatchSnapshot,
 } from './changeDetector';
 import { agentDataDir, type AgentConfig } from './config';
-import { loadHashCache, saveHashCache } from './hashCache';
+import { cachedFileHasher, loadHashCache, saveHashCache } from './hashCache';
 import { deliverLangpack, looksLikeVortexDownloads, shouldDeliver } from './langpackDelivery';
 import { ensureRadVideoExe } from './radTools';
-import { runSyncCycle } from './syncCycle';
+import { runSyncCycle, scanForSync } from './syncCycle';
 import { packVideos } from './videoPack';
-import { ownDeployedVideoNames, scanVideos } from './videoScan';
-import { syncVideos } from './videoSync';
+import { uploadVideoTracks } from './videoUpload';
 import {
   appendJournal,
   readAgentState,
@@ -61,6 +63,8 @@ export class VortexAgentLoop {
   private settleUntil: number | null = null;
   private lastWatch: WatchSnapshot | null = null;
   private readonly cache;
+  /** Video file hash → where the file is, from the last inventory. */
+  private videoIndex = new Map<string, string>();
 
   constructor(private readonly opts: AgentLoopOptions) {
     this.state = readAgentState(opts.paths.state);
@@ -112,6 +116,7 @@ export class VortexAgentLoop {
   private async heartbeat(): Promise<void> {
     const reply = await this.opts.api.heartbeat(this.heartbeatBody());
     this.state.groupId = reply.groupId;
+    await this.uploadVideosQuietly(reply.videoUploads);
     await this.packVideosQuietly(reply.videoTasks);
     if (!this.opts.config.deliverLangpack) return;
     if (!shouldDeliver(reply.latestLangpack, this.state.deliveredArchiveId)) return;
@@ -141,6 +146,60 @@ export class VortexAgentLoop {
     this.agentState = 'idle';
   }
 
+  /** Remember where every video of the inventory is, by its hash. */
+  private async indexVideos(inventory: VortexInventory): Promise<void> {
+    const hash = cachedFileHasher(this.cache);
+    const index = new Map<string, string>();
+    for (const unit of inventory.units) {
+      for (const file of unit.files) {
+        if (isVideoRelPath(file.relPath)) index.set(await hash(file.absPath), file.absPath);
+      }
+    }
+    this.videoIndex = index;
+  }
+
+  /**
+   * The file behind a hash the server asks about. A resident agent whose
+   * staging never changed has not scanned since it started, so a hash it does
+   * not know triggers one scan (cheap: the hashes are cached).
+   */
+  private async locateVideos(fingerprints: readonly string[]): Promise<void> {
+    if (fingerprints.every((fp) => this.videoIndex.has(fp))) return;
+    const scan = await scanForSync({
+      config: this.opts.config,
+      state: this.state,
+      cache: this.cache,
+      api: this.opts.api,
+    });
+    await this.indexVideos(scan.inventory);
+    saveHashCache(this.opts.paths.cache, this.cache);
+  }
+
+  /** The narration tracks the server waits for: found by hash, decoded, uploaded. */
+  private async uploadVideosQuietly(tasks: HeartbeatReply['videoUploads']): Promise<void> {
+    const { config } = this.opts;
+    if (!config.videos || !tasks?.length) return;
+    this.agentState = 'uploading';
+    try {
+      await this.locateVideos(tasks.map((t) => t.fingerprint));
+      const outcome = await uploadVideoTracks({
+        tasks,
+        locate: (fp) => this.videoIndex.get(fp) ?? null,
+        api: this.opts.api,
+        ffmpegPath: config.ffmpegPath,
+        ffprobePath: config.ffprobePath,
+        log: (line) => log.info(`vortex-agent: ${line}`),
+      });
+      this.journal({ event: 'video-audio', ...outcome });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.journal({ event: 'video-audio-error', message });
+      log.warn(`vortex-agent: video audio upload failed: ${message}`);
+    } finally {
+      this.agentState = 'idle';
+    }
+  }
+
   /**
    * Finished dubs go into the game's own video files and, as one archive, into
    * Vortex's downloads. The RAD tools are fetched the first time they are needed.
@@ -155,6 +214,7 @@ export class VortexAgentLoop {
     // reported again rather than mixed again, so the loop does not filter here.
     this.agentState = 'delivering';
     try {
+      await this.locateVideos(tasks.map((t) => t.fingerprint));
       const radVideoExe = await ensureRadVideoExe({
         toolsDir: config.radVideoToolsPath,
         log: (line) => log.info(`vortex-agent: RAD tools: ${line}`),
@@ -162,11 +222,10 @@ export class VortexAgentLoop {
       const outcome = await packVideos({
         game: config.game,
         tgtLang: config.tgtLang,
-        gameDir: config.gameDir,
         media,
         tasks,
+        locate: (fp) => this.videoIndex.get(fp) ?? null,
         api: this.opts.api,
-        ownNames: ownDeployedVideoNames(config.stagingPath, config.game, media),
         radVideoExe,
         ffprobePath: config.ffprobePath,
         packDir: path.join(agentDataDir(), 'videopack', config.game),
@@ -217,53 +276,6 @@ export class VortexAgentLoop {
     return true;
   }
 
-  /**
-   * The cutscene videos: register them and upload the narration track once per
-   * full-scan interval (they change only when Vortex swaps a file). A failure
-   * here is logged and retried next interval; it never holds up the mod sync.
-   */
-  private async syncVideosQuietly(now: number): Promise<void> {
-    const { config } = this.opts;
-    if (!config.videos) return;
-    const due =
-      this.opts.once ||
-      !this.state.lastVideoScanAt ||
-      now - Date.parse(this.state.lastVideoScanAt) > config.fullScanEveryMin * 60_000;
-    if (!due) return;
-    const media = allGamePlugins().find((p) => p.id === config.game)?.media;
-    if (!media) {
-      log.warn(`vortex-agent: ${config.game} has no cutscene videos to sync; set videos: false`);
-      return;
-    }
-    try {
-      const entries = await scanVideos({
-        gameDir: config.gameDir,
-        media,
-        ffprobePath: config.ffprobePath,
-        ownNames: ownDeployedVideoNames(config.stagingPath, config.game, media),
-        ...(config.videoSourceTrack != null ? { preferredTrackId: config.videoSourceTrack } : {}),
-      });
-      const outcome = await syncVideos({
-        game: config.game,
-        agentKey: os.hostname(),
-        entries,
-        api: this.opts.api,
-        ffmpegPath: config.ffmpegPath,
-        log: (line) => log.info(`vortex-agent: ${line}`),
-      });
-      this.state.lastVideoScanAt = new Date().toISOString();
-      this.save();
-      this.journal({ event: 'videos', found: entries.length, ...outcome });
-      log.info(
-        `vortex-agent: videos ${entries.length} found, ${outcome.uploaded} uploaded, ${outcome.skipped} already on the server`,
-      );
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.journal({ event: 'videos-error', message });
-      log.warn(`vortex-agent: video sync failed: ${message}`);
-    }
-  }
-
   private async heartbeatQuietly(): Promise<void> {
     try {
       await this.heartbeat();
@@ -276,10 +288,9 @@ export class VortexAgentLoop {
 
   async tick(): Promise<void> {
     const now = Date.now();
-    // Report, and deliver a finished langpack, before any sync: a sync may hold
-    // this tick for the length of a TM run, and the langpack is ready now.
+    // Report, and deliver what is ready, before any sync: a sync may hold this
+    // tick for the length of a TM run, and the langpack is ready now.
     await this.heartbeatQuietly();
-    await this.syncVideosQuietly(now);
     try {
       if (this.state.retryAfter && now < Date.parse(this.state.retryAfter)) {
         // still backing off after a failure of the same change
@@ -289,8 +300,12 @@ export class VortexAgentLoop {
           state: this.state,
           cache: this.cache,
           api: this.opts.api,
+          agentKey: os.hostname(),
           onPhase: (phase) => {
             this.agentState = phase;
+          },
+          onInventory: (inventory) => {
+            void this.indexVideos(inventory);
           },
         });
         this.state.signatures.watch = this.lastWatch ? watchSignature(this.lastWatch) : null;
@@ -317,6 +332,7 @@ export class VortexAgentLoop {
       this.journal({ event: 'error', message, retryAfter: this.state.retryAfter });
       log.warn(`vortex-agent: ${message} (retry after ${this.state.retryAfter})`);
     }
+    // The sync's import may have registered videos: the second heartbeat picks their tasks up.
     await this.heartbeatQuietly();
   }
 

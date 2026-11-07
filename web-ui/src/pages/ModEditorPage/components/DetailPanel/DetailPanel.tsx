@@ -12,6 +12,7 @@ import { QAPanel } from '../QAPanel';
 import { HistoryPanel } from '../HistoryPanel';
 import { getPlaceholderParts } from './utils';
 import { PexSourcePanel } from './PexSourcePanel';
+import { VideoPhrasePanel } from './VideoPhrasePanel';
 import { useTabContentHeight } from '../../hooks/useTabContentHeight';
 import styles from './DetailPanel.module.scss';
 
@@ -107,6 +108,7 @@ export const DetailPanel = ({
   };
 
   const isPex = capabilities.usesRecordPaths && activeRow.signature === 'PEX';
+  const isVideo = capabilities.usesRecordPaths && activeRow.signature === 'VIDEO';
   const showBookEditor =
     capabilities.usesRecordPaths &&
     (activeRow.signature === 'BOOK' || /<[a-zA-Z]/.test(activeRow.source));
@@ -157,6 +159,7 @@ export const DetailPanel = ({
                     {activeRow.context}
                   </div>
                 )}
+                {isVideo && <VideoPhrasePanel modId={modId} activeRow={activeRow} />}
                 <textarea readOnly value={activeRow.source} className={styles.sourceArea} />
               </>
             )}

@@ -87,14 +87,16 @@ writes into staging and never deletes anything in the downloads folder. Switch i
 
 ### Videos
 
-With `"videos": true` the agent registers the game's cutscene videos once per
-`fullScanEveryMin` and uploads their narration track (`ffmpegPath`, `ffprobePath`,
-`videoSourceTrack`), writes finished dubs back into the videos with the RAD Video Tools it
-installs itself into `radVideoToolsPath` (`--install-rad-tools` does it ahead of time), and
-drops a videopack into Vortex's downloads. A video Vortex deployed from our own videopack is
-read from `<file>.vortex_backup`, the game's file Vortex keeps next to it; read from the
-deployed copy, the previous dub would count as a new video. The rest happens on the Video
-page. See [Dubbing the cutscenes](18-video-dubbing.md).
+With `"videos": true` the cutscene videos are part of the units as files of their mod:
+`Data/Video` goes with the main master, a staging folder's `Video/` with its mod; the zip
+carries a manifest in a video's place, and the agent uploads the narration track of the
+videos the server registered and asked for through the heartbeat (`ffmpegPath`,
+`ffprobePath`, `videoSourceTrack`). Finished dubs the agent writes back into the videos with
+the RAD Video Tools it installs itself into `radVideoToolsPath` (`--install-rad-tools` does
+it ahead of time), and drops a videopack into Vortex's downloads. A video Vortex deployed from
+our own videopack is read from `<file>.vortex_backup`, the game's file Vortex keeps next to
+it; the videopack's staging folder is skipped, like the langpack's. The rest happens in the
+"Media" tab of the mod's voice mode. See [Dubbing the cutscenes](18-video-dubbing.md).
 
 ### State and journal
 

@@ -8,7 +8,8 @@ import type { LlmPromptFamily } from '../../../../../llm/promptFamily';
  * each need a different voice, and one prompt covering all of them produced
  * visibly worse output. Every other title uses a single prompt.
  */
-const DIALOG_GRUPS = new Set(['INFO']);
+/** Spoken lines: dialogue records and the narration transcribed from the videos. */
+const DIALOG_GRUPS = new Set(['INFO', 'VIDEO']);
 const PROSE_GRUPS = new Set(['BOOK', 'NOTE', 'TERM']);
 const QUEST_GRUPS = new Set(['QUST', 'MESG', 'DIAL']);
 const MCM_GRUPS = new Set(['MCM']);

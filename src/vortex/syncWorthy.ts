@@ -3,6 +3,7 @@ import { isBa2GnrArchive } from '../formats/ba2';
 import { isInterfaceTranslatePath } from '../formats/interface';
 import { isMcmTranslationArchivePath } from '../formats/mcm';
 import { isPlugin } from '../import/mod/discovery';
+import { isVideoRelPath } from './videoFiles';
 
 const ARCHIVE_EXT = new Set(['.ba2', '.bsa']);
 const STRING_TABLE_EXT = new Set(['.strings', '.dlstrings', '.ilstrings']);
@@ -32,18 +33,25 @@ export const isVoiceSourceRelPath = (relPath: string): boolean => {
 const isSyncTxt = (relPath: string): boolean =>
   isInterfaceTranslatePath(relPath) || isMcmTranslationArchivePath(relPath);
 
-/** Matches server `selectArchiveImportAnchor`: plugin or MCM / Interface txt. */
+/** Matches server `selectAnchor`: plugin, MCM / Interface txt, or a cutscene video. */
 export const hasVortexImportAnchor = (relPaths: readonly string[]): boolean =>
   relPaths.some((rel) => {
     const base = path.basename(rel);
     if (isPlugin(base)) return true;
+    if (isVideoRelPath(rel)) return true;
     return path.extname(base).toLowerCase() === '.txt' && isSyncTxt(rel);
   });
+
+export type VortexSyncFileOptions = {
+  /** Count the cutscene videos (`Video/*.bk2`) as part of a unit. Off unless the agent dubs them. */
+  videos?: boolean;
+};
 
 export const isVortexSyncFile = (
   absPath: string,
   fileName: string,
   relPath = fileName,
+  options: VortexSyncFileOptions = {},
 ): boolean => {
   const ext = path.extname(fileName).toLowerCase();
   if (isPlugin(fileName)) return true;
@@ -51,6 +59,7 @@ export const isVortexSyncFile = (
   if (ext === '.pex') return true;
   if (ext === '.txt' && isSyncTxt(relPath)) return true;
   if (isVoiceSourceRelPath(relPath)) return true;
+  if (options.videos && isVideoRelPath(relPath)) return true;
   if (ext === '.ba2') return isVortexSyncArchiveName(fileName) && isBa2GnrArchive(absPath);
   if (ext === '.bsa') return isVortexSyncArchiveName(fileName);
   return false;
@@ -78,7 +87,6 @@ const SKIP_VORTEX_WALK_DIRS = new Set([
   'textures',
   'meshes',
   'music',
-  'video',
   'docs',
   'documentation',
   'fomod',

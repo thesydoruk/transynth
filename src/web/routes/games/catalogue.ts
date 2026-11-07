@@ -42,6 +42,8 @@ export interface GameInfo {
   /** File extensions this game accepts as a direct upload, alongside archives. */
   uploadExtensions: string[];
   editor: GameEditorCapabilities;
+  /** True when the game ships pre-rendered videos the agent can dub (the editor's media tab). */
+  media: boolean;
 }
 
 const gameInfo = (id: string): GameInfo => {
@@ -58,6 +60,7 @@ const gameInfo = (id: string): GameInfo => {
     nexusId: catalogue.nexus?.id,
     domainName: catalogue.nexus?.domain,
     editor: plugin.editor,
+    media: plugin.media != null,
   };
 };
 

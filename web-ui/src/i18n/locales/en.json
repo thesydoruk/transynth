@@ -342,6 +342,9 @@
     "pexScriptContextLabel": "Script: ",
     "pexScriptContextTitle": "Papyrus source script, function, call site, and source line when debug info is present",
     "pexSourceTitle": "Source code",
+    "videoPhraseOriginal": "The phrase in the video",
+    "videoPhraseDub": "The dub of the phrase",
+    "videoPhraseNoDub": "not dubbed yet",
     "pexSourceLoading": "Decompiling script…",
     "pexSourceUnavailable": "Papyrus source not available",
     "pexSourceError": "Could not load Papyrus source",
@@ -587,6 +590,11 @@
     }
   },
   "voice": {
+    "tabs": {
+      "label": "Voice editor section",
+      "speakers": "Characters",
+      "media": "Media"
+    },
     "searchPlaceholder": "Search speakers…",
     "speakerCount": "{{shown}} of {{total}} speakers",
     "noMatches": "No speakers match the search.",
@@ -1513,19 +1521,12 @@
     "vortexLink": "Vortex",
     "vortexDesc": "A Vortex staging folder mirrored by the resident agent: TM runs on its own, the rest is a button here.",
     "vortexMeta": "{{count}} staging folder(s)",
-    "vortexMetaEmpty": "No agent has reported yet",
-    "videoLink": "Cutscene videos",
-    "videoDesc": "The game's pre-rendered videos: narration separated, translated and dubbed, then written back by the agent.",
-    "videoMeta": "{{count}} video(s) registered",
-    "videoMetaEmpty": "The agent has not scanned the videos yet"
+    "vortexMetaEmpty": "No agent has reported yet"
   },
   "video": {
-    "title": "Cutscene videos",
-    "description": "The resident agent registers the videos in the game folder and uploads their narration track. Separation, translation and the dub run here; the agent writes the finished track back into the video.",
-    "backToHub": "← Game hub",
     "empty": {
-      "title": "No videos registered yet",
-      "body": "Turn the video scan on in the agent's config and run a tick; the agent needs ffmpeg and ffprobe on its PATH or named in the config.",
+      "title": "This mod has no videos",
+      "body": "The Vortex agent lists a mod's videos with the mod when its config turns them on; the next sync registers them here and uploads their narration. The agent needs ffmpeg and ffprobe on its PATH or named in the config.",
       "config": "\"videos\": true,\n\"ffmpegPath\": \"ffmpeg\",\n\"ffprobePath\": \"ffprobe\""
     },
     "columns": {
@@ -1547,7 +1548,7 @@
     "segments": {
       "title": "Phrases of {{file}}",
       "progress": "{{translated}} of {{count}} translated",
-      "openMod": "Open in the editor",
+      "openStrings": "Open the VIDEO strings",
       "empty": "No phrases yet — separate the video first.",
       "time": "Time",
       "speaker": "Speaker",

@@ -7,9 +7,10 @@ const uploads = fs.mkdtempSync(path.join(os.tmpdir(), 'video-dub-'));
 process.env.VIDEO_UPLOAD_DIR = uploads;
 
 await import('../../../games');
-const { useTestDb } = await import('../../../testing/testDb');
+const { insertMod, useTestDb } = await import('../../../testing/testDb');
 const { registerVideoAsset, setVideoAssetAudio, getVideoAsset } = await import('../../db');
 const { replaceVideoSegments, listVideoSegments } = await import('../../segments');
+const { syncVideoRecords } = await import('../../videoRecords');
 const { videoAudioRelPath, resolveVideoAudioPath } = await import('../../audioStore');
 const { dubVideo } = await import('..');
 const { disposeServicePools } = await import('../../../services/pools');
@@ -47,7 +48,8 @@ describe('dubVideo', () => {
   let videoId: number;
   let stringIds: number[];
   beforeEach(async () => {
-    const asset = await registerVideoAsset(db(), 'fo4', {
+    const modId = await insertMod(db(), { name: 'Fallout4' });
+    const asset = await registerVideoAsset(db(), modId, {
       fileName: 'Intro_ru.bk2',
       byteSize: 10,
       fingerprint: 'fp',
@@ -65,22 +67,6 @@ describe('dubVideo', () => {
     await setVideoAssetAudio(db(), asset.id, videoAudioRelPath(asset, 'source'));
     await db().query(`UPDATE video_assets SET status = 'separated' WHERE id = $1`, [asset.id]);
 
-    const { rows: mod } = await db().query<{ id: number }>(
-      `INSERT INTO mods (name, abs_path, version_hash, game, origin) VALUES ('Video', 'v', 'video:fo4', 'fo4', 'video') RETURNING id`,
-    );
-    stringIds = [];
-    for (const [i, text] of ['War.', 'War never changes.', 'The end.'].entries()) {
-      const { rows: rec } = await db().query<{ id: number }>(
-        `INSERT INTO records (mod_id, signature, path, path_simplified, edid, hash_norm, formid_hex)
-         VALUES ($1, 'INFO', 'INFO\\NAM1', 'INFO\\NAM1', $2, 'h', $3) RETURNING id`,
-        [mod[0]!.id, `Intro_ru#${i}`, `0001000${i}`],
-      );
-      const { rows: str } = await db().query<{ id: number }>(
-        `INSERT INTO strings (record_id, lang, text_raw, text_norm, source_kind) VALUES ($1, 'en', $2, $2, 'video') RETURNING id`,
-        [rec[0]!.id, text],
-      );
-      stringIds.push(str[0]!.id);
-    }
     await replaceVideoSegments(
       db(),
       videoId,
@@ -89,8 +75,10 @@ describe('dubVideo', () => {
         { idx: 1, startS: 3, endS: 6, speaker: 'A', text: 'War never changes.' },
         { idx: 2, startS: 20, endS: 22, speaker: 'A', text: 'The end.' },
       ],
-      new Map(stringIds.map((id, i) => [i, id])),
+      new Map(),
     );
+    const sync = await syncVideoRecords(db(), asset, 'en', 'uk');
+    stringIds = [0, 1, 2].map((idx) => sync.stringIds.get(idx)!);
     // Two phrases translated; the third stays English and gets no take.
     await db().query(
       `INSERT INTO translations (src_string_id, target_lang, text, status, confidence) VALUES

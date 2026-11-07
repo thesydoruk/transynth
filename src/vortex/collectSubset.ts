@@ -4,9 +4,19 @@ import { isSecondaryPluginPath } from '../import/mod/importAnchor';
 import { isPlugin } from '../import/mod/discovery';
 import type { VortexInventoryFile } from './types';
 import { toPosixRel } from './hashSubset';
-import { isVortexSyncFile, shouldSkipVortexWalkDir } from './syncWorthy';
+import {
+  isVortexSyncFile,
+  shouldSkipVortexWalkDir,
+  type VortexSyncFileOptions,
+} from './syncWorthy';
+import { isVideoFileName } from './videoFiles';
 
-const walkLoose = (root: string, current: string, out: string[]): void => {
+const walkLoose = (
+  root: string,
+  current: string,
+  out: string[],
+  options: VortexSyncFileOptions,
+): void => {
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(current, { withFileTypes: true });
@@ -17,27 +27,28 @@ const walkLoose = (root: string, current: string, out: string[]): void => {
     const full = path.join(current, entry.name);
     if (entry.isDirectory()) {
       if (shouldSkipVortexWalkDir(root, full, entry.name)) continue;
-      walkLoose(root, full, out);
+      walkLoose(root, full, out, options);
       continue;
     }
     if (!entry.isFile()) continue;
     if (isSecondaryPluginPath(full)) continue;
     const relPath = toPosixRel(root, full);
-    if (isVortexSyncFile(full, entry.name, relPath)) out.push(full);
+    if (isVortexSyncFile(full, entry.name, relPath, options)) out.push(full);
   }
 };
 
-const listTranslatableFiles = (root: string): string[] => {
+const listTranslatableFiles = (root: string, options: VortexSyncFileOptions): string[] => {
   const files: string[] = [];
-  walkLoose(root, root, files);
+  walkLoose(root, root, files, options);
   return files;
 };
 
 export const collectPluginUnitFiles = (
   folderRoot: string,
   pluginPath: string | null,
+  options: VortexSyncFileOptions = {},
 ): VortexInventoryFile[] => {
-  const all = listTranslatableFiles(folderRoot);
+  const all = listTranslatableFiles(folderRoot, options);
   const stem = pluginPath
     ? path.basename(pluginPath, path.extname(pluginPath)).toLowerCase()
     : null;
@@ -58,9 +69,15 @@ export const collectPluginUnitFiles = (
   }));
 };
 
+/**
+ * The game's own files of one official plugin: the plugin, its archives, its
+ * string tables and — for the main master, which owns everything no plugin
+ * claims — the cutscene videos.
+ */
 export const collectNamedPluginFiles = (
   dataDir: string,
   pluginFileName: string,
+  options: VortexSyncFileOptions = {},
 ): VortexInventoryFile[] => {
   const pluginPath = path.join(dataDir, pluginFileName);
   if (!fs.existsSync(pluginPath)) return [];
@@ -102,6 +119,18 @@ export const collectNamedPluginFiles = (
           absPath: path.join(stringsDir, name),
           relPath: `Strings/${name}`,
         });
+      }
+    }
+  }
+
+  if (options.videos) {
+    const videoDir = path.join(dataDir, 'Video');
+    if (fs.existsSync(videoDir)) {
+      for (const name of fs.readdirSync(videoDir).sort((a, b) => a.localeCompare(b, 'en'))) {
+        const full = path.join(videoDir, name);
+        if (isVideoFileName(name) && fs.statSync(full).isFile()) {
+          files.push({ absPath: full, relPath: `Video/${name}` });
+        }
       }
     }
   }

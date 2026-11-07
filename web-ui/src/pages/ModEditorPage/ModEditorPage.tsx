@@ -145,6 +145,7 @@ export const ModEditorPage = () => {
       ) : pageMode === 'voice' ? (
         <VoiceMode
           modId={modId}
+          gameId={capabilities.gameId}
           srcLang={filter.srcLang}
           targetLang={filter.targetLang}
           selectedStatuses={filter.selectedStatuses}

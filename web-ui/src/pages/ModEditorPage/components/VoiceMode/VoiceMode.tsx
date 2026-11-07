@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
 import type { VoiceLinePreview } from '../../../../api';
 import type { StatusFilterValue } from '../../statusFilter';
 import type { CommitAdvance } from '../DialogsMode/components/DialogLineRow/DialogLineRow';
 import type { VoiceLineHandlers } from './components/VoiceLinesView/VoiceLinesView';
 import { VoiceNavigator } from './components/VoiceNavigator';
 import { VoiceLinesView } from './components/VoiceLinesView';
+import { MediaTab, useGameHasMedia } from './components/MediaTab';
+import { VoiceTabs, type VoiceTab } from './components/VoiceTabs';
 import {
   applyVoiceStatusMatch,
   selectVisibleVoiceLines,
@@ -22,6 +23,7 @@ import { useVoiceNavigatorWidth } from './hooks/useVoiceNavigatorWidth';
 import { useVoicePlayback } from './hooks/useVoicePlayback';
 import { useSpeakerVoiceGenerate } from './hooks/useSpeakerVoiceGenerate';
 import { useVoiceLiveEvents } from './hooks/useVoiceLiveEvents';
+import { useVoiceMessages } from './hooks/useVoiceMessages';
 import { useVoiceState } from './hooks/useVoiceState';
 import { useVoiceStatusMatch } from './hooks/useVoiceStatusMatch';
 import { VoiceResynthDialog } from '../../../../components/VoiceResynthDialog';
@@ -30,6 +32,8 @@ import styles from './VoiceMode.module.scss';
 
 export interface VoiceModeProps {
   modId: number;
+  /** The mod's game: whether it has media to dub decides whether the second tab shows. */
+  gameId: string;
   srcLang: string;
   targetLang: string;
   selectedStatuses: StatusFilterValue[];
@@ -37,19 +41,24 @@ export interface VoiceModeProps {
 }
 
 /**
- * Voice editor: speakers in a navigator beside the dubbed lines of the selected one.
- * Layout and interaction patterns mirror {@link DialogsMode}.
+ * Voice editor in two tabs: the characters — speakers in a navigator beside
+ * the dubbed lines of the selected one, mirroring {@link DialogsMode} — and
+ * the media, the mod's cutscene videos and their dubs. The media tab shows
+ * only for a game that ships videos.
  */
 export const VoiceMode = ({
   modId,
+  gameId,
   srcLang,
   targetLang,
   selectedStatuses,
   qaOnly,
 }: VoiceModeProps) => {
-  const { t } = useTranslation();
   const qc = useQueryClient();
   const state = useVoiceState();
+  const hasMedia = useGameHasMedia(gameId);
+  const [tab, setTab] = useState<VoiceTab>('speakers');
+  const activeTab: VoiceTab = hasMedia ? tab : 'speakers';
   const searchRef = useRef<HTMLInputElement>(null);
   const { width, isResizing, startResize } = useVoiceNavigatorWidth();
   const [resynthOpen, setResynthOpen] = useState(false);
@@ -167,35 +176,12 @@ export const VoiceMode = ({
     state.setSpeakerKey(data.visibleSpeakers[next]!.key);
   };
 
-  const speakersError = data.speakersQuery.error;
-  const linesError = data.linesQuery.error;
-  const loadError =
-    speakersError instanceof Error
-      ? speakersError.message
-      : data.speakersQuery.data && !data.speakersQuery.data.ok
-        ? data.speakersQuery.data.message
-        : linesError instanceof Error
-          ? linesError.message
-          : data.linesQuery.data && !data.linesQuery.data.ok
-            ? data.linesQuery.data.message
-            : null;
-
-  const panelError =
-    loadError ??
-    playback.playError ??
-    actions.refError ??
-    actions.generateError ??
-    save.error ??
-    null;
-
-  const emptyMessage =
-    data.speakersQuery.isLoading || !data.speakersQuery.data
-      ? t('modEditor.voiceLoading')
-      : data.speakersQuery.data.ok && data.speakers.length === 0
-        ? t('modEditor.voiceNoLines')
-        : !data.activeSpeaker
-          ? t('voice.selectSpeaker')
-          : null;
+  const { panelError, emptyMessage } = useVoiceMessages(data, [
+    playback.playError,
+    actions.refError,
+    actions.generateError,
+    save.error,
+  ]);
 
   const handleSetReference = (line: VoiceLinePreview) => {
     if (!data.activeSpeaker) return;
@@ -208,103 +194,117 @@ export const VoiceMode = ({
     actions.generateMut.mutate(line);
   };
 
-  return (
-    <div className={styles.root}>
-      <div className={styles.navigatorPane} style={{ width }}>
-        <VoiceNavigator
-          speakers={data.visibleSpeakers}
-          totalCount={data.speakers.length}
-          activeKey={data.activeKey}
-          search={state.search}
-          onSearchChange={state.setSearch}
-          onSelect={state.setSpeakerKey}
-          onStepSpeaker={stepSpeaker}
-          isLoading={data.speakersQuery.isLoading}
-          searchRef={searchRef}
-          synthesizingKeys={live.synthesizingSpeakers}
-          flashedKeys={live.flashedSpeakers}
-        />
+  const tabs = hasMedia && <VoiceTabs active={activeTab} onChange={setTab} />;
+
+  if (activeTab === 'media') {
+    return (
+      <div className={styles.shell}>
+        {tabs}
+        <MediaTab gameId={gameId} modId={modId} />
       </div>
+    );
+  }
 
-      <div
-        role="separator"
-        aria-orientation="vertical"
-        className={`${styles.divider} ${isResizing ? styles.dividerActive : ''}`}
-        onMouseDown={startResize}
-      />
+  return (
+    <div className={styles.shell}>
+      {tabs}
+      <div className={styles.root}>
+        <div className={styles.navigatorPane} style={{ width }}>
+          <VoiceNavigator
+            speakers={data.visibleSpeakers}
+            totalCount={data.speakers.length}
+            activeKey={data.activeKey}
+            search={state.search}
+            onSearchChange={state.setSearch}
+            onSelect={state.setSpeakerKey}
+            onStepSpeaker={stepSpeaker}
+            isLoading={data.speakersQuery.isLoading}
+            searchRef={searchRef}
+            synthesizingKeys={live.synthesizingSpeakers}
+            flashedKeys={live.flashedSpeakers}
+          />
+        </div>
 
-      <VoiceLinesView
-        speakerName={data.activeSpeaker?.displayName ?? ''}
-        dubbed={headerCounts.dubbed}
-        total={headerCounts.total}
-        orphans={headerCounts.orphans}
-        hasReference={Boolean(data.activeSpeaker?.referencePick)}
-        lines={visibleLines}
-        hiddenLineCount={hiddenLineCount}
-        filter={state.filter}
-        onFilterChange={state.setFilter}
-        counts={lineCounts}
-        find={state.find}
-        onFindChange={state.setFind}
-        playingTrack={playback.playingTrack}
-        loadingTrack={playback.loadingTrack}
-        setReferencePending={actions.setReferenceMut.isPending}
-        generatePending={actions.generateMut.isPending}
-        regenerateLine={regenerateLine}
-        error={panelError}
-        onDismissError={() => {
-          actions.dismissRefError();
-          actions.dismissGenerateError();
-          save.dismissError();
-        }}
-        onPlay={playback.handlePlay}
-        onSetReference={handleSetReference}
-        onGenerate={handleGenerate}
-        onRegenerate={setRegenerateLine}
-        lineHandlers={lineHandlers}
-        emptyMessage={emptyMessage}
-        isLoadingLines={
-          statusMatch.isLoading || (data.linesQuery.isLoading && data.lines.length === 0)
-        }
-        voiceJob={speakerVoice.job}
-        voiceProgress={speakerVoice.pct}
-        showVoiceProgress={speakerVoice.showBar}
-        onVoiceMissing={speakerVoice.startMissing}
-        onVoiceAll={speakerVoice.startAll}
-        onVoiceLowSimilarity={() => setResynthOpen(true)}
-        onVoiceStop={speakerVoice.stop}
-        synthesizingLines={live.synthesizingLines}
-        flashedLines={live.flashedLines}
-      />
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          className={`${styles.divider} ${isResizing ? styles.dividerActive : ''}`}
+          onMouseDown={startResize}
+        />
 
-      <VoiceResynthDialog
-        open={resynthOpen}
-        onClose={() => setResynthOpen(false)}
-        modId={modId}
-        srcLang={srcLang}
-        targetLang={targetLang}
-        speakerKey={data.activeKey}
-        onStart={(params) => {
-          speakerVoice.startLowSimilarity(params);
-          setResynthOpen(false);
-        }}
-      />
+        <VoiceLinesView
+          speakerName={data.activeSpeaker?.displayName ?? ''}
+          dubbed={headerCounts.dubbed}
+          total={headerCounts.total}
+          orphans={headerCounts.orphans}
+          hasReference={Boolean(data.activeSpeaker?.referencePick)}
+          lines={visibleLines}
+          hiddenLineCount={hiddenLineCount}
+          filter={state.filter}
+          onFilterChange={state.setFilter}
+          counts={lineCounts}
+          find={state.find}
+          onFindChange={state.setFind}
+          playingTrack={playback.playingTrack}
+          loadingTrack={playback.loadingTrack}
+          setReferencePending={actions.setReferenceMut.isPending}
+          generatePending={actions.generateMut.isPending}
+          regenerateLine={regenerateLine}
+          error={panelError}
+          onDismissError={() => {
+            actions.dismissRefError();
+            actions.dismissGenerateError();
+            save.dismissError();
+          }}
+          onPlay={playback.handlePlay}
+          onSetReference={handleSetReference}
+          onGenerate={handleGenerate}
+          onRegenerate={setRegenerateLine}
+          lineHandlers={lineHandlers}
+          emptyMessage={emptyMessage}
+          isLoadingLines={
+            statusMatch.isLoading || (data.linesQuery.isLoading && data.lines.length === 0)
+          }
+          voiceJob={speakerVoice.job}
+          voiceProgress={speakerVoice.pct}
+          showVoiceProgress={speakerVoice.showBar}
+          onVoiceMissing={speakerVoice.startMissing}
+          onVoiceAll={speakerVoice.startAll}
+          onVoiceLowSimilarity={() => setResynthOpen(true)}
+          onVoiceStop={speakerVoice.stop}
+          synthesizingLines={live.synthesizingLines}
+          flashedLines={live.flashedLines}
+        />
 
-      {regenerateLine && (
-        <VoiceRegenerateModal
+        <VoiceResynthDialog
+          open={resynthOpen}
+          onClose={() => setResynthOpen(false)}
           modId={modId}
-          line={regenerateLine}
           srcLang={srcLang}
           targetLang={targetLang}
-          hasCurrentTranslation={Boolean(regenerateLine.hasTranslationAudio)}
-          onClose={() => setRegenerateLine(null)}
-          onCommitted={async () => {
-            setRegenerateLine(null);
-            await qc.invalidateQueries({ queryKey: data.speakersQueryKey });
-            await qc.invalidateQueries({ queryKey: data.linesQueryKey });
+          speakerKey={data.activeKey}
+          onStart={(params) => {
+            speakerVoice.startLowSimilarity(params);
+            setResynthOpen(false);
           }}
         />
-      )}
+
+        {regenerateLine && (
+          <VoiceRegenerateModal
+            modId={modId}
+            line={regenerateLine}
+            srcLang={srcLang}
+            targetLang={targetLang}
+            hasCurrentTranslation={Boolean(regenerateLine.hasTranslationAudio)}
+            onClose={() => setRegenerateLine(null)}
+            onCommitted={async () => {
+              setRegenerateLine(null);
+              await qc.invalidateQueries({ queryKey: data.speakersQueryKey });
+              await qc.invalidateQueries({ queryKey: data.linesQueryKey });
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 };

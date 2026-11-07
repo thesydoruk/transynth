@@ -19,6 +19,7 @@ import { loadVoiceProjectSettings } from '../../voice/voiceProjectSettings';
 import {
   resolveVideoAudioPath,
   videoAssetDir,
+  videoAssetRelDir,
   videoAudioFile,
   videoAudioRelPath,
 } from '../audioStore';
@@ -82,9 +83,13 @@ export const dubVideo = async (db: Tx, opts: DubVideoOptions): Promise<DubVideoO
   const workDir = fs.mkdtempSync(path.join(os.tmpdir(), `transynth-dub-${asset.id}-`));
   try {
     const segments = await listVideoSegments(db, asset.id, opts.tgtLang);
-    const settings = await loadVoiceProjectSettings(db, asset.game);
+    const { rows: owner } = await db.query<{ game: string }>(
+      `SELECT game FROM mods WHERE id = $1`,
+      [asset.mod_id],
+    );
+    const settings = await loadVoiceProjectSettings(db, owner[0]?.game ?? null);
     const assetDir = videoAssetDir(asset);
-    const assetRelDir = path.join(asset.game, String(asset.id));
+    const assetRelDir = videoAssetRelDir(asset);
 
     // 1. Takes for the phrases in scope that have something to say.
     const planned = segments

@@ -8,6 +8,7 @@ import { merkleContentHash, type FileHasher } from './hashSubset';
 import { readPeProductVersion } from './exeVersion';
 import { exeNameForGame, isOfficialGamePlugin, officialMasterNames } from './gameProfiles';
 import type { VortexGameReleaseHint, VortexInventoryFile, VortexInventoryUnit } from './types';
+import { isTransynthVideopackFolder, isVideoRelPath, VORTEX_BACKUP_SUFFIX } from './videoFiles';
 
 const resolveGameDataDir = (gameDir: string): string => {
   const direct = path.resolve(gameDir);
@@ -26,6 +27,10 @@ const resolveGameDataDir = (gameDir: string): string => {
  * Files Vortex deployed into Data belong to mods (our own langpack among them),
  * not to the game: hashing them would make the base game look changed, and
  * re-import it, every time a mod or the langpack is deployed.
+ *
+ * A video our own videopack deployed is the game's video with our dub in it:
+ * the game's file, which Vortex keeps beside it as `<file>.vortex_backup`, is
+ * what the unit lists, so the base game keeps its videos once they are dubbed.
  */
 const withoutVortexDeployed = (
   dataDir: string,
@@ -33,8 +38,26 @@ const withoutVortexDeployed = (
 ): VortexInventoryFile[] => {
   const deployed = discoverVortexDeployment(dataDir);
   if (!deployed) return files;
-  const deployedPaths = new Set(deployed.files.map((file) => file.relPath.toLowerCase()));
-  return files.filter((file) => !deployedPaths.has(file.relPath.replace(/\\/g, '/').toLowerCase()));
+  const deployedBy = new Map(
+    deployed.files.map((file) => [file.relPath.toLowerCase(), file.sourceFolder]),
+  );
+  const out: VortexInventoryFile[] = [];
+  for (const file of files) {
+    const owner = deployedBy.get(file.relPath.replace(/\\/g, '/').toLowerCase());
+    if (owner == null) {
+      out.push(file);
+      continue;
+    }
+    if (!isVideoRelPath(file.relPath) || !isTransynthVideopackFolder(owner)) continue;
+    const backup = `${file.absPath}${VORTEX_BACKUP_SUFFIX}`;
+    if (fs.existsSync(backup)) out.push({ absPath: backup, relPath: file.relPath });
+  }
+  return out;
+};
+
+export type ScanGameOptions = {
+  /** Count the cutscene videos of the main master; off unless the agent dubs them. */
+  videos?: boolean;
 };
 
 export const scanGameUnits = async (
@@ -42,6 +65,7 @@ export const scanGameUnits = async (
   gameDir: string,
   stagingPluginNames: Set<string>,
   hashFile?: FileHasher,
+  options: ScanGameOptions = {},
 ): Promise<{
   units: VortexInventoryUnit[];
   gameRelease: VortexGameReleaseHint;
@@ -59,8 +83,10 @@ export const scanGameUnits = async (
     );
   }
 
+  const masters = officialMasterNames(game);
+  const mainMaster = masters[0]?.toLowerCase() ?? null;
   const candidates = new Set<string>();
-  for (const name of officialMasterNames(game)) {
+  for (const name of masters) {
     if (!stagingPluginNames.has(name.toLowerCase())) candidates.add(name.toLowerCase());
   }
   for (const name of dataEntries) {
@@ -73,7 +99,12 @@ export const scanGameUnits = async (
   for (const lower of [...candidates].sort()) {
     const actual = dataEntries.find((name) => name.toLowerCase() === lower);
     if (!actual) continue;
-    const files = withoutVortexDeployed(dataDir, collectNamedPluginFiles(dataDir, actual));
+    const files = withoutVortexDeployed(
+      dataDir,
+      collectNamedPluginFiles(dataDir, actual, {
+        videos: options.videos === true && lower === mainMaster,
+      }),
+    );
     if (files.length === 0) continue;
     const pluginStem = path.basename(actual, path.extname(actual));
     const contentHash = await merkleContentHash(files, hashFile);
