@@ -29,6 +29,8 @@ describe('cutscene videos in the inventory', () => {
     expect(isVideoRelPath('Sound/Video/x.bk2')).toBe(false);
     expect(isVideoRelPath('Intro_ru.bk2')).toBe(false);
     expect(isTransynthVideopackFolder('Transynth_fo4_uk_videopack_r2')).toBe(true);
+    expect(isTransynthVideopackFolder('Transynth_fo4_uk_videopack_b6a72379')).toBe(true);
+    expect(isTransynthVideopackFolder('Transynth_fo4_uk_videopack_b6a72379 (1)')).toBe(true);
     expect(isTransynthVideopackFolder('Transynth_fo4_uk_langpack_r2')).toBe(false);
     // Counted only when the agent dubs videos; an anchor of its own either way.
     expect(isVortexSyncFile('/m/Video/Intro_ru.bk2', 'Intro_ru.bk2', 'Video/Intro_ru.bk2')).toBe(
@@ -96,6 +98,7 @@ describe('cutscene videos in the inventory', () => {
     writeFile(path.join(staging, 'Cool Mod-1-1', 'Video', 'CoolIntro.bk2'), 'video');
     writeFile(path.join(staging, 'Better Intro-7-2', 'Video', 'Intro_ru.bk2'), 'video');
     writeFile(path.join(staging, 'Transynth_fo4_uk_videopack_r1', 'Video', 'Intro_ru.bk2'), 'd');
+    writeFile(path.join(staging, 'Transynth_fo4_uk_videopack_b6a72379', 'Video', 'LUCK.bk2'), 'd');
 
     const plain = await scanStagingUnits(staging);
     expect(plain.map((u) => [u.name, u.files.map((f) => f.relPath)])).toEqual([

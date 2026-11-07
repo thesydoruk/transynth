@@ -24,9 +24,13 @@ export const isVideoRelPath = (relPath: string): boolean => {
   return parts.length === 2 && parts[0] === 'data' && parts[1] === VIDEO_DIR;
 };
 
-/** The staging folder of a videopack this agent delivered (`Transynth_<game>_<lang>_videopack_r<N>`). */
+/**
+ * The staging folder of a videopack this agent delivered: Vortex names the mod after the
+ * archive, `Transynth_<game>_<lang>_videopack_<version>` (`r<N>` before the server built
+ * the packs, the first eight hex digits of the pack version since).
+ */
 export const isTransynthVideopackFolder = (folderName: string): boolean =>
-  /^transynth_.+_videopack_r\d+/i.test(folderName);
+  /^transynth_.+_videopack_[0-9a-z]+/i.test(folderName);
 
 /** Where Vortex keeps the game's own file while a mod's copy is deployed over it. */
 export const VORTEX_BACKUP_SUFFIX = '.vortex_backup';
