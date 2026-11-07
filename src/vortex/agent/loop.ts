@@ -23,7 +23,7 @@ import { deliverLangpack, looksLikeVortexDownloads, shouldDeliver } from './lang
 import { ensureRadVideoExe } from './radTools';
 import { runSyncCycle } from './syncCycle';
 import { packVideos } from './videoPack';
-import { scanVideos } from './videoScan';
+import { ownDeployedVideoNames, scanVideos } from './videoScan';
 import { syncVideos } from './videoSync';
 import {
   appendJournal,
@@ -166,6 +166,7 @@ export class VortexAgentLoop {
         media,
         tasks: pending,
         api: this.opts.api,
+        ownNames: ownDeployedVideoNames(config.stagingPath, config.game, media),
         radVideoExe,
         ffprobePath: config.ffprobePath,
         packDir: path.join(agentDataDir(), 'videopack', config.game),
@@ -239,6 +240,7 @@ export class VortexAgentLoop {
         gameDir: config.gameDir,
         media,
         ffprobePath: config.ffprobePath,
+        ownNames: ownDeployedVideoNames(config.stagingPath, config.game, media),
         ...(config.videoSourceTrack != null ? { preferredTrackId: config.videoSourceTrack } : {}),
       });
       const outcome = await syncVideos({
