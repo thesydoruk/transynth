@@ -1555,6 +1555,7 @@
       "translation": "Translation",
       "untranslated": "not translated",
       "play": "Play phrase {{idx}}",
+      "playTake": "Play the dub of phrase {{idx}}",
       "take": "Take",
       "similarity": "Voice similarity of the take",
       "tempo": "Sped up to fit the slot",

@@ -30,6 +30,14 @@ import { decideFit, planSlots } from './timeline';
 
 export type DubScope = { kind: 'all' } | { kind: 'changed' } | { kind: 'segment'; idx: number };
 
+/**
+ * Part of the dub's version: a change to how the mix is written (its rate,
+ * its format) must reach the game as a new dub even when no take changed.
+ * 2: the mix went back to 48 kHz after loudnorm (the first mixes were 192 kHz,
+ * which Bink's 16-bit rate field turned into silence in the game).
+ */
+const MIX_FORMAT_VERSION = 'mix2';
+
 export const parseDubScope = (raw: unknown): DubScope | null => {
   if (raw == null || raw === 'changed') return { kind: 'changed' };
   if (raw === 'all') return { kind: 'all' };
@@ -147,7 +155,7 @@ export const dubVideo = async (db: Tx, opts: DubVideoOptions): Promise<DubVideoO
       outWav,
       workDir,
     });
-    const dubVersion = sha1Hex(placed.map((p) => p.version).join('\n'));
+    const dubVersion = sha1Hex([MIX_FORMAT_VERSION, ...placed.map((p) => p.version)].join('\n'));
     await db.query(
       `UPDATE video_assets
           SET dub_rel_path = $2, dub_version = $3, status = 'dubbed', error = NULL, updated_at = NOW()
