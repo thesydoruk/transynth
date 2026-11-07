@@ -146,7 +146,7 @@ describe('importVideoManifests', () => {
     const [asset] = await listVideoAssets(db(), newMod);
     expect(asset).toMatchObject({
       status: 'packed',
-      audio_rel_path: old.audio_rel_path,
+      audio_rel_path: videoAudioRelPath(old, 'source'),
       dub_version: 'dv',
       packed_version: 'dv',
     });

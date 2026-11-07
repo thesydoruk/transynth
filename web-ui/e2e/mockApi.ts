@@ -31,6 +31,7 @@ const games = [
     localized: true,
     uploadExtensions: ['.esp', '.esm', '.esl', '.ba2'],
     editor: CE_EDITOR,
+    media: true,
   },
   {
     id: 'sse',
@@ -526,12 +527,12 @@ const routes: Array<[RegExp, Answer]> = [
   [/^\/api\/exports$/, { archives: [] }],
   [/^\/api\/vortex\/groups$/, { groups: [vortexGroup] }],
   [
-    /^\/api\/video\/fo4$/,
+    /^\/api\/mods\/\d+\/video$/,
     {
       assets: [
         {
           id: 1,
-          game: 'fo4',
+          mod_id: mods[0].id,
           agent_key: 'gaming-pc',
           file_name: 'Intro_ru.bk2',
           byte_size: 366088784,
@@ -539,9 +540,8 @@ const routes: Array<[RegExp, Answer]> = [
           duration_s: 164.5,
           track_ids: [0, 1],
           source_track_id: 0,
-          audio_rel_path: 'fo4/1/source.wav',
+          audio_rel_path: 'src/abc/source.wav',
           status: 'uploaded',
-          mod_id: null,
           dub_rel_path: null,
           dub_version: null,
           packed_version: null,

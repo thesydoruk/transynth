@@ -7,6 +7,7 @@ const uploads = fs.mkdtempSync(path.join(os.tmpdir(), 'video-schema-'));
 process.env.VIDEO_UPLOAD_DIR = uploads;
 
 await import('../../games');
+const { PATHS } = await import('../../paths');
 const { insertMod, useTestDb } = await import('../../testing/testDb');
 const { ensureVideoSchema } = await import('../schema');
 const { registerVideoAsset } = await import('../db');
@@ -98,8 +99,9 @@ describe('ensureVideoSchema', () => {
       `INSERT INTO translations (src_string_id, target_lang, text, status) VALUES ($1, 'uk', 'Війна.', 'reviewed')`,
       [stringIds[0]],
     );
-    fs.mkdirSync(path.join(uploads, 'fo4', '1'), { recursive: true });
-    fs.writeFileSync(path.join(uploads, 'fo4', '1', 'source.wav'), 'x');
+    const legacyDir = path.join(PATHS.videoUploads, 'fo4');
+    fs.mkdirSync(path.join(legacyDir, '1'), { recursive: true });
+    fs.writeFileSync(path.join(legacyDir, '1', 'source.wav'), 'x');
 
     await ensureVideoSchema(db());
 
@@ -143,7 +145,7 @@ describe('ensureVideoSchema', () => {
         )
       ).rows,
     ).toEqual([]);
-    expect(fs.existsSync(path.join(uploads, 'fo4'))).toBe(false);
+    expect(fs.existsSync(legacyDir)).toBe(false);
 
     // The new shape works: one row per mod and file, gone with the mod.
     const reg = {
