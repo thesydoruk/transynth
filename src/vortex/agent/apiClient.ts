@@ -10,11 +10,11 @@ import { pipeline } from 'node:stream/promises';
 import { Agent, fetch as undiciFetch } from 'undici';
 import type { VortexFanOutStage } from '../stages';
 import type {
-  VideoPackTask,
   VideoUploadTask,
   VortexAgentHeartbeat,
   VortexExportOrder,
   VortexLatestLangpack,
+  VortexLatestVideopack,
 } from '../types';
 
 export type VortexRunView = {
@@ -31,10 +31,10 @@ export type HeartbeatReply = {
   ok: boolean;
   groupId: number;
   latestLangpack: VortexLatestLangpack | null;
-  /** Videos the import registered whose narration track the agent has not uploaded yet. */
+  /** Videos the import registered whose file the agent has not uploaded yet. */
   videoUploads?: VideoUploadTask[];
-  /** Videos whose finished dub is not in the game's file yet. */
-  videoTasks?: VideoPackTask[];
+  /** The group's dubbed videos as one archive, or null while none is written. */
+  latestVideopack?: VortexLatestVideopack | null;
 };
 
 export type AgentApi = ReturnType<typeof createAgentApi>;
@@ -170,11 +170,14 @@ export const createAgentApi = (opts: { api: string; token?: string }) => {
       ),
     downloadLangpack: (runId: number, destPath: string) =>
       downloadFile(`/api/vortex/sync/${runId}/langpack`, destPath),
-    putVideoAudio: (modId: number, id: number, wavPath: string) =>
-      putFile(`/api/mods/${modId}/video/${id}/audio`, wavPath, 'audio/wav', `video #${id}`),
-    downloadVideoDub: (modId: number, id: number, destPath: string) =>
-      downloadFile(`/api/mods/${modId}/video/${id}/audio/dub`, destPath),
-    postVideoPacked: (modId: number, id: number, body: { dubVersion: string }) =>
-      post<{ ok: boolean }>(`/api/mods/${modId}/video/${id}/packed`, body),
+    putVideoFile: (modId: number, id: number, filePath: string) =>
+      putFile(
+        `/api/mods/${modId}/video/${id}/file`,
+        filePath,
+        'application/octet-stream',
+        `video #${id}`,
+      ),
+    downloadVideopack: (groupId: number, destPath: string) =>
+      downloadFile(`/api/vortex/groups/${groupId}/videopack`, destPath),
   };
 };

@@ -37,6 +37,7 @@ export const JOB_KINDS = [
   'vortex-sync',
   'video-separate',
   'video-dub',
+  'video-pack',
 ] as const;
 
 export type JobKind = (typeof JOB_KINDS)[number];

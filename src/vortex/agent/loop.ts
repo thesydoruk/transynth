@@ -2,13 +2,12 @@
  * The watch loop: a cheap look at staging every tick, a settle window after a
  * change (Vortex installs step by step, then deploys), one sync when it is
  * quiet, a heartbeat every tick, and the deliveries the heartbeat asks for:
- * the langpack, the narration tracks of new videos, the dubs written back
- * into the videos. Errors go to the journal and back off; a new change resets
- * that.
+ * the langpack, the files of new videos up to the server, the videopack of
+ * dubbed videos down into Vortex's downloads. Errors go to the journal and
+ * back off; a new change resets that.
  */
 import os from 'node:os';
 import path from 'node:path';
-import { allGamePlugins } from '../../games/registry';
 import { log } from '../../logger';
 import { vortexGroupKey, vortexGroupLabel } from '../groupKey';
 import type { VortexAgentHeartbeat, VortexAgentState, VortexInventory } from '../types';
@@ -23,10 +22,9 @@ import {
 import { agentDataDir, type AgentConfig } from './config';
 import { cachedFileHasher, loadHashCache, saveHashCache } from './hashCache';
 import { deliverLangpack, looksLikeVortexDownloads, shouldDeliver } from './langpackDelivery';
-import { ensureRadVideoExe } from './radTools';
 import { runSyncCycle, scanForSync } from './syncCycle';
-import { packVideos } from './videoPack';
-import { uploadVideoTracks } from './videoUpload';
+import { deliverVideopack, shouldDeliverVideopack } from './videopackDelivery';
+import { uploadVideoFiles } from './videoUpload';
 import {
   appendJournal,
   readAgentState,
@@ -110,6 +108,14 @@ export class VortexAgentLoop {
               at: this.state.deliveredAt ?? '',
             }
           : null,
+      deliveredVideopack:
+        this.state.deliveredVideopackVersion != null
+          ? {
+              version: this.state.deliveredVideopackVersion,
+              fileName: this.state.deliveredVideopackFileName ?? '',
+              at: this.state.deliveredVideopackAt ?? '',
+            }
+          : null,
     };
   }
 
@@ -117,7 +123,7 @@ export class VortexAgentLoop {
     const reply = await this.opts.api.heartbeat(this.heartbeatBody());
     this.state.groupId = reply.groupId;
     await this.uploadVideosQuietly(reply.videoUploads);
-    await this.packVideosQuietly(reply.videoTasks);
+    await this.deliverVideopackQuietly(reply.groupId, reply.latestVideopack);
     if (!this.opts.config.deliverLangpack) return;
     if (!shouldDeliver(reply.latestLangpack, this.state.deliveredArchiveId)) return;
     this.agentState = 'delivering';
@@ -175,71 +181,62 @@ export class VortexAgentLoop {
     saveHashCache(this.opts.paths.cache, this.cache);
   }
 
-  /** The narration tracks the server waits for: found by hash, decoded, uploaded. */
+  /** The video files the server waits for: found by hash and uploaded as they are. */
   private async uploadVideosQuietly(tasks: HeartbeatReply['videoUploads']): Promise<void> {
     const { config } = this.opts;
     if (!config.videos || !tasks?.length) return;
     this.agentState = 'uploading';
     try {
       await this.locateVideos(tasks.map((t) => t.fingerprint));
-      const outcome = await uploadVideoTracks({
+      const outcome = await uploadVideoFiles({
         tasks,
         locate: (fp) => this.videoIndex.get(fp) ?? null,
         api: this.opts.api,
-        ffmpegPath: config.ffmpegPath,
-        ffprobePath: config.ffprobePath,
         log: (line) => log.info(`vortex-agent: ${line}`),
       });
-      this.journal({ event: 'video-audio', ...outcome });
+      this.journal({ event: 'video-upload', ...outcome });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      this.journal({ event: 'video-audio-error', message });
-      log.warn(`vortex-agent: video audio upload failed: ${message}`);
+      this.journal({ event: 'video-upload-error', message });
+      log.warn(`vortex-agent: video upload failed: ${message}`);
     } finally {
       this.agentState = 'idle';
     }
   }
 
   /**
-   * Finished dubs go into the game's own video files and, as one archive, into
-   * Vortex's downloads. The RAD tools are fetched the first time they are needed.
-   * A failure is logged and retried on the next heartbeat that still lists the video.
+   * The dubbed videos, as one archive, into Vortex's downloads — a mod of its
+   * own next to the langpack, since the videos weigh gigabytes and change
+   * rarely. A failure is logged and retried on the next heartbeat.
    */
-  private async packVideosQuietly(tasks: HeartbeatReply['videoTasks']): Promise<void> {
+  private async deliverVideopackQuietly(
+    groupId: number,
+    latest: HeartbeatReply['latestVideopack'],
+  ): Promise<void> {
     const { config } = this.opts;
-    if (!config.videos || !tasks?.length) return;
-    const media = allGamePlugins().find((p) => p.id === config.game)?.media;
-    if (!media) return;
-    // Every listed video goes through packVideos: one it wrote in an earlier tick is
-    // reported again rather than mixed again, so the loop does not filter here.
+    if (!config.videos || !config.deliverLangpack) return;
+    if (!shouldDeliverVideopack(latest, this.state.deliveredVideopackVersion)) return;
     this.agentState = 'delivering';
     try {
-      await this.locateVideos(tasks.map((t) => t.fingerprint));
-      const radVideoExe = await ensureRadVideoExe({
-        toolsDir: config.radVideoToolsPath,
-        log: (line) => log.info(`vortex-agent: RAD tools: ${line}`),
-      });
-      const outcome = await packVideos({
+      const delivered = await deliverVideopack(this.opts.api, {
+        groupId,
+        latest,
+        downloadsDir: config.downloadsDir,
         game: config.game,
         tgtLang: config.tgtLang,
-        media,
-        tasks,
-        locate: (fp) => this.videoIndex.get(fp) ?? null,
-        api: this.opts.api,
-        radVideoExe,
-        ffprobePath: config.ffprobePath,
-        packDir: path.join(agentDataDir(), 'videopack', config.game),
-        downloadsDir: config.downloadsDir,
-        state: this.state,
-        log: (line) => log.info(`vortex-agent: ${line}`),
       });
+      this.state.deliveredVideopackVersion = latest.version;
+      this.state.deliveredVideopackFileName = delivered.fileName;
+      this.state.deliveredVideopackAt = new Date().toISOString();
       this.save();
-      this.journal({ event: 'videopack', ...outcome });
+      this.journal({ event: 'videopack-delivered', ...delivered, videos: latest.videos });
+      log.info(
+        `vortex-agent: videopack ${delivered.fileName} (${latest.videos} video(s)) ${delivered.skipped ? 'already' : ''} in Vortex downloads`,
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      this.save();
       this.journal({ event: 'videopack-error', message });
-      log.warn(`vortex-agent: videopack failed: ${message}`);
+      log.warn(`vortex-agent: videopack delivery failed: ${message}`);
     } finally {
       this.agentState = 'idle';
     }

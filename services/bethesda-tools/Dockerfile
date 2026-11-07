@@ -1,10 +1,16 @@
 FROM node:24-slim
 
+# wine32 runs FaceFX and xWMAEncode; wine64 runs RAD's radvideo64.exe (64-bit only).
+# xvfb gives that windowed tool a display: without one Wine cannot create its
+# window and the tool exits 0 having done nothing.
 RUN dpkg --add-architecture i386 \
   && apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     wine \
     wine32 \
+    wine64 \
+    xvfb \
+    xauth \
     ffmpeg \
     curl \
     ca-certificates \
@@ -52,10 +58,22 @@ RUN curl -fsSL --retry 3 -o /tmp/DXSDK_Jun10.exe "$DXSDK_URL" \
   && test -s /opt/bethesda/xWMAEncode.exe \
   && rm -f /tmp/DXSDK_Jun10.exe
 
+# RAD Video Tools: the one program that writes Bink 2. RAD's permanent link serves
+# a 7z (password `RAD`, printed next to the link on the download page) holding an
+# NSIS installer holding radvideo64.exe; 7-Zip opens both layers, so the installer
+# never runs and only the one executable is kept. The tools are free for
+# non-commercial use and nothing of them is redistributed with this repo.
+ARG RAD_TOOLS_URL=https://www.radgametools.com/down/Bink/RADTools.7z
+RUN curl -fsSL --retry 3 -o /tmp/RADTools.7z "$RAD_TOOLS_URL" \
+  && 7z x -y -pRAD -o/tmp/radtools /tmp/RADTools.7z radtools.exe >/dev/null \
+  && 7z e -y -o/opt/bethesda /tmp/radtools/radtools.exe radvideo64.exe >/dev/null \
+  && test -s /opt/bethesda/radvideo64.exe \
+  && rm -rf /tmp/RADTools.7z /tmp/radtools
+
 WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev --ignore-scripts
-COPY server.ts wineSlots.ts faceFxServe.ts ./
+COPY server.ts wineSlots.ts faceFxServe.ts binkMix.ts binkMixRoute.ts ./
 
 ENV NODE_ENV=production
 ENV PORT=3210

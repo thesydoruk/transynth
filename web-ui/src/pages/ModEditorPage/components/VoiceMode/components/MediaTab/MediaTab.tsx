@@ -12,12 +12,20 @@ const STATUS_CLASS: Record<string, string> = {
   separated: 'badgeInfo',
   dubbing: 'badgeInfo',
   dubbed: 'badgeOk',
+  packing: 'badgeInfo',
   packed: 'badgeOk',
   error: 'badgeError',
 };
 
 /** A video that was separated once is offered the run again, not the first one. */
-const RESEPARATE_STATUSES = new Set(['separated', 'dubbing', 'dubbed', 'packed', 'error']);
+const RESEPARATE_STATUSES = new Set([
+  'separated',
+  'dubbing',
+  'dubbed',
+  'packing',
+  'packed',
+  'error',
+]);
 
 export interface MediaTabProps {
   gameId: string;
@@ -70,6 +78,7 @@ export const MediaTab = ({ gameId, modId }: MediaTabProps) => {
                   const kind = playableKind(asset);
                   const gate = p.canSeparate(asset);
                   const dubGate = p.canDub(asset);
+                  const packGate = p.canPack(asset);
                   return (
                     <tr key={asset.id} className={asset.id === p.selected?.id ? s.rowSelected : ''}>
                       <td>
@@ -139,6 +148,26 @@ export const MediaTab = ({ gameId, modId }: MediaTabProps) => {
                         >
                           {t(asset.dub_rel_path ? 'video.actions.redub' : 'video.actions.dub')}
                         </Button>
+                        {packGate.show && (
+                          <>
+                            {' '}
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              disabled={!packGate.ok}
+                              title={
+                                packGate.missing
+                                  ? t('video.needsHost', {
+                                      service: packGate.missing.toUpperCase(),
+                                    })
+                                  : undefined
+                              }
+                              onClick={() => p.pack(asset.id)}
+                            >
+                              {t('video.actions.pack')}
+                            </Button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   );

@@ -63,7 +63,6 @@
     "@fastify/static": "^9.0.0",
     "@types/archiver": "^7.0.0",
     "7z-bin": "^0.0.8",
-    "7z-wasm": "^1.2.0",
     "7zip-bin": "^5.2.0",
     "archiver": "^7.0.1",
     "bullmq": "^5.81.2",

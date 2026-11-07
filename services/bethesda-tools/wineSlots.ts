@@ -16,6 +16,10 @@ const clampInt = (raw: string | undefined, fallback: number, min: number, max: n
 
 export const parseWineServerCount = (raw: string | undefined): number => clampInt(raw, 1, 1, 16);
 
+/** Wine maps `/` to `Z:`; the .exe tools want Windows paths in argv. */
+export const toWinePath = (unixPath: string): string =>
+  `Z:${path.resolve(unixPath).replace(/\//g, '\\')}`;
+
 /** FaceFX jobs allowed on one wineserver. Default 1 — more just waits on the same server. */
 export const parsePerWine = (raw: string | undefined): number => clampInt(raw, 1, 1, 4);
 

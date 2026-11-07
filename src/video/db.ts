@@ -1,17 +1,14 @@
 /** Rows of `video_assets`: registration by the import, listing for the editor and the agent. */
-import fs from 'node:fs';
 import type { Tx } from '../db';
-import type { VideoPackTask, VideoUploadTask } from '../vortex/types';
-import { resolveVideoAudioPath } from './audioStore';
-import type { VideoAssetRegistration, VideoAssetRow, VideoAssetStatus } from './types';
-
-const videoAudioByteSize = (relPath: string): number | null => {
-  try {
-    return fs.statSync(resolveVideoAudioPath(relPath)).size;
-  } catch {
-    return null;
-  }
-};
+import { sha1Hex } from '../utils/hash';
+import type { VideoUploadTask, VortexLatestVideopack } from '../vortex/types';
+import { videoFile, videoPackedFile } from './audioStore';
+import type {
+  VideoAssetProbe,
+  VideoAssetRegistration,
+  VideoAssetRow,
+  VideoAssetStatus,
+} from './types';
 
 const COLUMNS = `id, mod_id, agent_key, file_name, byte_size, fingerprint, duration_s, track_ids,
   source_track_id, audio_rel_path, status, dub_rel_path, dub_version, packed_version,
@@ -30,9 +27,9 @@ const fromRow = (row: Record<string, unknown>): VideoAssetRow =>
 
 /**
  * Register a video of a mod from the agent's manifest. A changed fingerprint
- * means the file was swapped: the old audio, separation and dub no longer
- * describe it, so the row goes back to `registered` and the agent uploads
- * the track again.
+ * means the file was swapped: the old tracks, audio, separation and dub no
+ * longer describe it, so the row goes back to `registered` and the agent
+ * uploads the file again.
  */
 export const registerVideoAsset = async (
   db: Tx,
@@ -40,16 +37,18 @@ export const registerVideoAsset = async (
   reg: VideoAssetRegistration,
 ): Promise<VideoAssetRow> => {
   const { rows } = await db.query(
-    `INSERT INTO video_assets
-       (mod_id, agent_key, file_name, byte_size, fingerprint, duration_s, track_ids, source_track_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
+    `INSERT INTO video_assets (mod_id, agent_key, file_name, byte_size, fingerprint)
+     VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (mod_id, file_name) DO UPDATE SET
        agent_key = COALESCE(EXCLUDED.agent_key, video_assets.agent_key),
        byte_size = EXCLUDED.byte_size,
-       duration_s = EXCLUDED.duration_s,
-       track_ids = EXCLUDED.track_ids,
-       source_track_id = EXCLUDED.source_track_id,
        fingerprint = EXCLUDED.fingerprint,
+       duration_s = CASE WHEN video_assets.fingerprint = EXCLUDED.fingerprint
+                         THEN video_assets.duration_s ELSE NULL END,
+       track_ids = CASE WHEN video_assets.fingerprint = EXCLUDED.fingerprint
+                        THEN video_assets.track_ids ELSE '[]'::jsonb END,
+       source_track_id = CASE WHEN video_assets.fingerprint = EXCLUDED.fingerprint
+                              THEN video_assets.source_track_id ELSE NULL END,
        audio_rel_path = CASE WHEN video_assets.fingerprint = EXCLUDED.fingerprint
                              THEN video_assets.audio_rel_path ELSE NULL END,
        dub_rel_path = CASE WHEN video_assets.fingerprint = EXCLUDED.fingerprint
@@ -64,18 +63,23 @@ export const registerVideoAsset = async (
                     THEN video_assets.error ELSE NULL END,
        updated_at = NOW()
      RETURNING ${COLUMNS}`,
-    [
-      modId,
-      reg.agentKey,
-      reg.fileName,
-      reg.byteSize,
-      reg.fingerprint,
-      reg.durationS,
-      JSON.stringify(reg.trackIds),
-      reg.sourceTrackId,
-    ],
+    [modId, reg.agentKey, reg.fileName, reg.byteSize, reg.fingerprint],
   );
   return fromRow(rows[0]!);
+};
+
+/** What ffprobe read out of the file. */
+export const setVideoAssetProbe = async (
+  db: Tx,
+  id: number,
+  probe: VideoAssetProbe,
+): Promise<void> => {
+  await db.query(
+    `UPDATE video_assets
+        SET duration_s = $2, track_ids = $3::jsonb, source_track_id = $4, updated_at = NOW()
+      WHERE id = $1`,
+    [id, probe.durationS, JSON.stringify(probe.trackIds), probe.sourceTrackId],
+  );
 };
 
 export const listVideoAssets = async (db: Tx, modId: number): Promise<VideoAssetRow[]> => {
@@ -121,7 +125,7 @@ export const findVideoCarrySource = async (
   return rows[0] ? fromRow(rows[0]) : null;
 };
 
-/** The upload landed: remember where, and move the row on from `registered`. */
+/** The narration is decoded: remember where, and move the row on from `registered`. */
 export const setVideoAssetAudio = async (
   db: Tx,
   id: number,
@@ -129,7 +133,8 @@ export const setVideoAssetAudio = async (
 ): Promise<void> => {
   await db.query(
     `UPDATE video_assets
-        SET audio_rel_path = $2, status = 'uploaded', error = NULL, updated_at = NOW()
+        SET audio_rel_path = $2, error = NULL, updated_at = NOW(),
+            status = CASE WHEN status = 'registered' THEN 'uploaded' ELSE status END
       WHERE id = $1`,
     [id, audioRelPath],
   );
@@ -138,72 +143,71 @@ export const setVideoAssetAudio = async (
 /** Current mods of a Vortex group: the agent's own, and only their newest version. */
 const GROUP_MODS = `SELECT id FROM mods WHERE vortex_group_id = $1 AND COALESCE(is_current, TRUE)`;
 
-/** The videos of a group's mods whose audio the agent has not uploaded yet. */
-export const listVideoUploadTasks = async (db: Tx, groupId: number): Promise<VideoUploadTask[]> => {
-  const { rows } = await db.query<{
-    id: number;
-    mod_id: number;
-    file_name: string;
-    fingerprint: string;
-    source_track_id: number | null;
-  }>(
-    `SELECT id, mod_id, file_name, fingerprint, source_track_id FROM video_assets
-      WHERE mod_id IN (${GROUP_MODS}) AND audio_rel_path IS NULL AND status = 'registered'
-      ORDER BY mod_id, file_name`,
+const listGroupAssets = async (db: Tx, groupId: number): Promise<VideoAssetRow[]> => {
+  const { rows } = await db.query(
+    `SELECT ${COLUMNS} FROM video_assets WHERE mod_id IN (${GROUP_MODS}) ORDER BY mod_id, file_name`,
     [groupId],
   );
-  return rows.map((row) => ({
-    videoId: row.id,
-    modId: row.mod_id,
-    fileName: row.file_name,
-    fingerprint: row.fingerprint,
-    sourceTrackId: row.source_track_id,
-  }));
+  return rows.map(fromRow);
 };
 
-/** The videos of a group's mods whose finished dub is not in the file yet. */
-export const listVideoPackTasks = async (db: Tx, groupId: number): Promise<VideoPackTask[]> => {
-  const { rows } = await db.query<{
-    id: number;
-    mod_id: number;
-    file_name: string;
-    fingerprint: string;
-    dub_version: string;
-    dub_rel_path: string;
-  }>(
-    `SELECT id, mod_id, file_name, fingerprint, dub_version, dub_rel_path FROM video_assets
-      WHERE mod_id IN (${GROUP_MODS})
-        AND dub_rel_path IS NOT NULL AND dub_version IS NOT NULL
-        AND status IN ('dubbed', 'packed')
-        AND packed_version IS DISTINCT FROM dub_version
-      ORDER BY mod_id, file_name`,
-    [groupId],
+/** The videos of a group's mods whose file is not on the server (by hash). */
+export const listVideoUploadTasks = async (db: Tx, groupId: number): Promise<VideoUploadTask[]> =>
+  (await listGroupAssets(db, groupId))
+    .filter((asset) => !videoFile(asset))
+    .map((asset) => ({
+      videoId: asset.id,
+      modId: asset.mod_id,
+      fileName: asset.file_name,
+      fingerprint: asset.fingerprint,
+    }));
+
+/** The group's dubbed videos as the agent delivers them: every asset whose copy carries its current dub. */
+export const listVideopackEntries = async (
+  db: Tx,
+  groupId: number,
+): Promise<Array<{ asset: VideoAssetRow; file: string }>> => {
+  const out: Array<{ asset: VideoAssetRow; file: string }> = [];
+  for (const asset of await listGroupAssets(db, groupId)) {
+    if (asset.packed_version == null || asset.packed_version !== asset.dub_version) continue;
+    const file = videoPackedFile(asset);
+    if (file) out.push({ asset, file });
+  }
+  return out;
+};
+
+/** What the agent is told about the group's videopack; null while no video is written. */
+export const latestGroupVideopack = async (
+  db: Tx,
+  groupId: number,
+): Promise<VortexLatestVideopack | null> => {
+  const entries = await listVideopackEntries(db, groupId);
+  if (entries.length === 0) return null;
+  const version = sha1Hex(
+    entries
+      .map(({ asset }) => `${asset.file_name}:${asset.packed_version}`)
+      .sort()
+      .join('\n'),
   );
-  return rows.map((row) => ({
-    videoId: row.id,
-    modId: row.mod_id,
-    fileName: row.file_name,
-    fingerprint: row.fingerprint,
-    dubVersion: row.dub_version,
-    byteSize: videoAudioByteSize(row.dub_rel_path),
-  }));
+  return { version, videos: entries.length };
 };
 
-/** The agent wrote this dub version into the video. */
+/** The dub version written into the asset's copy of the video (null: the copy is gone). */
 export const setVideoAssetPacked = async (
   db: Tx,
   id: number,
-  dubVersion: string,
-): Promise<boolean> => {
-  const { rowCount } = await db.query(
+  dubVersion: string | null,
+): Promise<void> => {
+  await db.query(
     `UPDATE video_assets
         SET packed_version = $2,
-            status = CASE WHEN dub_version = $2 THEN 'packed' ELSE status END,
+            status = CASE WHEN $2::text IS NOT NULL AND dub_version = $2 THEN 'packed'
+                          WHEN $2::text IS NULL AND status = 'packed' THEN 'dubbed'
+                          ELSE status END,
             updated_at = NOW()
       WHERE id = $1`,
     [id, dubVersion],
   );
-  return (rowCount ?? 0) > 0;
 };
 
 export const setVideoAssetStatus = async (

@@ -34,18 +34,12 @@ export type AgentConfig = {
   /** The last stage the agent runs on its own; never beyond TM. */
   autoStages: AgentAutoStage;
   deliverLangpack: boolean;
-  /** Register the game's cutscene videos and upload their narration track. Off by default. */
-  videos: boolean;
-  /** ffmpeg / ffprobe for the video audio; bare names resolve through PATH. */
-  ffmpegPath: string;
-  ffprobePath: string;
-  /** Bink track id to upload when the video has it (the English one); else the lowest id. */
-  videoSourceTrack?: number;
   /**
-   * Folder holding `radvideo64.exe`, which writes the dub back into the video.
-   * The agent downloads the RAD Video Tools there itself when the folder has none.
+   * Register the game's cutscene videos, upload their files and deliver the
+   * dubbed ones as a videopack. Off by default. Nothing else is needed on this
+   * machine: the server reads, dubs and writes the videos.
    */
-  radVideoToolsPath: string;
+  videos: boolean;
 };
 
 const AUTO_STAGES: readonly AgentAutoStage[] = ['import', 'carry', 'tm'];
@@ -82,9 +76,6 @@ export const configTemplate = (game: GameId = 'fo4'): AgentConfig => ({
   autoStages: 'tm',
   deliverLangpack: true,
   videos: false,
-  ffmpegPath: 'ffmpeg',
-  ffprobePath: 'ffprobe',
-  radVideoToolsPath: path.join(agentDataDir(), 'radtools'),
 });
 
 const isDeployableGame = (value: unknown): value is GameId =>
@@ -127,12 +118,6 @@ export const parseAgentConfig = (
       : 'tm',
     deliverLangpack: r.deliverLangpack !== false,
     videos: r.videos === true,
-    ffmpegPath: str('ffmpegPath') || template.ffmpegPath,
-    ffprobePath: str('ffprobePath') || template.ffprobePath,
-    ...(Number.isInteger(r.videoSourceTrack) && (r.videoSourceTrack as number) >= 0
-      ? { videoSourceTrack: r.videoSourceTrack as number }
-      : {}),
-    radVideoToolsPath: str('radVideoToolsPath') || template.radVideoToolsPath,
   };
   if (!config.gameDir) problems.push('gameDir is required (the game install folder)');
   if (r.autoStages !== undefined && !AUTO_STAGES.includes(r.autoStages as AgentAutoStage)) {

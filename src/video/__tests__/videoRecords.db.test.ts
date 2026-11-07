@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from '@jest/globals';
 import '../../games';
 import { insertMod, insertTranslation, useTestDb } from '../../testing/testDb';
-import { registerVideoAsset } from '../db';
+import { registerVideoAsset, setVideoAssetProbe } from '../db';
 import { listVideoSegments, replaceVideoSegments } from '../segments';
 import {
   parseVideoPhrasePath,
@@ -82,11 +82,9 @@ describe('video records', () => {
       fileName: 'Intro_ru.bk2',
       byteSize: 1,
       fingerprint: 'fp',
-      durationS: 10,
-      trackIds: [0],
-      sourceTrackId: 0,
       agentKey: null,
     });
+    await setVideoAssetProbe(db(), asset.id, { durationS: 10, trackIds: [0], sourceTrackId: 0 });
     await replaceVideoSegments(
       db(),
       asset.id,

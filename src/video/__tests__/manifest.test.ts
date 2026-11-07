@@ -28,35 +28,24 @@ describe('video manifest', () => {
   });
 
   it('parses what the agent writes and refuses what it would not', () => {
+    // An older agent's manifest carried ffprobe's view too; that is the server's now.
     expect(
       parseVideoManifest({
         fileName: 'Intro_ru.bk2',
         byteSize: 366088784,
         sha1: sha1.toUpperCase(),
         durationS: 164.5,
-        trackIds: [1, 0, -1, 'x'],
-        sourceTrackId: 0,
+        trackIds: [1, 0],
         agentKey: 'pc',
       }),
-    ).toEqual({
-      fileName: 'Intro_ru.bk2',
-      byteSize: 366088784,
-      sha1,
-      durationS: 164.5,
-      trackIds: [1, 0],
-      sourceTrackId: 0,
-      agentKey: 'pc',
-    });
+    ).toEqual({ fileName: 'Intro_ru.bk2', byteSize: 366088784, sha1, agentKey: 'pc' });
     expect(parseVideoManifest({ fileName: 'Video/Intro.bk2', sha1 })).toBeNull();
     expect(parseVideoManifest({ fileName: 'Intro.bk2', sha1: 'nope' })).toBeNull();
     expect(parseVideoManifest(null)).toBeNull();
-    expect(parseVideoManifest({ fileName: 'Intro.bk2', sha1 })).toEqual({
+    expect(parseVideoManifest({ fileName: 'Intro.bk2', sha1, byteSize: -1 })).toEqual({
       fileName: 'Intro.bk2',
       byteSize: 0,
       sha1,
-      durationS: null,
-      trackIds: [],
-      sourceTrackId: null,
     });
   });
 

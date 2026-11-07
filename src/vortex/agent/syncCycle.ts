@@ -11,14 +11,19 @@ import { log } from '../../logger';
 import { buildVortexInventory } from '../buildInventory';
 import { discoverVortexExportOrder } from '../exportOrder';
 import { vortexGroupLabel } from '../groupKey';
+import type { VideoManifest } from '../../video/manifest';
 import { packVortexUnitZip, vortexUnitZipName } from '../packUnit';
-import type { VortexExportOrder, VortexInventory, VortexPlanUnit } from '../types';
+import type {
+  VortexExportOrder,
+  VortexInventory,
+  VortexInventoryFile,
+  VortexPlanUnit,
+} from '../types';
 import type { AgentApi } from './apiClient';
 import { exportOrderSignature, unitsSignature } from './changeDetector';
 import type { AgentConfig } from './config';
 import { cachedFileHasher, type HashCache } from './hashCache';
 import type { AgentState } from './state';
-import { videoDescriber } from './videoProbe';
 
 export type SyncOutcome =
   | { kind: 'unchanged' }
@@ -154,20 +159,19 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vortex-agent-'));
   let uploaded = 0;
   const rejected: string[] = [];
-  // A video goes up as its manifest: the hash the inventory already has, plus ffprobe's view.
-  const describe = videoDescriber({
-    ffprobePath: config.ffprobePath,
-    hashFile: cachedFileHasher(ctx.cache),
-    ...(config.videoSourceTrack != null ? { preferredTrackId: config.videoSourceTrack } : {}),
+  // A video goes up as its manifest: the hash the inventory already has and its size.
+  const hashFile = cachedFileHasher(ctx.cache);
+  const describe = async (file: VortexInventoryFile): Promise<VideoManifest> => ({
+    fileName: path.basename(file.relPath),
+    byteSize: fs.statSync(file.absPath).size,
+    sha1: await hashFile(file.absPath),
     ...(ctx.agentKey ? { agentKey: ctx.agentKey } : {}),
   });
   try {
     for (const unit of scan.inventory.units) {
       if (!needed.has(unit.unitId)) continue;
       const zipPath = path.join(tmp, vortexUnitZipName(unit));
-      await packVortexUnitZip(unit, zipPath, {
-        describeVideo: (file) => describe(file.absPath, path.basename(file.relPath)),
-      });
+      await packVortexUnitZip(unit, zipPath, { describeVideo: describe });
       log.info(
         `vortex-agent: uploading ${unit.name} (${(fs.statSync(zipPath).size / 1048576).toFixed(1)} MiB)`,
       );

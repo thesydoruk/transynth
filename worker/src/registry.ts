@@ -19,6 +19,7 @@ import { langpackExportHandler } from './jobs/langpackExport/handler';
 import { vortexSyncHandler } from './jobs/vortexSync/handler';
 import { videoSeparateHandler } from './jobs/videoSeparate/handler';
 import { videoDubHandler } from './jobs/videoDub/handler';
+import { videoPackHandler } from './jobs/videoPack/handler';
 import type { JobHandler, JobKind } from './types';
 
 const handlers: Record<JobKind, JobHandler> = {
@@ -37,6 +38,7 @@ const handlers: Record<JobKind, JobHandler> = {
   'vortex-sync': vortexSyncHandler,
   'video-separate': videoSeparateHandler,
   'video-dub': videoDubHandler,
+  'video-pack': videoPackHandler,
 };
 
 export const getJobHandler = (kind: JobKind): JobHandler => {
