@@ -6,6 +6,7 @@
     "start": "tsx server.ts"
   },
   "dependencies": {
+    "@fastify/busboy": "^3.2.0",
     "tsx": "^4.21.0"
   }
 }

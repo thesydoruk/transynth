@@ -1,9 +1,11 @@
 /**
  * Dub one cutscene video (`video-dub`): takes for its translated phrases,
  * fitted to their slots and mixed over the background. Runs on the `tts`
- * queue like a voice job; progress is takes done / takes planned.
+ * queue like a voice job; progress is takes done / takes planned. A finished
+ * dub is handed straight on to `video-pack`, which writes it into the video.
  */
 import { dubVideo, parseDubScope } from '../../../../src/video/dub';
+import { startBackgroundJob } from '../../api/startBackgroundJob';
 import { runTrackedJob } from '../../runTrackedJob';
 import type { JobEvent, JobHandler } from '../../types';
 
@@ -31,8 +33,19 @@ export const videoDubHandler: JobHandler = (db, ctx) => {
           ctx.mergeSnapshot({ stage, done, total });
         },
       });
-      onEvent({ type: 'done', videoId: params.videoId, ...outcome });
-      return { status: 'completed', done: last.total, total: last.total, error: null, ...outcome };
+      const packJobId = await startBackgroundJob(
+        { kind: 'video-pack', modId: ctx.data.modId, params: { videoId: params.videoId } },
+        { videoId: params.videoId, stage: 'queued' },
+      );
+      onEvent({ type: 'done', videoId: params.videoId, packJobId, ...outcome });
+      return {
+        status: 'completed',
+        done: last.total,
+        total: last.total,
+        error: null,
+        packJobId,
+        ...outcome,
+      };
     } catch (err) {
       if (ctx.isCancelled()) {
         onEvent({ type: 'cancelled', videoId: params.videoId });

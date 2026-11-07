@@ -5,6 +5,7 @@ export type VideoAssetStatus =
   | 'separated'
   | 'dubbing'
   | 'dubbed'
+  | 'packing'
   | 'packed'
   | 'error';
 
@@ -31,8 +32,8 @@ export type VideoAsset = {
 
 export type VideoAudioKind = 'source' | 'speech' | 'background' | 'dub';
 
-/** Which hosts the video stages need are up right now. */
-export type VideoServices = Partial<Record<'separate' | 'asr' | 'tts', boolean>>;
+/** Which hosts the video stages need are up right now (`tools` writes the dub into the video). */
+export type VideoServices = Partial<Record<'separate' | 'asr' | 'tts' | 'tools', boolean>>;
 
 export type VideoListResponse = { assets: VideoAsset[]; services: VideoServices };
 

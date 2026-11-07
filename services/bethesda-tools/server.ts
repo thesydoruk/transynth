@@ -8,6 +8,8 @@
  *
  * POST /v1/lip  { game?, text, wav }  → raw .lip
  * POST /v1/xwm  { wav }               → raw .xwm
+ * POST /v1/binkmix  multipart trackIds, video, sound → the Bink 2 video with the
+ *                   sound on every listed track (radvideo64.exe under 64-bit Wine)
  * GET  /health
  */
 import { execFile } from 'node:child_process';
@@ -16,12 +18,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { createBinkMixHandler } from './binkMixRoute';
 import { createFaceFxServePool } from './faceFxServe';
 import {
   createWineSlotPool,
   migrateLegacyWinePrefix,
   parsePerWine,
   parseWineServerCount,
+  toWinePath,
   type WineSlot,
 } from './wineSlots';
 
@@ -38,6 +42,7 @@ const WINE = process.env.WINE_PATH ?? 'wine';
 const WINESERVER = process.env.WINESERVER_PATH ?? 'wineserver';
 const FFMPEG = process.env.FFMPEG_PATH ?? 'ffmpeg';
 const FACEFX_EXE = '/opt/bethesda/FaceFXWrapper.exe';
+const RADVIDEO_EXE = process.env.RADVIDEO_PATH ?? '/opt/bethesda/radvideo64.exe';
 const FONIX = process.env.FONIX_DATA_PATH ?? path.join(TOOLS_DIR, 'FonixData.cdf');
 /** Baked into the image from the DirectX SDK; a copy mounted with Fonix still wins the env. */
 const XWMA_EXE =
@@ -60,12 +65,21 @@ const faceFxGameType = (game: string): string => {
   }
 };
 
-const wineEnv = (prefix: string): NodeJS.ProcessEnv => ({
+const wineEnv = (prefix: string, arch: 'win32' | 'win64' = 'win32'): NodeJS.ProcessEnv => ({
   ...process.env,
   WINEPREFIX: prefix,
-  WINEARCH: 'win32',
+  WINEARCH: arch,
   WINEDEBUG: '-all',
   WINEDLLOVERRIDES: 'mscoree,mshtml=',
+});
+
+/** radvideo64.exe is 64-bit only: its own win64 prefix beside the 32-bit pool. */
+const BINK_PREFIX = path.join(WINEPREFIX_ROOT, 'bink64');
+const binkMix = createBinkMixHandler({
+  wine: WINE,
+  exe: RADVIDEO_EXE,
+  env: wineEnv(BINK_PREFIX, 'win64'),
+  timeoutMs: Math.max(TIMEOUT_MS, 15 * 60_000),
 });
 
 const pool = createWineSlotPool(WINEPREFIX_ROOT, WINE_SERVERS, PER_WINE);
@@ -119,18 +133,16 @@ const decodeWav = (wavB64: unknown): Buffer | null => {
   }
 };
 
-const toolStatus = (): { facefx: boolean; fonix: boolean; xwma: boolean } => ({
+const toolStatus = (): { facefx: boolean; fonix: boolean; xwma: boolean; bink: boolean } => ({
   facefx: fs.existsSync(FACEFX_EXE),
   fonix: fs.existsSync(FONIX),
   xwma: fs.existsSync(XWMA_EXE),
+  bink: fs.existsSync(RADVIDEO_EXE),
 });
 
-/** Wine maps `/` to `Z:`; the .exe tools want Windows paths in argv. */
-const toWinePath = (unixPath: string): string => `Z:${path.resolve(unixPath).replace(/\//g, '\\')}`;
-
-const initWinePrefix = async (prefix: string): Promise<void> => {
+const initWinePrefix = async (prefix: string, arch: 'win32' | 'win64' = 'win32'): Promise<void> => {
   if (!fs.existsSync(prefix)) fs.mkdirSync(prefix, { recursive: true });
-  const env = wineEnv(prefix);
+  const env = wineEnv(prefix, arch);
   if (!fs.existsSync(path.join(prefix, 'system.reg'))) {
     try {
       await execFileAsync(WINE, ['wineboot', '--init'], { env, timeout: 120_000 });
@@ -148,7 +160,10 @@ const initWinePrefix = async (prefix: string): Promise<void> => {
 const ensureWinePrefixes = async (): Promise<void> => {
   if (!fs.existsSync(WINEPREFIX_ROOT)) fs.mkdirSync(WINEPREFIX_ROOT, { recursive: true });
   migrateLegacyWinePrefix(WINEPREFIX_ROOT);
-  await Promise.all(pool.slots.map((slot) => initWinePrefix(slot.prefix)));
+  await Promise.all([
+    ...pool.slots.map((slot) => initWinePrefix(slot.prefix)),
+    initWinePrefix(BINK_PREFIX, 'win64'),
+  ]);
 };
 
 const resampleFaceFxWav = async (wavBytes: Buffer, work: string): Promise<string> => {
@@ -251,7 +266,8 @@ const server = createServer((req, res) => {
   if (req.method === 'GET' && (url === '/health' || url === '/')) {
     const tools = toolStatus();
     const facefxServe = servePool.snapshot();
-    const ok = tools.facefx && tools.fonix && tools.xwma && facefxServe.mode === 'serve';
+    const ok =
+      tools.facefx && tools.fonix && tools.xwma && tools.bink && facefxServe.mode === 'serve';
     sendJson(res, ok ? 200 : 503, {
       ok,
       service: 'bethesda-tools',
@@ -280,6 +296,10 @@ const server = createServer((req, res) => {
     handleXwm(req, res).catch(fail);
     return;
   }
+  if (req.method === 'POST' && url === '/v1/binkmix') {
+    binkMix(req, res).catch(fail);
+    return;
+  }
   sendJson(res, 404, { ok: false, error: 'not found' });
 });
 
@@ -295,7 +315,7 @@ server.listen(PORT, '0.0.0.0', () => {
   const tools = toolStatus();
   process.stdout.write(
     `bethesda-tools listening on :${PORT} wineServers=${WINE_SERVERS} perWine=${PER_WINE} ` +
-      `facefx=${tools.facefx} xwma=${tools.xwma}\n`,
+      `facefx=${tools.facefx} xwma=${tools.xwma} bink=${tools.bink}\n`,
   );
   void servePool
     .warm(

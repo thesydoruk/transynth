@@ -14,6 +14,9 @@ export const resolveFonixDataPath = (): string => {
 /** The distro's ffmpeg (the web and worker images install it), or `FFMPEG_PATH`. */
 export const resolveFfmpegPath = (): string => process.env.FFMPEG_PATH?.trim() || 'ffmpeg';
 
+/** ffprobe ships with ffmpeg; `FFPROBE_PATH` points elsewhere when it does not. */
+export const resolveFfprobePath = (): string => process.env.FFPROBE_PATH?.trim() || 'ffprobe';
+
 export const resolveTtsBaseUrl = (): string => {
   const explicit = process.env.TTS_BASE_URL?.trim();
   if (explicit) return explicit.replace(/\/$/, '');

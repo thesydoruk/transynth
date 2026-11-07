@@ -1,32 +1,63 @@
-import { beforeEach, describe, expect, it } from '@jest/globals';
+import { afterAll, beforeEach, describe, expect, it } from '@jest/globals';
+import multipart from '@fastify/multipart';
+import type { FastifyInstance } from 'fastify';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import '../../../games';
+import { PATHS } from '../../../paths';
 import { registerModVideoRoutes } from '../mods/video';
 import { insertMod, useTestDb } from '../../../testing/testDb';
 import { useTestApp } from '../../../testing/testApp';
-import { registerVideoAsset } from '../../../video/db';
+import { resolveVideoAudioPath, videoFile, videoFileRelPath } from '../../../video/audioStore';
+import { registerVideoAsset, setVideoAssetPacked, setVideoAssetProbe } from '../../../video/db';
 import { replaceVideoSegments } from '../../../video/segments';
 import { syncVideoRecords } from '../../../video/videoRecords';
+
+const uploads = fs.mkdtempSync(path.join(os.tmpdir(), 'video-routes-'));
+PATHS.videoUploads = uploads;
+
+const withMultipart = async (app: FastifyInstance) => {
+  await app.register(multipart);
+};
+
+/** A multipart body with one `file` field, as the agent's upload sends it. */
+const filePart = (fileName: string, content: string) => {
+  const boundary = '----transynth-test-boundary';
+  const payload = Buffer.concat([
+    Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\n` +
+        'Content-Type: application/octet-stream\r\n\r\n',
+    ),
+    Buffer.from(content, 'utf8'),
+    Buffer.from(`\r\n--${boundary}--\r\n`),
+  ]);
+  return { payload, headers: { 'content-type': `multipart/form-data; boundary=${boundary}` } };
+};
 
 const intro = {
   fileName: 'Intro_ru.bk2',
   byteSize: 366088784,
   fingerprint: 'abc123',
-  durationS: 164.5,
-  trackIds: [0, 1],
-  sourceTrackId: 0,
   agentKey: 'gaming-pc',
 };
 
 describe('mod video API', () => {
   const db = useTestDb();
-  const app = useTestApp(db, registerModVideoRoutes);
+  const app = useTestApp(db, withMultipart, registerModVideoRoutes);
   let modId: number;
   beforeEach(async () => {
     modId = await insertMod(db(), { name: 'Fallout4' });
   });
+  afterAll(() => fs.rmSync(uploads, { recursive: true, force: true }));
 
   it('lists a mod video and serves it by id, under its mod only', async () => {
     const asset = await registerVideoAsset(db(), modId, intro);
+    await setVideoAssetProbe(db(), asset.id, {
+      durationS: 164.5,
+      trackIds: [0, 1],
+      sourceTrackId: 0,
+    });
     const list = await app().inject({ method: 'GET', url: `/api/mods/${modId}/video` });
     expect(list.statusCode).toBe(200);
     expect(list.json().assets).toHaveLength(1);
@@ -56,40 +87,51 @@ describe('mod video API', () => {
     expect(audio.json().error).toMatch(/No source audio/);
   });
 
-  it('records the dub version the agent wrote into the video', async () => {
+  it('refuses an uploaded file that is not the registered video and keeps nothing of it', async () => {
+    const asset = await registerVideoAsset(db(), modId, intro);
+    const res = await app().inject({
+      method: 'PUT',
+      url: `/api/mods/${modId}/video/${asset.id}/file`,
+      ...filePart('Intro_ru.bk2', 'not the intro'),
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toMatch(/hashes to .* the registered video is abc123/);
+    expect(videoFile(asset)).toBeNull();
+    expect(fs.existsSync(`${resolveVideoAudioPath(videoFileRelPath(asset))}.part`)).toBe(false);
+  });
+
+  it("tracks which dub the asset's copy of the video carries", async () => {
     const asset = await registerVideoAsset(db(), modId, intro);
     await db().query(
       `UPDATE video_assets SET dub_rel_path = 'assets/1/dub_uk.wav', dub_version = 'v2', status = 'dubbed' WHERE id = $1`,
       [asset.id],
     );
     const url = `/api/mods/${modId}/video/${asset.id}`;
-    const stale = await app().inject({
-      method: 'POST',
-      url: `${url}/packed`,
-      payload: { dubVersion: 'v1' },
-    });
-    expect(stale.json()).toEqual({ ok: true, current: false });
+    await setVideoAssetPacked(db(), asset.id, 'v1');
     expect((await app().inject({ method: 'GET', url })).json().asset).toMatchObject({
       status: 'dubbed',
       packed_version: 'v1',
     });
-    const current = await app().inject({
-      method: 'POST',
-      url: `${url}/packed`,
-      payload: { dubVersion: 'v2' },
-    });
-    expect(current.json()).toEqual({ ok: true, current: true });
+    await setVideoAssetPacked(db(), asset.id, 'v2');
     expect((await app().inject({ method: 'GET', url })).json().asset).toMatchObject({
       status: 'packed',
       packed_version: 'v2',
     });
-    expect(
-      (await app().inject({ method: 'POST', url: `${url}/packed`, payload: {} })).statusCode,
-    ).toBe(400);
+    // The copy is gone (the file arrived anew): back to a dub waiting to be written.
+    await setVideoAssetPacked(db(), asset.id, null);
+    expect((await app().inject({ method: 'GET', url })).json().asset).toMatchObject({
+      status: 'dubbed',
+      packed_version: null,
+    });
   });
 
   it('tells the editor which video and timing stand behind a VIDEO string', async () => {
     const asset = await registerVideoAsset(db(), modId, intro);
+    await setVideoAssetProbe(db(), asset.id, {
+      durationS: 164.5,
+      trackIds: [0, 1],
+      sourceTrackId: 0,
+    });
     await replaceVideoSegments(
       db(),
       asset.id,

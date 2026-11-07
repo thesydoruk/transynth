@@ -8,8 +8,10 @@ import path from 'node:path';
 import type { ModImportRunContext } from '../games/contract';
 import { gamePlugin } from '../games/registry';
 import { logImport } from '../logging/loggers';
+import { videoFile } from './audioStore';
 import { carryVideoAsset } from './carry';
 import { findVideoCarrySource, getVideoAsset, registerVideoAsset } from './db';
+import { ingestVideoFile } from './ingest';
 import { isVideoManifestPath, listVideoManifests, readVideoManifest } from './manifest';
 import { syncVideoRecords } from './videoRecords';
 
@@ -41,9 +43,6 @@ export const importVideoManifests = async (
       fileName: manifest.fileName,
       byteSize: manifest.byteSize,
       fingerprint: manifest.sha1,
-      durationS: manifest.durationS,
-      trackIds: manifest.trackIds,
-      sourceTrackId: manifest.sourceTrackId,
       agentKey: manifest.agentKey ?? null,
     });
     if (asset.status === 'registered' && !asset.audio_rel_path) {
@@ -54,8 +53,11 @@ export const importVideoManifests = async (
       });
       if (from) {
         await carryVideoAsset(ctx.db, from, asset, ctx.job.tgt_lang);
-        asset = (await getVideoAsset(ctx.db, asset.id)) ?? asset;
+      } else if (videoFile(asset)) {
+        // The file came with an earlier version nothing else carries from: read it again.
+        await ingestVideoFile(ctx.db, asset);
       }
+      asset = (await getVideoAsset(ctx.db, asset.id)) ?? asset;
     }
     const sync = await syncVideoRecords(ctx.db, asset, ctx.pluginStringLang, ctx.job.tgt_lang);
     if (ctx.pruneStaleImportData) {

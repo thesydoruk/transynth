@@ -19,6 +19,7 @@ export const VortexAgentPanel = ({ group, agent, latestLangpack, onDownload }: P
   const offline = agent ? agentIsOffline(agent.last_seen_at, agent.state_json?.pollSec) : true;
   const pending = agent?.state_json?.pending ?? null;
   const delivered = agent?.state_json?.delivered ?? null;
+  const deliveredVideopack = agent?.state_json?.deliveredVideopack ?? null;
 
   return (
     <section className={s.panel} aria-labelledby="vortex-agent-title">
@@ -76,6 +77,14 @@ export const VortexAgentPanel = ({ group, agent, latestLangpack, onDownload }: P
                 <dt>{t('vortex.agent.delivered')}</dt>
                 <dd>
                   {delivered.fileName} · {when(delivered.at)}
+                </dd>
+              </>
+            )}
+            {deliveredVideopack && (
+              <>
+                <dt>{t('vortex.agent.deliveredVideopack')}</dt>
+                <dd>
+                  {deliveredVideopack.fileName} · {when(deliveredVideopack.at)}
                 </dd>
               </>
             )}

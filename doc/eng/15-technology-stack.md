@@ -74,8 +74,9 @@ At a high level, the system supports these flows:
   spoken quotes; TTS stays a separate service (`TTS_BASE_URL`). Optional
   in Compose: profile `embedded-audio-intel` (STT only).
 - **FaceFX** writes Bethesda `.lip` files. Cyrillic lines are sent to
-  FaceFXWrapper as `Ukrainian`; the wrapper respells for Fonix. LIP and xWMA
-  run in the `bethesda-tools` sidecar (`BETHESDA_TOOLS_URL`).
+  FaceFXWrapper as `Ukrainian`; the wrapper respells for Fonix. LIP, xWMA and
+  BinkMix (RAD Video Tools, the cutscene dubs) run in the `bethesda-tools`
+  sidecar (`BETHESDA_TOOLS_URL`), under 32-bit and 64-bit Wine.
 
 ---
 

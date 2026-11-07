@@ -8,9 +8,14 @@ process.env.VIDEO_UPLOAD_DIR = uploads;
 
 await import('../../games');
 const { insertMod, insertTranslation, useTestDb } = await import('../../testing/testDb');
-const { getVideoAsset, listVideoAssets, registerVideoAsset, setVideoAssetAudio } =
-  await import('../db');
-const { resolveVideoAudioPath, videoAudioRelPath, videoAssetRelDir } =
+const {
+  getVideoAsset,
+  listVideoAssets,
+  registerVideoAsset,
+  setVideoAssetAudio,
+  setVideoAssetProbe,
+} = await import('../db');
+const { resolveVideoAudioPath, videoAudioRelPath, videoAssetRelDir, videoPackedRelPath } =
   await import('../audioStore');
 const { importVideoManifests, videoModDir } = await import('../importPhase');
 const { listVideoSegments, replaceVideoSegments } = await import('../segments');
@@ -80,13 +85,14 @@ describe('importVideoManifests', () => {
     const ctx = contextFor(db(), modId, path.join(modDir, 'Fallout4.esm'));
     expect(await importVideoManifests(ctx, modDir)).toBe(1);
     const [asset] = await listVideoAssets(db(), modId);
+    // The tracks are the server's to read once the file arrives: nothing yet.
     expect(asset).toMatchObject({
       file_name: 'Intro_ru.bk2',
       byte_size: 42,
       fingerprint: sha1,
-      duration_s: 164.5,
-      track_ids: [0, 1],
-      source_track_id: 0,
+      duration_s: null,
+      track_ids: [],
+      source_track_id: null,
       agent_key: 'pc',
       status: 'registered',
       audio_rel_path: null,
@@ -104,10 +110,12 @@ describe('importVideoManifests', () => {
       fileName: 'Intro_ru.bk2',
       byteSize: 42,
       fingerprint: sha1,
+      agentKey: 'pc',
+    });
+    await setVideoAssetProbe(db(), old.id, {
       durationS: 164.5,
       trackIds: [0, 1],
       sourceTrackId: 0,
-      agentKey: 'pc',
     });
     for (const kind of ['source', 'speech', 'background'] as const) {
       writeWav(videoAudioRelPath(old, kind));
@@ -133,6 +141,7 @@ describe('importVideoManifests', () => {
     );
     const dubRel = videoAudioRelPath(old, 'dub', 'uk');
     writeWav(dubRel);
+    writeWav(videoPackedRelPath(old));
     await db().query(
       `UPDATE video_assets SET status = 'packed', dub_rel_path = $2, dub_version = 'dv', packed_version = 'dv'
         WHERE id = $1`,
@@ -149,9 +158,14 @@ describe('importVideoManifests', () => {
       audio_rel_path: videoAudioRelPath(old, 'source'),
       dub_version: 'dv',
       packed_version: 'dv',
+      duration_s: 164.5,
+      track_ids: [0, 1],
+      source_track_id: 0,
     });
     expect(asset!.dub_rel_path).toBe(videoAudioRelPath(asset!, 'dub', 'uk'));
     expect(fs.existsSync(resolveVideoAudioPath(asset!.dub_rel_path!))).toBe(true);
+    // The dubbed video came along, into the new asset's own folder.
+    expect(fs.existsSync(resolveVideoAudioPath(videoPackedRelPath(asset!)))).toBe(true);
 
     const segments = await listVideoSegments(db(), asset!.id, 'uk');
     expect(segments.map((s) => [s.idx, s.source_text, s.take_version, s.take_similarity])).toEqual([

@@ -1,11 +1,11 @@
 /**
  * The agent's stand-in for a video file inside a unit upload.
  *
- * A Bink file weighs hundreds of megabytes and the server never needs the
- * picture, so the unit zip carries `<file>.video.json` in its place: what the
- * file is (name, size, sha1), what ffprobe says about it (length, audio tracks)
- * and which track is the narration. The import registers the video from it;
- * the audio track follows through its own upload once the asset exists.
+ * A Bink file weighs hundreds of megabytes and changes rarely, so the unit
+ * zip carries `<file>.video.json` in its place: what the file is (name, size,
+ * sha1) and which machine saw it. The import registers the video from it; the
+ * file itself follows through its own upload once the asset exists, and the
+ * server reads the tracks out of it then.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,9 +16,6 @@ export type VideoManifest = {
   fileName: string;
   byteSize: number;
   sha1: string;
-  durationS: number | null;
-  trackIds: number[];
-  sourceTrackId: number | null;
   /** The machine the agent runs on, when it says. */
   agentKey?: string;
 };
@@ -35,18 +32,14 @@ export const parseVideoManifest = (raw: unknown): VideoManifest | null => {
   const fileName = typeof b.fileName === 'string' ? b.fileName.trim() : '';
   if (!fileName || /[\\/]/.test(fileName)) return null;
   if (typeof b.sha1 !== 'string' || !/^[0-9a-f]{40}$/i.test(b.sha1)) return null;
-  const num = (v: unknown): number | null =>
-    typeof v === 'number' && Number.isFinite(v) ? v : null;
-  const trackIds = Array.isArray(b.trackIds)
-    ? b.trackIds.filter((t): t is number => Number.isInteger(t) && (t as number) >= 0)
-    : [];
+  const byteSize =
+    typeof b.byteSize === 'number' && Number.isFinite(b.byteSize) && b.byteSize >= 0
+      ? b.byteSize
+      : 0;
   return {
     fileName,
-    byteSize: num(b.byteSize) ?? 0,
+    byteSize,
     sha1: b.sha1.toLowerCase(),
-    durationS: num(b.durationS),
-    trackIds,
-    sourceTrackId: num(b.sourceTrackId),
     ...(typeof b.agentKey === 'string' && b.agentKey ? { agentKey: b.agentKey } : {}),
   };
 };

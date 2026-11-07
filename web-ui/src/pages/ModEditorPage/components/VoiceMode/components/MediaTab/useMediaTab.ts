@@ -3,12 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../../../../api';
 import type { VideoAsset } from '../../../../../../api';
 
-const BUSY = new Set(['separating', 'dubbing']);
+const BUSY = new Set(['separating', 'dubbing', 'packing']);
 
 /** Statuses from which a (re)separation may start. */
 const SEPARATABLE = new Set(['uploaded', 'separated', 'dubbed', 'packed', 'error']);
 /** Statuses from which a dub may start: the speech track exists. */
 const DUBBABLE = new Set(['separated', 'dubbed', 'packed', 'error']);
+/** A dub that is not in the video yet (a pack failed, or the file arrived after the dub). */
+const PACKABLE = new Set(['dubbed', 'error']);
 
 export const videoAssetsQueryKey = (modId: number) => ['video-assets', modId] as const;
 
@@ -67,6 +69,23 @@ export const useMediaTab = (modId: number) => {
     return { ok: true, missing: null };
   };
 
+  const pack = useMutation({
+    mutationFn: (id: number) => api.video.pack(modId, id),
+    onSuccess: invalidate,
+    onError: (err: Error) => setError(err.message),
+  });
+
+  /** Writing the dub into the video needs a dub the video does not carry yet, and a tools host. */
+  const canPack = (asset: VideoAsset): { show: boolean; ok: boolean; missing: string | null } => {
+    const show =
+      asset.dub_rel_path != null &&
+      PACKABLE.has(asset.status) &&
+      asset.packed_version !== asset.dub_version;
+    if (!show || pack.isPending) return { show, ok: false, missing: null };
+    if (services.tools === false) return { show, ok: false, missing: 'tools' };
+    return { show, ok: true, missing: null };
+  };
+
   return {
     assets,
     services,
@@ -81,6 +100,8 @@ export const useMediaTab = (modId: number) => {
     canSeparate,
     dub: (id: number, scope = 'changed') => dub.mutate({ id, scope }),
     canDub,
+    pack: (id: number) => pack.mutate(id),
+    canPack,
   };
 };
 

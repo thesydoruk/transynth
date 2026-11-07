@@ -9,7 +9,8 @@ process.env.VIDEO_UPLOAD_DIR = uploads;
 
 await import('../../games');
 const { insertMod, useTestDb } = await import('../../testing/testDb');
-const { registerVideoAsset, setVideoAssetAudio, getVideoAsset } = await import('../db');
+const { registerVideoAsset, setVideoAssetAudio, setVideoAssetProbe, getVideoAsset } =
+  await import('../db');
 const { separateVideo } = await import('../separate');
 const { listVideoSegments } = await import('../segments');
 const { videoAudioRelPath, resolveVideoAudioPath } = await import('../audioStore');
@@ -73,11 +74,9 @@ describe('separateVideo', () => {
       fileName: 'Intro_ru.bk2',
       byteSize: 10,
       fingerprint: 'fp',
-      durationS: 20,
-      trackIds: [0, 1],
-      sourceTrackId: 0,
       agentKey: 'pc',
     });
+    await setVideoAssetProbe(db(), asset.id, { durationS: 20, trackIds: [0, 1], sourceTrackId: 0 });
     videoId = asset.id;
     const rel = videoAudioRelPath(asset, 'source');
     const file = resolveVideoAudioPath(rel);

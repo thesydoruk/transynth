@@ -1526,8 +1526,8 @@
   "video": {
     "empty": {
       "title": "This mod has no videos",
-      "body": "The Vortex agent lists a mod's videos with the mod when its config turns them on; the next sync registers them here and uploads their narration. The agent needs ffmpeg and ffprobe on its PATH or named in the config.",
-      "config": "\"videos\": true,\n\"ffmpegPath\": \"ffmpeg\",\n\"ffprobePath\": \"ffprobe\""
+      "body": "The Vortex agent lists a mod's videos with the mod when its config turns them on; the next sync registers them here and uploads the files. Everything else happens on the server.",
+      "config": "\"videos\": true"
     },
     "columns": {
       "file": "Video",
@@ -1542,7 +1542,8 @@
       "separate": "Separate & transcribe",
       "reseparate": "Separate again",
       "dub": "Dub",
-      "redub": "Dub changes"
+      "redub": "Dub changes",
+      "pack": "Write into the video"
     },
     "needsHost": "No healthy {{service}} host right now",
     "segments": {
@@ -1563,12 +1564,13 @@
       "overrun": "too long"
     },
     "status": {
-      "registered": "waiting for audio",
-      "uploaded": "audio uploaded",
+      "registered": "waiting for the file",
+      "uploaded": "file uploaded",
       "separating": "separating…",
       "separated": "transcribed",
       "dubbing": "dubbing…",
       "dubbed": "dubbed",
+      "packing": "writing into the video…",
       "packed": "written into the video",
       "error": "error"
     },
@@ -1603,6 +1605,7 @@
       "settleUntil": "syncs after {{when}} if nothing else changes",
       "lastError": "Last error",
       "delivered": "Delivered",
+      "deliveredVideopack": "Videopack delivered",
       "howToStart": "Run npm run vortex:agent on the machine with Vortex; the first heartbeat registers it here.",
       "states": {
         "idle": "idle",

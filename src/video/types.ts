@@ -3,15 +3,16 @@
  *
  * A row per video file of a mod, as the resident agent found it: the game's
  * own videos belong to the game's main master, a mod's videos to that mod,
- * exactly like MCM files. The agent uploads one audio track (the English
- * narration mixed with the score); the server separates, transcribes,
- * translates and dubs it, and the agent writes the result back into the video.
+ * exactly like MCM files. The agent uploads the file itself; the server reads
+ * the narration out of it, separates, transcribes, translates and dubs it,
+ * writes the dub back into a copy of the video, and the agent delivers the
+ * dubbed videos to the mod manager as one archive.
  */
 
 export type VideoAssetStatus =
-  /** Registered by the import; the audio track is still on its way. */
+  /** Registered by the import; the video file is still on its way. */
   | 'registered'
-  /** The source audio is on the server. */
+  /** The file and its narration track are on the server. */
   | 'uploaded'
   | 'separating'
   /** Speech and background split, segments transcribed, the VIDEO records written. */
@@ -19,7 +20,9 @@ export type VideoAssetStatus =
   | 'dubbing'
   /** `dub_rel_path` holds a finished dubbed track. */
   | 'dubbed'
-  /** The agent wrote the dub into the video and delivered the videopack. */
+  /** The dub is being written into the video (bethesda-tools). */
+  | 'packing'
+  /** The asset's own copy of the video carries the dub; the agent can deliver it. */
   | 'packed'
   | 'error';
 
@@ -30,6 +33,7 @@ export const VIDEO_ASSET_STATUSES: readonly VideoAssetStatus[] = [
   'separated',
   'dubbing',
   'dubbed',
+  'packing',
   'packed',
   'error',
 ];
@@ -46,14 +50,14 @@ export type VideoAssetRow = {
   duration_s: number | null;
   /** Bink audio track ids as the container lists them (the game picks one by language). */
   track_ids: number[];
-  /** The track the agent uploads, normally the English one. */
+  /** The track the narration is read from, normally the English one. */
   source_track_id: number | null;
-  /** Relative to `PATHS.videoUploads`; null until the upload lands. */
+  /** Relative to `PATHS.videoUploads`; null until the file is on the server. */
   audio_rel_path: string | null;
   status: VideoAssetStatus;
   dub_rel_path: string | null;
   dub_version: string | null;
-  /** The dub version the agent last wrote into the video; null until it did. */
+  /** The dub version written into the asset's copy of the video; null until one was. */
   packed_version: string | null;
   error: string | null;
   created_at: Date;
@@ -65,10 +69,14 @@ export type VideoAssetRegistration = {
   fileName: string;
   byteSize: number;
   fingerprint: string;
+  agentKey: string | null;
+};
+
+/** What the server reads out of the file once it has it. */
+export type VideoAssetProbe = {
   durationS: number | null;
   trackIds: number[];
   sourceTrackId: number | null;
-  agentKey: string | null;
 };
 
 /** The audio kinds a video can serve. */
