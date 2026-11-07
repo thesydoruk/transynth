@@ -1,6 +1,11 @@
-import { beforeEach, describe, expect, it } from '@jest/globals';
+import { afterAll, beforeEach, describe, expect, it } from '@jest/globals';
+import multipart from '@fastify/multipart';
+import type { FastifyInstance } from 'fastify';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import '../../../games';
+import { PATHS } from '../../../paths';
 import { registerModVideoRoutes } from '../mods/video';
 import { insertMod, useTestDb } from '../../../testing/testDb';
 import { useTestApp } from '../../../testing/testApp';
@@ -8,6 +13,27 @@ import { resolveVideoAudioPath, videoFile, videoFileRelPath } from '../../../vid
 import { registerVideoAsset, setVideoAssetPacked, setVideoAssetProbe } from '../../../video/db';
 import { replaceVideoSegments } from '../../../video/segments';
 import { syncVideoRecords } from '../../../video/videoRecords';
+
+const uploads = fs.mkdtempSync(path.join(os.tmpdir(), 'video-routes-'));
+PATHS.videoUploads = uploads;
+
+const withMultipart = async (app: FastifyInstance) => {
+  await app.register(multipart);
+};
+
+/** A multipart body with one `file` field, as the agent's upload sends it. */
+const filePart = (fileName: string, content: string) => {
+  const boundary = '----transynth-test-boundary';
+  const payload = Buffer.concat([
+    Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\n` +
+        'Content-Type: application/octet-stream\r\n\r\n',
+    ),
+    Buffer.from(content, 'utf8'),
+    Buffer.from(`\r\n--${boundary}--\r\n`),
+  ]);
+  return { payload, headers: { 'content-type': `multipart/form-data; boundary=${boundary}` } };
+};
 
 const intro = {
   fileName: 'Intro_ru.bk2',
@@ -18,11 +44,12 @@ const intro = {
 
 describe('mod video API', () => {
   const db = useTestDb();
-  const app = useTestApp(db, registerModVideoRoutes);
+  const app = useTestApp(db, withMultipart, registerModVideoRoutes);
   let modId: number;
   beforeEach(async () => {
     modId = await insertMod(db(), { name: 'Fallout4' });
   });
+  afterAll(() => fs.rmSync(uploads, { recursive: true, force: true }));
 
   it('lists a mod video and serves it by id, under its mod only', async () => {
     const asset = await registerVideoAsset(db(), modId, intro);
@@ -62,12 +89,10 @@ describe('mod video API', () => {
 
   it('refuses an uploaded file that is not the registered video and keeps nothing of it', async () => {
     const asset = await registerVideoAsset(db(), modId, intro);
-    const form = new FormData();
-    form.append('file', new Blob(['not the intro']), 'Intro_ru.bk2');
     const res = await app().inject({
       method: 'PUT',
       url: `/api/mods/${modId}/video/${asset.id}/file`,
-      body: form,
+      ...filePart('Intro_ru.bk2', 'not the intro'),
     });
     expect(res.statusCode).toBe(400);
     expect(res.json().error).toMatch(/hashes to .* the registered video is abc123/);
