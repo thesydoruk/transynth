@@ -75,8 +75,10 @@ LLM-переклад, перевірка, skip-detect, gender-detect, озвуч
 З `"videos": true` агент раз на `fullScanEveryMin` реєструє ролики з папки гри і надсилає
 їхню нараційну доріжку (`ffmpegPath`, `ffprobePath`, `videoSourceTrack`), а готові дубляжі
 записує назад у ролики RAD Video Tools, які ставить сам у `radVideoToolsPath`
-(`--install-rad-tools` робить це наперед), і кладе videopack у завантаження Vortex. Решта —
-на сторінці Video. Див. [Дубляж роликів](18-video-dubbing.md).
+(`--install-rad-tools` робить це наперед), і кладе videopack у завантаження Vortex. Ролик,
+який Vortex розгорнув із нашого ж videopack, агент читає з `<файл>.vortex_backup` — оригіналу,
+який Vortex відкладає поруч; інакше попередній дубляж став би «новим роликом». Решта — на
+сторінці Video. Див. [Дубляж роликів](18-video-dubbing.md).
 
 ### Стан і журнал
 

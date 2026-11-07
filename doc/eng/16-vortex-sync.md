@@ -91,8 +91,10 @@ With `"videos": true` the agent registers the game's cutscene videos once per
 `fullScanEveryMin` and uploads their narration track (`ffmpegPath`, `ffprobePath`,
 `videoSourceTrack`), writes finished dubs back into the videos with the RAD Video Tools it
 installs itself into `radVideoToolsPath` (`--install-rad-tools` does it ahead of time), and
-drops a videopack into Vortex's downloads. The rest happens on the Video page. See
-[Dubbing the cutscenes](18-video-dubbing.md).
+drops a videopack into Vortex's downloads. A video Vortex deployed from our own videopack is
+read from `<file>.vortex_backup`, the game's file Vortex keeps next to it; read from the
+deployed copy, the previous dub would count as a new video. The rest happens on the Video
+page. See [Dubbing the cutscenes](18-video-dubbing.md).
 
 ### State and journal
 

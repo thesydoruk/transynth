@@ -3,9 +3,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  isVideopackFolder,
   listVideoFiles,
+  ownDeployedVideoNames,
   parseFfprobeJson,
   pickSourceTrack,
+  resolveVideoSource,
   scanVideos,
   videoFingerprint,
 } from '../videoScan';
@@ -77,6 +80,56 @@ describe('video scan', () => {
     expect(videoFingerprint(file).fingerprint).toBe(first.fingerprint);
     fs.writeFileSync(file, 'STRENGTH');
     expect(videoFingerprint(file).fingerprint).not.toBe(first.fingerprint);
+  });
+
+  it('reads a video Vortex deployed from our own videopack from the backup of the game file', async () => {
+    const dir = path.join(root, 'Data', 'Video');
+    fs.writeFileSync(path.join(dir, 'Intro_ru.bk2'), 'our previous dub');
+    fs.writeFileSync(path.join(dir, 'Intro_ru.bk2.vortex_backup'), 'the game file');
+    fs.writeFileSync(path.join(dir, 'STRENGTH.bk2'), 'another mod');
+    fs.writeFileSync(path.join(dir, 'STRENGTH.bk2.vortex_backup'), 'the game file too');
+    const staging = path.join(root, 'staging');
+    fs.mkdirSync(staging);
+    fs.writeFileSync(
+      path.join(staging, 'vortex.deployment.json'),
+      JSON.stringify({
+        files: [
+          { relPath: 'Video\\Intro_ru.bk2', source: 'Transynth_fo4_uk_videopack_r1' },
+          { relPath: 'Video\\STRENGTH.bk2', source: 'Some Video Mod' },
+          { relPath: 'Strings\\Fallout4_uk.STRINGS', source: 'Transynth_fo4_uk_videopack_r1' },
+        ],
+      }),
+    );
+    expect(isVideopackFolder('Transynth_fo4_uk_videopack_r12', 'fo4')).toBe(true);
+    expect(isVideopackFolder('Transynth_fo4_uk_langpack_r12', 'fo4')).toBe(false);
+    expect(isVideopackFolder('Transynth_skyrim_uk_videopack_r1', 'fo4')).toBe(false);
+    const own = ownDeployedVideoNames(staging, 'fo4', media);
+    expect([...own]).toEqual(['intro_ru.bk2']);
+    expect(ownDeployedVideoNames(path.join(root, 'nowhere'), 'fo4', media).size).toBe(0);
+
+    // The videopack's file is read from the backup; another mod's deployed video is the video.
+    expect(resolveVideoSource(path.join(dir, 'Intro_ru.bk2'), own)).toBe(
+      path.join(dir, 'Intro_ru.bk2.vortex_backup'),
+    );
+    expect(resolveVideoSource(path.join(dir, 'STRENGTH.bk2'), own)).toBe(
+      path.join(dir, 'STRENGTH.bk2'),
+    );
+    const entries = await scanVideos({
+      gameDir: root,
+      media,
+      ffprobePath: 'ffprobe',
+      ownNames: own,
+      probe: async () => parseFfprobeJson(specialProbe),
+    });
+    expect(entries.map((e) => [e.fileName, path.basename(e.absPath), e.byteSize])).toEqual([
+      ['Intro_ru.bk2', 'Intro_ru.bk2.vortex_backup', 'the game file'.length],
+      ['STRENGTH.bk2', 'STRENGTH.bk2', 'another mod'.length],
+    ]);
+    // Without the backup (no Vortex, or a deployment by copy) the file itself is read.
+    fs.rmSync(path.join(dir, 'Intro_ru.bk2.vortex_backup'));
+    expect(resolveVideoSource(path.join(dir, 'Intro_ru.bk2'), own)).toBe(
+      path.join(dir, 'Intro_ru.bk2'),
+    );
   });
 
   it('skips videos without an audio track', async () => {

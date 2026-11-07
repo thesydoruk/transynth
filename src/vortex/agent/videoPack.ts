@@ -16,7 +16,7 @@ import type { GameMediaAdapter } from '../../games/contract';
 import { zipDirectoryToPath } from '../../web/export/zipPack';
 import type { VideoPackTask } from '../types';
 import { replaceBinkTracks, type ReplaceBinkTracksOptions } from './binkMix';
-import { probeVideo } from './videoScan';
+import { probeVideo, resolveVideoSource } from './videoScan';
 
 export type VideoPackApi = {
   downloadVideoDub: (game: string, videoId: number, destPath: string) => Promise<number>;
@@ -47,6 +47,8 @@ export type PackVideosOptions = {
   api: VideoPackApi;
   radVideoExe: string;
   ffprobePath: string;
+  /** Lower-case names of the videos deployed from our own videopack: those are mixed from Vortex's backup. */
+  ownNames?: ReadonlySet<string>;
   /** The mod tree under construction: `<packDir>/<media.packDir>/<file>`. */
   packDir: string;
   downloadsDir: string;
@@ -65,13 +67,19 @@ export const packVideos = async (opts: PackVideosOptions): Promise<PackVideosOut
   const zip = opts.zip ?? zipDirectoryToPath;
   const outcome: PackVideosOutcome = { written: 0, skipped: 0, zipFile: null };
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'transynth-videopack-'));
+  const ownNames = opts.ownNames ?? new Set<string>();
   try {
     for (const task of opts.tasks) {
       if (opts.state.packedVideos[task.fileName] === task.dubVersion) {
+        // Written already; the server asks again when it lost track of that (a re-registration).
+        await opts.api.postVideoPacked(opts.game, task.videoId, { dubVersion: task.dubVersion });
         outcome.skipped += 1;
         continue;
       }
-      const source = path.join(opts.gameDir, opts.media.videoDir, task.fileName);
+      const source = resolveVideoSource(
+        path.join(opts.gameDir, opts.media.videoDir, task.fileName),
+        ownNames,
+      );
       if (!fs.existsSync(source)) {
         opts.log?.(`video ${task.fileName}: not in the game folder any more, skipped`);
         outcome.skipped += 1;

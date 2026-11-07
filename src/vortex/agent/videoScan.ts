@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { GameMediaAdapter } from '../../games/contract';
 import { execFileAsync } from '../../utils/execFile';
+import { discoverVortexDeployment } from '../deploymentManifest';
 
 export type VideoTrack = { id: number; streamIndex: number };
 
@@ -29,6 +30,51 @@ export type VideoScanEntry = {
 };
 
 const FINGERPRINT_HEAD_BYTES = 1024 * 1024;
+
+/** Where Vortex keeps the game's own file while a mod's copy is deployed over it. */
+export const VORTEX_BACKUP_SUFFIX = '.vortex_backup';
+
+/** The staging folder of a videopack this agent delivered (`Transynth_<game>_<lang>_videopack_r<N>`). */
+export const isVideopackFolder = (folder: string, game: string): boolean =>
+  new RegExp(`^Transynth_${game}_[A-Za-z-]+_videopack_r\\d+$`, 'i').test(folder);
+
+/**
+ * The names of the video files Vortex currently deploys from one of our
+ * videopacks, in lower case, from the deployment manifest in staging. Empty
+ * when there is no manifest, which is also the case without Vortex.
+ */
+export const ownDeployedVideoNames = (
+  stagingPath: string,
+  game: string,
+  media: GameMediaAdapter,
+): Set<string> => {
+  const names = new Set<string>();
+  let deployment: ReturnType<typeof discoverVortexDeployment>;
+  try {
+    deployment = discoverVortexDeployment(stagingPath);
+  } catch {
+    return names;
+  }
+  for (const file of deployment?.files ?? []) {
+    const name = path.basename(file.relPath);
+    if (!media.videoExtensions.includes(path.extname(name).toLowerCase())) continue;
+    if (isVideopackFolder(file.sourceFolder, game)) names.add(name.toLowerCase());
+  }
+  return names;
+};
+
+/**
+ * The file a video is read from. Once Vortex has deployed our videopack, the
+ * file in the game folder is the previous dub: read from it, the agent would
+ * register its own output as a new video, forget the dub it came from, and mix
+ * the next dub over a mixed track. Vortex keeps the game's own file next to it
+ * as `<file>.vortex_backup`; that is the video.
+ */
+export const resolveVideoSource = (absPath: string, ownNames: ReadonlySet<string>): string => {
+  if (!ownNames.has(path.basename(absPath).toLowerCase())) return absPath;
+  const backup = `${absPath}${VORTEX_BACKUP_SUFFIX}`;
+  return fs.existsSync(backup) ? backup : absPath;
+};
 
 /**
  * Size, mtime and the first MiB: enough to notice Vortex swapping the file,
@@ -104,6 +150,8 @@ export type ScanVideosOptions = {
   media: GameMediaAdapter;
   ffprobePath: string;
   preferredTrackId?: number;
+  /** Lower-case names of the videos deployed from our own videopack (see `ownDeployedVideoNames`). */
+  ownNames?: ReadonlySet<string>;
   probe?: (ffprobePath: string, absPath: string) => Promise<VideoProbe>;
 };
 
@@ -111,13 +159,15 @@ export type ScanVideosOptions = {
 export const scanVideos = async (opts: ScanVideosOptions): Promise<VideoScanEntry[]> => {
   const probe = opts.probe ?? probeVideo;
   const entries: VideoScanEntry[] = [];
-  for (const absPath of listVideoFiles(opts.gameDir, opts.media)) {
+  const ownNames = opts.ownNames ?? new Set<string>();
+  for (const deployed of listVideoFiles(opts.gameDir, opts.media)) {
+    const absPath = resolveVideoSource(deployed, ownNames);
     const { durationS, tracks } = await probe(opts.ffprobePath, absPath);
     const source = pickSourceTrack(tracks, opts.preferredTrackId);
     if (!source) continue;
     const { byteSize, fingerprint } = videoFingerprint(absPath);
     entries.push({
-      fileName: path.basename(absPath),
+      fileName: path.basename(deployed),
       absPath,
       byteSize,
       fingerprint,

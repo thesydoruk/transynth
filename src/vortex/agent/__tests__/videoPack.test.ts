@@ -13,6 +13,10 @@ describe('videopack', () => {
     fs.mkdirSync(path.join(root, 'game', 'Data', 'Video'), { recursive: true });
     fs.writeFileSync(path.join(root, 'game', 'Data', 'Video', 'Intro_ru.bk2'), 'intro');
     fs.writeFileSync(path.join(root, 'game', 'Data', 'Video', 'STRENGTH.bk2'), 'strength');
+    fs.writeFileSync(
+      path.join(root, 'game', 'Data', 'Video', 'Intro_ru.bk2.vortex_backup'),
+      'orig',
+    );
   });
   afterEach(() => {
     fs.rmSync(root, { recursive: true, force: true });
@@ -46,6 +50,7 @@ describe('videopack', () => {
       packDir: path.join(root, 'pack'),
       downloadsDir: path.join(root, 'downloads'),
       state,
+      ownNames: new Set(['intro_ru.bk2']),
       probe: async () => ({
         durationS: 10,
         tracks: [
@@ -55,6 +60,8 @@ describe('videopack', () => {
       }),
       mix: async (opts) => {
         calls.push(`mix ${path.basename(opts.inputBk2)} tracks ${opts.trackIds.join(',')}`);
+        // The deployed file is our previous dub: the mix starts from Vortex's backup of the game file.
+        expect(fs.readFileSync(opts.inputBk2, 'utf8')).toBe('orig');
         fs.mkdirSync(path.dirname(opts.outputBk2), { recursive: true });
         fs.writeFileSync(opts.outputBk2, 'dubbed');
       },
@@ -72,8 +79,10 @@ describe('videopack', () => {
     });
     expect(calls).toEqual([
       'download #1',
-      'mix Intro_ru.bk2 tracks 0,1',
+      'mix Intro_ru.bk2.vortex_backup tracks 0,1',
       'packed #1 v1',
+      // Written in an earlier tick: the server is told again, nothing is mixed.
+      'packed #2 v-old',
       'zip pack -> Transynth_fo4_uk_videopack_r3.zip.part',
     ]);
     expect(fs.readdirSync(path.join(root, 'downloads'))).toEqual([
@@ -89,7 +98,8 @@ describe('videopack', () => {
     expect(videopackFileName('fo4', 'uk', 7)).toBe('Transynth_fo4_uk_videopack_r7.zip');
   });
 
-  it('ships nothing when every dub is already in place', async () => {
+  it('ships nothing when every dub is already in place, and still reports it', async () => {
+    const reported: string[] = [];
     const outcome = await packVideos({
       game: 'fo4',
       tgtLang: 'uk',
@@ -100,7 +110,9 @@ describe('videopack', () => {
         downloadVideoDub: async () => {
           throw new Error('should not download');
         },
-        postVideoPacked: async () => undefined,
+        postVideoPacked: async (_g, id, body) => {
+          reported.push(`#${id} ${body.dubVersion}`);
+        },
       },
       radVideoExe: 'radvideo64.exe',
       ffprobePath: 'ffprobe',
@@ -109,6 +121,7 @@ describe('videopack', () => {
       state: { packedVideos: { 'Intro_ru.bk2': 'v1' }, videopackSeq: 1 },
     });
     expect(outcome).toEqual({ written: 0, skipped: 1, zipFile: null });
+    expect(reported).toEqual(['#1 v1']);
     expect(fs.existsSync(path.join(root, 'downloads'))).toBe(false);
   });
 });
