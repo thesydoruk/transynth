@@ -18,9 +18,12 @@ export const videoEndpoints = {
     req<{ segments: VideoSegment[] }>(`${base(modId)}/${id}/segments`),
   phrase: (modId: number, stringId: number) =>
     req<VideoPhraseInfo>(`${base(modId)}/phrase/${stringId}`),
-  separate: (modId: number, id: number) =>
+  /** `keepPhrases`: new speech and background tracks, the phrases and takes untouched. */
+  separate: (modId: number, id: number, keepPhrases = false) =>
     req<{ ok: true; jobId: number; videoId: number }>(`${base(modId)}/${id}/separate`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keepPhrases }),
     }),
   separateStatus: (jobId: number) => req<VideoJobStatus>(`/api/video-separate/${jobId}`),
   stopSeparate: (jobId: number) =>

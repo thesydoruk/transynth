@@ -43,7 +43,8 @@ export const useMediaTab = (modId: number) => {
   };
 
   const separate = useMutation({
-    mutationFn: (id: number) => api.video.separate(modId, id),
+    mutationFn: ({ id, keepPhrases }: { id: number; keepPhrases: boolean }) =>
+      api.video.separate(modId, id, keepPhrases),
     onSuccess: invalidate,
     onError: (err: Error) => setError(err.message),
   });
@@ -96,7 +97,7 @@ export const useMediaTab = (modId: number) => {
     select: (id: number | null) => setSelectedId(id),
     segments: segments.data?.segments ?? [],
     segmentsLoading: segments.isLoading,
-    separate: (id: number) => separate.mutate(id),
+    separate: (id: number, keepPhrases = false) => separate.mutate({ id, keepPhrases }),
     canSeparate,
     dub: (id: number, scope = 'changed') => dub.mutate({ id, scope }),
     canDub,

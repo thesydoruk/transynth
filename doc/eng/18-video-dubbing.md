@@ -106,7 +106,15 @@ window.
 The phrases become `VIDEO` records of the mod, one per phrase. From there everything that
 exists for strings works on the narration: TM with the reference base, LLM translation,
 verify, the editor, the glossary. A second separation keeps the string — and with it the
-translation and its review — of every phrase whose text did not change.
+translation and its review — of every phrase whose text did not change. **Refresh tracks**
+(`keepPhrases`) runs the same job but replaces only the speech and background tracks: the
+phrases, their translations and their takes stay as they are — for a better separation
+model, not a new transcript.
+
+The background audio-intel returns is a bed, not a raw stem: outside speech it is the
+original mix sample for sample, under speech it is the separated instrumental, with 150 ms
+crossfades between the two. The dub's mix therefore leaves every speechless second of the
+film untouched.
 
 ## The dub
 
@@ -152,7 +160,7 @@ A finished dub hands itself on to **`video-pack`** (the `cpu` queue, waits for a
 `tools` host; a call that times out or cannot reach the host is made once more): the video
 and `dub_uk.wav` go to `POST /v1/binkmix` of the sidecar as one
 multipart request (`trackIds`, `video`, `sound`), which runs
-`radvideo64.exe BinkMix <video> <wav> <out> /TrackID<id> /SoundCompress4 /Overwrite /AutoClose`
+`radvideo64.exe BinkMix <video> <wav> <out> /TrackID<id> /SoundCompress0 /Overwrite /AutoClose`
 once per track (every pass reads the previous pass's output), so the game hears the dub
 whatever language it runs in; the picture is not re-encoded (Fallout 4's intro, two
 tracks: 3.5 s a pass). The WAV is checked before it leaves: its rate must fit 16 bits and

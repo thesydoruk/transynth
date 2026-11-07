@@ -1541,6 +1541,8 @@
     "actions": {
       "separate": "Separate & transcribe",
       "reseparate": "Separate again",
+      "refreshTracks": "Refresh tracks",
+      "refreshTracksHint": "New speech and background tracks; the phrases, translations and takes stay",
       "dub": "Dub",
       "redub": "Dub changes",
       "pack": "Write into the video"
