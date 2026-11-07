@@ -97,11 +97,14 @@ review — of a phrase whose text did not change.
    marked **overrun** in the phrase list — the translation wants shortening.
 4. **Mix.** The takes are laid on the timeline, summed into one speech bus, brought to the
    integrated loudness (LUFS) of the original narration and laid over the background →
-   `dub_uk.wav`, which the row's player streams.
+   `dub_uk.wav` (48 kHz 16-bit stereo: Bink stores the rate in 16 bits, and the 192 kHz
+   `loudnorm` leaves behind plays as silence in the game), which the row's player streams;
+   the phrase list plays each phrase's own dub next to its take.
 
 Every take carries a version of its translation and slot: **Dub changes** re-synthesizes
 only the phrases that were retranslated or moved (`scope: changed`; `all` and
-`segment:<index>` exist too). The mix is rebuilt every time from all the takes.
+`segment:<index>` exist too). The mix is rebuilt every time from all the takes, and its
+format is part of the dub's version, so a change to the mix reaches the game without a new take.
 
 ## Writing it back
 
