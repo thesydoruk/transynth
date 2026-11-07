@@ -10,4 +10,9 @@ export type GameMediaAdapter = {
   readonly videoExtensions: readonly string[];
   /** Where a dubbed video goes inside a mod the mod manager deploys (`Video` for a Data-rooted mod). */
   readonly packDir: string;
+  /**
+   * The audio track id that carries the narration to translate (the game keeps
+   * one track per language); the lowest id when unset or when a video lacks it.
+   */
+  readonly narrationTrackId?: number;
 };

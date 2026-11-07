@@ -4,11 +4,11 @@
  *   GET  /api/mods/:id/video                        — the mod's videos with their state,
  *                                                     and which hosts the stages need are up
  *   GET  /api/mods/:id/video/:videoId               — one video
- *   PUT  /api/mods/:id/video/:videoId/audio         — the agent uploads the narration track (token)
+ *   PUT  /api/mods/:id/video/:videoId/file          — the agent uploads the video itself
+ *                                                     (token); the server reads the tracks
+ *                                                     and decodes the narration
  *   GET  /api/mods/:id/video/:videoId/audio/:kind   — source | speech | background | dub as
  *                                                     audio/wav; `?from=&to=` plays a slice
- *   POST /api/mods/:id/video/:videoId/packed        — the agent wrote this dub version into
- *                                                     the video (token)
  *   GET  /api/mods/:id/video/phrase/:stringId       — the video and timing behind one VIDEO
  *                                                     record, for the editor's phrase player
  */
@@ -17,20 +17,17 @@ import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../../db';
 import { log } from '../../../logger';
 import { probeKindsHealthy } from '../../../services/kindHealth';
-import { sliceWavToTemp, storeVideoSourceAudio, videoAudioFile } from '../../../video/audioStore';
-import {
-  getVideoAssetOfMod,
-  listVideoAssets,
-  setVideoAssetAudio,
-  setVideoAssetPacked,
-} from '../../../video/db';
+import { startBackgroundJob } from '../../../../worker/src/api/startBackgroundJob';
+import { sliceWavToTemp, storeVideoFile, videoAudioFile } from '../../../video/audioStore';
+import { getVideoAssetOfMod, listVideoAssets } from '../../../video/db';
+import { ingestVideoFile } from '../../../video/ingest';
 import { ensureVideoSchema } from '../../../video/schema';
 import { VIDEO_AUDIO_KINDS, type VideoAudioKind } from '../../../video/types';
 import { VIDEO_SIGNATURE } from '../../../video/videoRecords';
 import { parseRouteId } from '../parseRouteId';
 
-/** The hosts the media tab shows a light for: separation, ASR, TTS. */
-const VIDEO_SERVICE_KINDS = ['separate', 'asr', 'tts'] as const;
+/** The hosts the media tab shows a light for: separation, ASR, TTS, the Bink mixer. */
+const VIDEO_SERVICE_KINDS = ['separate', 'asr', 'tts', 'tools'] as const;
 
 const ids = (params: { id: string; videoId: string }): [number, number] | null => {
   const modId = parseRouteId(params.id);
@@ -116,7 +113,7 @@ export const registerModVideoRoutes = async (app: FastifyInstance, db: Tx) => {
   );
 
   app.put<{ Params: { id: string; videoId: string } }>(
-    '/api/mods/:id/video/:videoId/audio',
+    '/api/mods/:id/video/:videoId/file',
     async (req, reply) => {
       const pair = ids(req.params);
       if (!pair) return reply.code(400).send({ error: 'Invalid id' });
@@ -124,27 +121,24 @@ export const registerModVideoRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!asset) return reply.code(404).send({ error: 'Not found' });
       const data = await req.file();
       if (!data) return reply.code(400).send({ error: 'No file uploaded' });
-      const stored = await storeVideoSourceAudio(asset, data.file);
-      await setVideoAssetAudio(db, asset.id, stored.relPath);
-      log.info(`Video #${asset.id} ${asset.file_name}: source audio ${stored.bytes} bytes`);
-      return reply.send({ ok: true, bytes: stored.bytes });
-    },
-  );
-
-  app.post<{ Params: { id: string; videoId: string }; Body: { dubVersion?: string } }>(
-    '/api/mods/:id/video/:videoId/packed',
-    async (req, reply) => {
-      const pair = ids(req.params);
-      if (!pair) return reply.code(400).send({ error: 'Invalid id' });
-      const dubVersion = typeof req.body?.dubVersion === 'string' ? req.body.dubVersion : '';
-      if (!dubVersion) return reply.code(400).send({ error: 'dubVersion is required' });
-      const asset = await getVideoAssetOfMod(db, ...pair);
-      if (!asset) return reply.code(404).send({ error: 'Not found' });
-      await setVideoAssetPacked(db, asset.id, dubVersion);
-      log.info(
-        `Video #${asset.id} ${asset.file_name}: dub ${dubVersion.slice(0, 12)} written by the agent`,
-      );
-      return reply.send({ ok: true, current: asset.dub_version === dubVersion });
+      let stored: { relPath: string; bytes: number };
+      try {
+        stored = await storeVideoFile(asset, data.file);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        log.warn(`Video #${asset.id} ${asset.file_name}: upload refused: ${message}`);
+        return reply.code(400).send({ error: message });
+      }
+      const outcome = await ingestVideoFile(db, asset);
+      let packJobId: number | null = null;
+      if (outcome.needsPack) {
+        packJobId = await startBackgroundJob(
+          { kind: 'video-pack', modId: asset.mod_id, params: { videoId: asset.id } },
+          { videoId: asset.id, stage: 'queued' },
+        );
+      }
+      log.info(`Video #${asset.id} ${asset.file_name}: file ${stored.bytes} bytes`);
+      return reply.send({ ok: true, bytes: stored.bytes, ...outcome, packJobId });
     },
   );
 

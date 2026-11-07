@@ -49,6 +49,9 @@ export const JOB_KIND_SPECS: Record<JobKind, JobKindSpec> = {
   // One cutscene at a time through audio-intel's batch lane (separation + transcription).
   'video-separate': { queue: 'separate', needs: ['separate', 'asr'] },
   'video-dub': { queue: 'tts', needs: ['tts'] },
+  // BinkMix in bethesda-tools: CPU work, and `tools` is an extra it waits for itself (as
+  // voice jobs do), not demand — the whole cpu queue would otherwise count towards it.
+  'video-pack': { queue: 'cpu', needs: [] },
 };
 
 const jobKindSpec = (kind: JobKind): JobKindSpec => {

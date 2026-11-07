@@ -34,6 +34,12 @@ export const videoEndpoints = {
     }),
   dubStatus: (jobId: number) => req<VideoJobStatus>(`/api/video-dub/${jobId}`),
   stopDub: (jobId: number) => req<{ ok: true }>(`/api/video-dub/${jobId}/stop`, { method: 'POST' }),
+  /** Write the finished dub into the video again (a dub does this by itself when it ends). */
+  pack: (modId: number, id: number) =>
+    req<{ ok: true; jobId: number; videoId: number }>(`${base(modId)}/${id}/pack`, {
+      method: 'POST',
+    }),
+  packStatus: (jobId: number) => req<VideoJobStatus>(`/api/video-pack/${jobId}`),
   /** The URL the player streams one audio kind of a video from, or a slice of it. */
   audioUrl: (
     modId: number,

@@ -46,7 +46,8 @@ tools. See [THIRD_PARTY.md](../THIRD_PARTY.md).
    `USEnglish`. LIP and xWMA run in `bethesda-tools`
    (`BETHESDA_TOOLS_URL`, or profile `embedded-bethesda-tools`).
 6. **Voice tools** on disk: the `bethesda-tools` image downloads the latest
-   FaceFXWrapper and xWMAEncode (from the DirectX SDK) at build. Only
+   FaceFXWrapper, xWMAEncode (from the DirectX SDK) and RAD's `radvideo64.exe`
+   (BinkMix, for the [cutscene dubs](18-video-dubbing.md)) at build. Only
    `FonixData.cdf` is yours to supply: `npm run tools:install --game-dir …` (or
    the `tools` Compose profile) copies it into `data/tools/voice/` for the
    sidecar to mount.

@@ -77,14 +77,14 @@ describe('MediaTab', () => {
     expect(await screen.findByText('Intro_ru.bk2')).toBeInTheDocument();
     expect(screen.getByText('2:45')).toBeInTheDocument();
     expect(screen.getByText('2 track(s), source 0')).toBeInTheDocument();
-    expect(screen.getByText('audio uploaded')).toBeInTheDocument();
+    expect(screen.getByText('file uploaded')).toBeInTheDocument();
     expect(screen.getByLabelText('Source narration')).toHaveAttribute(
       'src',
       expect.stringContaining('/api/mods/33/video/1/audio/source'),
     );
     expect(screen.getByText('STRENGTH.bk2')).toBeInTheDocument();
     expect(screen.getByText('5 track(s), source 1')).toBeInTheDocument();
-    expect(screen.getByText('waiting for audio')).toBeInTheDocument();
+    expect(screen.getByText('waiting for the file')).toBeInTheDocument();
     expect(screen.getByText('no audio yet')).toBeInTheDocument();
 
     // Separation needs audio-intel's batch lane; it is down in this fixture.

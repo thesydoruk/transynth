@@ -30,10 +30,10 @@ export type AgentState = {
    * runs the stages even when nothing is left to upload.
    */
   resyncNeeded: boolean;
-  /** Video file hash → the dub version the agent wrote into it. */
-  packedVideos: Record<string, string>;
-  /** Number of the last videopack archive delivered to Vortex. */
-  videopackSeq: number;
+  /** The videopack version (the server's hash of the dubbed videos) last delivered to Vortex. */
+  deliveredVideopackVersion: string | null;
+  deliveredVideopackFileName: string | null;
+  deliveredVideopackAt: string | null;
 };
 
 export const emptyAgentState = (): AgentState => ({
@@ -49,8 +49,9 @@ export const emptyAgentState = (): AgentState => ({
   failures: 0,
   retryAfter: null,
   resyncNeeded: false,
-  packedVideos: {},
-  videopackSeq: 0,
+  deliveredVideopackVersion: null,
+  deliveredVideopackFileName: null,
+  deliveredVideopackAt: null,
 });
 
 export const readAgentState = (file: string): AgentState => {

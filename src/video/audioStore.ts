@@ -1,17 +1,18 @@
 /**
- * Where a video's audio lives on the server, under `PATHS.videoUploads`:
+ * Where a video and its audio live on the server, under `PATHS.videoUploads`:
  *
- *   src/<fingerprint>/source.wav | speech.wav | background.wav | separation.json
- *   assets/<id>/dub_<lang>.wav, assets/<id>/takes/NNNN.wav
+ *   src/<fingerprint>/video<ext> | source.wav | speech.wav | background.wav | separation.json
+ *   assets/<id>/dub_<lang>.wav, assets/<id>/takes/NNNN.wav, assets/<id>/<file name>
  *
  * What is derived from the file alone is keyed by the file's hash, so a new
  * version of the mod that ships the same video shares it; what depends on the
- * translation (takes, the dub) is the asset's own.
+ * translation (takes, the dub, the dubbed video) is the asset's own.
  */
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import type { Readable } from 'node:stream';
+import { Transform, type Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { PATHS } from '../paths';
 import { execFileAsync } from '../utils/execFile';
@@ -20,6 +21,62 @@ import { resolveFfmpegPath } from '../voice/voiceToolPaths';
 import type { VideoAssetRow, VideoAudioKind } from './types';
 
 type AssetKey = Pick<VideoAssetRow, 'id' | 'fingerprint'>;
+type FileKey = Pick<VideoAssetRow, 'fingerprint' | 'file_name'>;
+
+/** The video file itself, shared by every asset with the same hash. */
+export const videoFileRelPath = (asset: FileKey): string =>
+  path.join(videoSourceRelDir(asset), `video${path.extname(asset.file_name).toLowerCase()}`);
+
+/** The video file on disk, or null until the agent uploaded it. */
+export const videoFile = (asset: FileKey): string | null => {
+  const file = resolveVideoAudioPath(videoFileRelPath(asset));
+  return fs.existsSync(file) ? file : null;
+};
+
+/** The asset's own copy of the video with the dub written in, named as the game's file. */
+export const videoPackedRelPath = (asset: Pick<VideoAssetRow, 'id' | 'file_name'>): string =>
+  path.join(videoAssetRelDir(asset), asset.file_name);
+
+export const videoPackedFile = (asset: Pick<VideoAssetRow, 'id' | 'file_name'>): string | null => {
+  const file = resolveVideoAudioPath(videoPackedRelPath(asset));
+  return fs.existsSync(file) ? file : null;
+};
+
+/**
+ * Store the agent's upload of the video itself, hashed on the way in: a file
+ * whose sha1 is not the asset's fingerprint is not the video the manifest
+ * described and is dropped. Written under a temporary name and renamed last.
+ */
+export const storeVideoFile = async (
+  asset: FileKey,
+  stream: Readable,
+): Promise<{ relPath: string; bytes: number }> => {
+  const relPath = videoFileRelPath(asset);
+  const dest = resolveVideoAudioPath(relPath);
+  ensureDir(path.dirname(dest));
+  const part = `${dest}.part`;
+  const hash = crypto.createHash('sha1');
+  const hashing = new Transform({
+    transform(chunk: Buffer, _enc, done) {
+      hash.update(chunk);
+      done(null, chunk);
+    },
+  });
+  try {
+    await pipeline(stream, hashing, fs.createWriteStream(part));
+    const sha1 = hash.digest('hex');
+    if (sha1 !== asset.fingerprint) {
+      throw new Error(
+        `uploaded file hashes to ${sha1}, the registered video is ${asset.fingerprint}`,
+      );
+    }
+  } catch (err) {
+    fs.rmSync(part, { force: true });
+    throw err;
+  }
+  fs.renameSync(part, dest);
+  return { relPath, bytes: fs.statSync(dest).size };
+};
 
 /** The asset's own folder (takes, dub), relative to the uploads root. */
 export const videoAssetRelDir = (asset: Pick<VideoAssetRow, 'id'>): string =>
@@ -40,23 +97,6 @@ export const videoAudioRelPath = (asset: AssetKey, kind: VideoAudioKind, tgtLang
 
 export const resolveVideoAudioPath = (relPath: string): string =>
   path.join(PATHS.videoUploads, relPath);
-
-/**
- * Store the agent's upload as `source.wav`, written under a temporary name so a
- * broken connection never leaves a half file where the separation would read it.
- */
-export const storeVideoSourceAudio = async (
-  asset: AssetKey,
-  stream: Readable,
-): Promise<{ relPath: string; bytes: number }> => {
-  const relPath = videoAudioRelPath(asset, 'source');
-  const dest = resolveVideoAudioPath(relPath);
-  ensureDir(path.dirname(dest));
-  const part = `${dest}.part`;
-  await pipeline(stream, fs.createWriteStream(part));
-  fs.renameSync(part, dest);
-  return { relPath, bytes: fs.statSync(dest).size };
-};
 
 /**
  * Cut `[fromS, toS]` out of a WAV into a temporary file (the phrase players).

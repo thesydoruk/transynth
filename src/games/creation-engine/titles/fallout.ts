@@ -103,7 +103,14 @@ export const fallout4: CreationEngineTitle = {
   },
   // Intro, the four endings and the seven S.P.E.C.I.A.L. films are Bink 2 with
   // the narration mixed in; the main-menu loop and the logo carry no speech.
-  media: { videoDir: 'Data/Video', videoExtensions: ['.bk2'], packDir: 'Video' },
+  // The S.P.E.C.I.A.L. films keep one track per language, English is 1; the
+  // intro and endings carry two identical tracks (0 and 1).
+  media: {
+    videoDir: 'Data/Video',
+    videoExtensions: ['.bk2'],
+    packDir: 'Video',
+    narrationTrackId: 1,
+  },
   prompts: {
     label: 'Fallout 4',
     translateUk: (family) => fo4UkTranslatePrompt(family ?? 'item'),

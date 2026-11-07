@@ -38,6 +38,7 @@ export type VortexAgent = {
     pending?: { units: number; orderChanged: boolean; settleUntil: string | null } | null;
     lastRunId?: number | null;
     delivered?: { archiveId: number; fileName: string; at: string } | null;
+    deliveredVideopack?: { version: string; fileName: string; at: string } | null;
   } | null;
   last_error: string | null;
   last_sync_at: string | null;

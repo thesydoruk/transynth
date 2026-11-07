@@ -16,9 +16,8 @@ const AGENT_WRITE_PATTERNS: readonly RegExp[] = [
   /^\/api\/vortex\/sync\/[^/]+\/start$/,
   /^\/api\/vortex\/agent\//,
   /^\/api\/vortex\/groups\/[^/]+\/export-order$/,
-  // The agent uploads a video's narration track and reports the dub it wrote.
-  /^\/api\/mods\/[^/]+\/video\/[^/]+\/audio$/,
-  /^\/api\/mods\/[^/]+\/video\/[^/]+\/packed$/,
+  // The agent uploads the video files the server asked for.
+  /^\/api\/mods\/[^/]+\/video\/[^/]+\/file$/,
 ];
 
 /** True for the requests an agent or CLI makes that change server state. */

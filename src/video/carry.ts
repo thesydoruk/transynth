@@ -18,6 +18,7 @@ import {
   videoAssetRelDir,
   videoAudioFile,
   videoAudioRelPath,
+  videoPackedRelPath,
 } from './audioStore';
 import type { VideoAssetRow, VideoAssetStatus } from './types';
 
@@ -93,17 +94,27 @@ export const carryVideoAsset = async (
   }
 
   let dubRel: string | null = null;
+  let packedVersion: string | null = null;
   if (hasSpeech && from.dub_rel_path && from.dub_version) {
     const rel = videoAudioRelPath(to, 'dub', tgtLang);
     if (copyInto(from.dub_rel_path, rel)) {
       dubRel = rel;
-      status = from.packed_version === from.dub_version ? 'packed' : 'dubbed';
+      status = 'dubbed';
+      // The dubbed video follows the dub it carries; without the copy the dub is written again.
+      if (
+        from.packed_version === from.dub_version &&
+        copyInto(videoPackedRelPath(from), videoPackedRelPath(to))
+      ) {
+        packedVersion = from.packed_version;
+        status = 'packed';
+      }
     }
   }
   await db.query(
     `UPDATE video_assets
         SET audio_rel_path = $2, status = $3, dub_rel_path = $4, dub_version = $5,
-            packed_version = $6, error = NULL, updated_at = NOW()
+            packed_version = $6, duration_s = $7, track_ids = $8::jsonb, source_track_id = $9,
+            error = NULL, updated_at = NOW()
       WHERE id = $1`,
     [
       to.id,
@@ -111,7 +122,10 @@ export const carryVideoAsset = async (
       status,
       dubRel,
       dubRel ? from.dub_version : null,
-      dubRel ? from.packed_version : null,
+      packedVersion,
+      from.duration_s,
+      JSON.stringify(from.track_ids),
+      from.source_track_id,
     ],
   );
   log.info(
