@@ -5,7 +5,8 @@
  * BA2/BSA archives, or a plugin-less package that still ships translatable
  * text — MCM Helper files, Interface `translate_*.txt`, compiled Papyrus.
  * Both shapes go through the same phases; the plugin-less one just skips the
- * ESP phase.
+ * ESP phase. Cutscene videos ride along as the agent's manifests and become
+ * assets of the mod in a phase of their own.
  */
 import path from 'node:path';
 import { EspReader } from '../../../formats/esp';
@@ -22,6 +23,8 @@ import { countMcmTranslationRecords } from '../../../import/mod/mcmLocales';
 import { resolveModDirectoryFromPath } from '../../../formats/mcm';
 import { finalizeModImport } from '../../../import/mod/run/finalize';
 import { persistBethesdaVoiceClips } from '../../../voice/persistBethesdaVoiceClips';
+import { importVideoManifests, videoModDir } from '../../../video/importPhase';
+import { isVideoManifestPath, listVideoManifests } from '../../../video/manifest';
 import type { AnchorDescription, GameImportAdapter, ModImportRunContext } from '../../contract';
 import { clearBa2Cache } from '../../../formats/ba2';
 import { refreshCreationEngineDialogSpeakers } from './refreshDialogSpeakers';
@@ -82,6 +85,7 @@ const ingestPlugin = async (
     await importPexStringRows(ctx, prep.batch);
     await prep.batch.commitOpenTx();
   }
+  if (!stopped()) await importVideoManifests(ctx, path.dirname(ctx.anchorPath));
   if (stopped()) return;
 
   await finalizeModImport(ctx, {
@@ -93,13 +97,14 @@ const ingestPlugin = async (
   });
 };
 
-/** Ingest a package with no plugin: MCM, Interface, and PEX text only. */
+/** Ingest a package with no plugin: MCM, Interface, PEX text and videos only. */
 const ingestExtrasOnly = async (ctx: ModImportRunContext): Promise<void> => {
   logImport.info(
-    `[Mod Import #${ctx.job.id}] No plugin anchor — importing MCM/Interface/PEX text only`,
+    `[Mod Import #${ctx.job.id}] No plugin anchor — importing MCM/Interface/PEX text and videos only`,
   );
   const { batch } = prepareExtrasOnlyImportContext(ctx);
   const stopped = () => ctx.state.cancel || ctx.state.pause;
+  const modDir = videoModDir(ctx.anchorPath, resolveModDirectoryFromPath(ctx.anchorPath));
 
   if (!stopped()) await importMcmStringRows(ctx);
   if (!stopped()) await importInterfaceTranslateRows(ctx);
@@ -107,6 +112,7 @@ const ingestExtrasOnly = async (ctx: ModImportRunContext): Promise<void> => {
     await importPexStringRows(ctx, batch);
     await batch.commitOpenTx();
   }
+  if (!stopped()) await importVideoManifests(ctx, modDir);
   if (stopped()) return;
 
   await finalizeModImport(ctx, {
@@ -148,11 +154,14 @@ export const createCreationEngineImportAdapter = (
   selectAnchor: (extractDir) => {
     const primaryPlugins = filterPrimaryPlugins(discoverModFiles(extractDir).plugins);
     if (primaryPlugins.length > 0) return primaryPlugins[0]!;
-    return hasMcmTranslationFiles(extractDir) ? findFirstMcmTranslationFile(extractDir) : null;
+    if (hasMcmTranslationFiles(extractDir)) return findFirstMcmTranslationFile(extractDir);
+    // A package of videos alone: the first manifest anchors it.
+    return title.media ? (listVideoManifests(extractDir, title.media.videoDir)[0] ?? null) : null;
   },
 
   describeAnchor: (anchorPath) => {
     if (isPluginFile(anchorPath)) return describePlugin(title, anchorPath);
+    if (isVideoManifestPath(anchorPath)) return { isLocalized: false, totalRecords: 0 };
     return {
       isLocalized: false,
       totalRecords: countMcmTranslationRecords(resolveModDirectoryFromPath(anchorPath), anchorPath),

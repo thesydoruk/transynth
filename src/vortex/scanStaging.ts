@@ -5,20 +5,23 @@ import { discoverModFiles, isPlugin } from '../import/mod/discovery';
 import { parseVortexModFolder } from '../utils/vortexFolder';
 import { collectPluginUnitFiles } from './collectSubset';
 import { merkleContentHash, type FileHasher } from './hashSubset';
-import { hasVortexImportAnchor } from './syncWorthy';
+import { hasVortexImportAnchor, type VortexSyncFileOptions } from './syncWorthy';
 import type { VortexInventoryUnit } from './types';
+import { isTransynthVideopackFolder } from './videoFiles';
 import { UA_SOUND_PACK_ESP } from '../web/export/uaSoundPack';
 
 const SKIP_TOP_NAMES = new Set(['.git', 'node_modules', '.transynth-extracted']);
 
 /**
- * Transynth's own langpack, installed through Vortex, is output, not a mod to
- * translate: syncing it would upload gigabytes of our voice archive and
- * register a mod with nothing to translate. Vortex names the mod after the
- * archive we delivered; a renamed one is still known by the dummy voice plugin.
+ * Transynth's own output, installed through Vortex — the langpack and the
+ * videopack — is not a mod to translate: syncing it would upload gigabytes of
+ * our voice archive or our dubbed videos and register a mod with nothing to
+ * translate. Vortex names the mod after the archive we delivered; a renamed
+ * langpack is still known by the dummy voice plugin.
  */
-export const isTransynthLangpackFolder = (folderPath: string, folderName: string): boolean =>
+export const isTransynthOutputFolder = (folderPath: string, folderName: string): boolean =>
   /^transynth_.+_langpack_r\d+/i.test(folderName) ||
+  isTransynthVideopackFolder(folderName) ||
   fs.existsSync(path.join(folderPath, UA_SOUND_PACK_ESP));
 
 const unitIdFor = (folderName: string, pluginFileName: string | null): string => {
@@ -31,6 +34,7 @@ const unitIdFor = (folderName: string, pluginFileName: string | null): string =>
 export const scanStagingUnits = async (
   stagingPath: string,
   hashFile?: FileHasher,
+  options: VortexSyncFileOptions = {},
 ): Promise<VortexInventoryUnit[]> => {
   let entries: fs.Dirent[];
   try {
@@ -47,14 +51,14 @@ export const scanStagingUnits = async (
     if (!entry.isDirectory()) continue;
     if (SKIP_TOP_NAMES.has(entry.name.toLowerCase())) continue;
     const folderPath = path.join(stagingPath, entry.name);
-    if (isTransynthLangpackFolder(folderPath, entry.name)) continue;
+    if (isTransynthOutputFolder(folderPath, entry.name)) continue;
     const vortex = parseVortexModFolder(entry.name);
     const discovered = discoverModFiles(folderPath);
     const primary = filterPrimaryPlugins(discovered.plugins);
     const pluginTargets = primary.length > 0 ? primary : [null];
 
     for (const pluginPath of pluginTargets) {
-      const files = collectPluginUnitFiles(folderPath, pluginPath);
+      const files = collectPluginUnitFiles(folderPath, pluginPath, options);
       if (files.length === 0) continue;
       if (!hasVortexImportAnchor(files.map((file) => file.relPath))) continue;
       const pluginFileName = pluginPath ? path.basename(pluginPath) : null;

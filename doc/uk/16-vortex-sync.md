@@ -72,13 +72,15 @@ LLM-переклад, перевірка, skip-detect, gender-detect, озвуч
 
 ### Ролики
 
-З `"videos": true` агент раз на `fullScanEveryMin` реєструє ролики з папки гри і надсилає
-їхню нараційну доріжку (`ffmpegPath`, `ffprobePath`, `videoSourceTrack`), а готові дубляжі
-записує назад у ролики RAD Video Tools, які ставить сам у `radVideoToolsPath`
-(`--install-rad-tools` робить це наперед), і кладе videopack у завантаження Vortex. Ролик,
-який Vortex розгорнув із нашого ж videopack, агент читає з `<файл>.vortex_backup` — оригіналу,
-який Vortex відкладає поруч; інакше попередній дубляж став би «новим роликом». Решта — на
-сторінці Video. Див. [Дубляж роликів](18-video-dubbing.md).
+З `"videos": true` ролики входять у юніти як файли мода: `Data/Video` — до головного
+майстра, `Video/` стейджу — до його мода; у zip замість ролика йде маніфест, а доріжку з
+нарацією агент досилає тим роликам, які сервер зареєстрував і попросив через heartbeat
+(`ffmpegPath`, `ffprobePath`, `videoSourceTrack`). Готові дубляжі агент записує назад у
+ролики RAD Video Tools, які ставить сам у `radVideoToolsPath` (`--install-rad-tools` робить
+це наперед), і кладе videopack у завантаження Vortex. Ролик, який Vortex розгорнув із нашого ж
+videopack, агент читає з `<файл>.vortex_backup` — оригіналу, який Vortex відкладає поруч;
+тека videopack у стейджі пропускається, як і ленгпак. Решта — у табі «Медіа» режиму озвучки
+мода. Див. [Дубляж роликів](18-video-dubbing.md).
 
 ### Стан і журнал
 

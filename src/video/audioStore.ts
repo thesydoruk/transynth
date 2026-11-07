@@ -1,7 +1,12 @@
 /**
- * Where a video's audio lives on the server: one folder per asset under
- * `PATHS.videoUploads/<game>/<id>/`, one WAV per kind (`source.wav` from the
- * agent, `speech.wav` / `background.wav` from the separation, `dub_<lang>.wav`).
+ * Where a video's audio lives on the server, under `PATHS.videoUploads`:
+ *
+ *   src/<fingerprint>/source.wav | speech.wav | background.wav | separation.json
+ *   assets/<id>/dub_<lang>.wav, assets/<id>/takes/NNNN.wav
+ *
+ * What is derived from the file alone is keyed by the file's hash, so a new
+ * version of the mod that ships the same video shares it; what depends on the
+ * translation (takes, the dub) is the asset's own.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -14,18 +19,24 @@ import { ensureDir } from '../utils/file';
 import { resolveFfmpegPath } from '../voice/voiceToolPaths';
 import type { VideoAssetRow, VideoAudioKind } from './types';
 
-export const videoAssetDir = (asset: Pick<VideoAssetRow, 'game' | 'id'>): string =>
-  path.join(PATHS.videoUploads, asset.game, String(asset.id));
+type AssetKey = Pick<VideoAssetRow, 'id' | 'fingerprint'>;
+
+/** The asset's own folder (takes, dub), relative to the uploads root. */
+export const videoAssetRelDir = (asset: Pick<VideoAssetRow, 'id'>): string =>
+  path.join('assets', String(asset.id));
+
+export const videoAssetDir = (asset: Pick<VideoAssetRow, 'id'>): string =>
+  path.join(PATHS.videoUploads, videoAssetRelDir(asset));
+
+/** The folder shared by every asset of one video file. */
+export const videoSourceRelDir = (asset: Pick<VideoAssetRow, 'fingerprint'>): string =>
+  path.join('src', asset.fingerprint);
 
 /** The relative path (as stored in the row) of one audio kind of an asset. */
-export const videoAudioRelPath = (
-  asset: Pick<VideoAssetRow, 'game' | 'id'>,
-  kind: VideoAudioKind,
-  tgtLang = 'uk',
-): string => {
-  const name = kind === 'dub' ? `dub_${tgtLang}.wav` : `${kind}.wav`;
-  return path.join(asset.game, String(asset.id), name);
-};
+export const videoAudioRelPath = (asset: AssetKey, kind: VideoAudioKind, tgtLang = 'uk'): string =>
+  kind === 'dub'
+    ? path.join(videoAssetRelDir(asset), `dub_${tgtLang}.wav`)
+    : path.join(videoSourceRelDir(asset), `${kind}.wav`);
 
 export const resolveVideoAudioPath = (relPath: string): string =>
   path.join(PATHS.videoUploads, relPath);
@@ -35,7 +46,7 @@ export const resolveVideoAudioPath = (relPath: string): string =>
  * broken connection never leaves a half file where the separation would read it.
  */
 export const storeVideoSourceAudio = async (
-  asset: Pick<VideoAssetRow, 'game' | 'id'>,
+  asset: AssetKey,
   stream: Readable,
 ): Promise<{ relPath: string; bytes: number }> => {
   const relPath = videoAudioRelPath(asset, 'source');
@@ -48,8 +59,8 @@ export const storeVideoSourceAudio = async (
 };
 
 /**
- * Cut `[fromS, toS]` out of a WAV into a temporary file (the segment preview on
- * the Video page). The caller removes the file once it is sent.
+ * Cut `[fromS, toS]` out of a WAV into a temporary file (the phrase players).
+ * The caller removes the file once it is sent.
  */
 export const sliceWavToTemp = async (file: string, fromS: number, toS: number): Promise<string> => {
   const out = path.join(
@@ -86,4 +97,9 @@ export const videoAudioFile = (
   if (!rel) return null;
   const file = resolveVideoAudioPath(rel);
   return fs.existsSync(file) ? file : null;
+};
+
+/** Remove an asset's own folder (takes, dub); the shared source folder stays. */
+export const removeVideoAssetFiles = (asset: Pick<VideoAssetRow, 'id'>): void => {
+  fs.rmSync(videoAssetDir(asset), { recursive: true, force: true });
 };

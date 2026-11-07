@@ -1,0 +1,31 @@
+.panel {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.timing {
+  font-family: var(--font-mono, monospace);
+}
+
+.player {
+  height: 28px;
+  width: 200px;
+  max-width: 100%;
+}
+
+.note {
+  color: var(--text-dim);
+}
+
+.overrun {
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+  padding: 1px 6px;
+}

@@ -13,7 +13,6 @@ import {
   ModsPage,
   NotFoundPage,
   ReferencePage,
-  VideoPage,
   VortexPage,
   SettingsPage,
   SystemLogPage,
@@ -45,7 +44,6 @@ export const AppShell = () => {
           <Route path="/games/:gameId/coherence" element={<CoherencePage />} />
           <Route path="/games/:gameId/reference" element={<ReferencePage />} />
           <Route path="/games/:gameId/vortex" element={<VortexPage />} />
-          <Route path="/games/:gameId/video" element={<VideoPage />} />
           <Route path="/glossary" element={<GlossaryPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/system-log" element={<SystemLogPage />} />

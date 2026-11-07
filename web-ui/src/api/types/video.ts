@@ -8,10 +8,10 @@ export type VideoAssetStatus =
   | 'packed'
   | 'error';
 
-/** One cutscene video of a game, as the resident agent registered it. */
+/** One cutscene video of a mod, as the import registered it from the agent's manifest. */
 export type VideoAsset = {
   id: number;
-  game: string;
+  mod_id: number;
   agent_key: string | null;
   file_name: string;
   byte_size: number;
@@ -21,7 +21,6 @@ export type VideoAsset = {
   source_track_id: number | null;
   audio_rel_path: string | null;
   status: VideoAssetStatus | string;
-  mod_id: number | null;
   dub_rel_path: string | null;
   dub_version: string | null;
   packed_version: string | null;
@@ -54,6 +53,21 @@ export type VideoSegment = {
   overrun: boolean;
   translation: string | null;
   translation_status: string | null;
+};
+
+/** The video and timing behind one VIDEO record, for the editor's phrase players. */
+export type VideoPhraseInfo = {
+  videoId: number;
+  idx: number;
+  startS: number;
+  endS: number;
+  nextStartS: number | null;
+  durationS: number | null;
+  hasSpeech: boolean;
+  hasDub: boolean;
+  takeSimilarity: number | null;
+  tempo: number | null;
+  overrun: boolean;
 };
 
 export type VideoJobStatus = {

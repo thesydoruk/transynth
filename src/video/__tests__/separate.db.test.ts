@@ -8,7 +8,7 @@ const uploads = fs.mkdtempSync(path.join(os.tmpdir(), 'video-uploads-'));
 process.env.VIDEO_UPLOAD_DIR = uploads;
 
 await import('../../games');
-const { useTestDb } = await import('../../testing/testDb');
+const { insertMod, useTestDb } = await import('../../testing/testDb');
 const { registerVideoAsset, setVideoAssetAudio, getVideoAsset } = await import('../db');
 const { separateVideo } = await import('../separate');
 const { listVideoSegments } = await import('../segments');
@@ -65,9 +65,11 @@ describe('separateVideo', () => {
   const db = useTestDb();
   afterAll(() => fs.rmSync(uploads, { recursive: true, force: true }));
 
+  let modId: number;
   let videoId: number;
   beforeEach(async () => {
-    const asset = await registerVideoAsset(db(), 'fo4', {
+    modId = await insertMod(db(), { name: 'Fallout4' });
+    const asset = await registerVideoAsset(db(), modId, {
       fileName: 'Intro_ru.bk2',
       byteSize: 10,
       fingerprint: 'fp',
@@ -84,7 +86,7 @@ describe('separateVideo', () => {
     await setVideoAssetAudio(db(), asset.id, rel);
   });
 
-  it('keeps the tracks, writes phrases into the Video mod and keeps a translation across re-runs', async () => {
+  it('keeps the tracks, writes VIDEO records into the mod and keeps a translation across re-runs', async () => {
     const calls: string[] = [];
     const stages: string[] = [];
     const first = await separateVideo(
@@ -99,7 +101,7 @@ describe('separateVideo', () => {
         calls,
       ),
     );
-    expect(first).toMatchObject({ phrases: 2, speakers: 1 });
+    expect(first).toEqual({ modId, phrases: 2, speakers: 1 });
     expect(stages).toEqual(['submitting', 'separating', 'downloading', 'writing']);
     expect(calls).toEqual([
       'submit source.wav',
@@ -110,7 +112,8 @@ describe('separateVideo', () => {
 
     const asset = (await getVideoAsset(db(), videoId))!;
     expect(asset.status).toBe('separated');
-    expect(asset.mod_id).toBe(first.modId);
+    // The derived audio sits in the folder shared by every asset of this file.
+    expect(videoAudioRelPath(asset, 'speech')).toBe(path.join('src', 'fp', 'speech.wav'));
     expect(fs.existsSync(resolveVideoAudioPath(videoAudioRelPath(asset, 'speech')))).toBe(true);
 
     const segments = await listVideoSegments(db(), videoId, 'uk');
@@ -119,27 +122,24 @@ describe('separateVideo', () => {
       [1, 'The end.', 9, 12],
     ]);
     const { rows: records } = await db().query(
-      `SELECT r.edid, r.path, r.formid_hex FROM records r WHERE r.mod_id = $1 ORDER BY r.formid_hex`,
-      [first.modId],
+      `SELECT r.edid, r.path, r.formid_hex, r.signature FROM records r WHERE r.mod_id = $1 ORDER BY r.path`,
+      [modId],
     );
+    // The MCM shape: the key in the path, no FormID, the EDID naming video and phrase.
     expect(records).toEqual([
-      // Not a hex number: a FormID a real plugin cannot have, so the TM's anchor match
-      // never pairs narration with a game record.
       {
         edid: 'Intro_ru#000',
-        path: 'INFO\\NAM1',
-        formid_hex: expect.stringMatching(/^V[0-9A-F]{4}0000$/),
+        path: 'VIDEO\\Intro_ru.bk2\\000',
+        formid_hex: '',
+        signature: 'VIDEO',
       },
       {
         edid: 'Intro_ru#001',
-        path: 'INFO\\NAM1',
-        formid_hex: expect.stringMatching(/^V[0-9A-F]{4}0001$/),
+        path: 'VIDEO\\Intro_ru.bk2\\001',
+        formid_hex: '',
+        signature: 'VIDEO',
       },
     ]);
-    const { rows: mods } = await db().query(`SELECT name, origin, game FROM mods WHERE id = $1`, [
-      first.modId,
-    ]);
-    expect(mods[0]).toEqual({ name: 'Video', origin: 'video', game: 'fo4' });
 
     // A translation of the first phrase survives a second run whose first phrase reads the same.
     await db().query(
@@ -158,7 +158,7 @@ describe('separateVideo', () => {
         [],
       ),
     );
-    expect(second.modId).toBe(first.modId);
+    expect(second.modId).toBe(modId);
     const again = await listVideoSegments(db(), videoId, 'uk');
     expect(again.map((s) => [s.source_text, s.translation])).toEqual([
       ['War. War never changes.', 'Війна. Війна ніколи не змінюється.'],

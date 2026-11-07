@@ -4,8 +4,9 @@
  * audio-intel's batch lane splits the uploaded track into speech and
  * background and transcribes the speech with timestamps and speaker labels.
  * The speech and background tracks are kept next to the source (the dub needs
- * both), the transcript is merged into phrases, and the phrases become the
- * records of the game's Video mod, where they are translated like any text.
+ * both), the transcript is merged into phrases, and the phrases become VIDEO
+ * records of the mod the video belongs to, where they are translated like any
+ * other text.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,11 +20,10 @@ import {
   type SeparationResult,
 } from '../audioIntel/jobs';
 import { log } from '../logger';
-import type { GameId } from '../types';
 import { resolveVideoAudioPath, videoAudioRelPath } from './audioStore';
 import { getVideoAsset, setVideoAssetStatus } from './db';
 import { mergeSegmentsIntoPhrases, replaceVideoSegments } from './segments';
-import { ensureVideoMod, writeVideoPhrasesToMod } from './videoMod';
+import { syncVideoRecords } from './videoRecords';
 
 export type SeparateVideoDeps = {
   submit: typeof submitSeparation;
@@ -97,28 +97,13 @@ export const separateVideo = async (
 
     opts.onStage?.('writing');
     const phrases = mergeSegmentsIntoPhrases(result.segments);
-    const modId = await ensureVideoMod(db, asset.game as GameId);
-    const stringIds = await writeVideoPhrasesToMod(
-      db,
-      {
-        modId,
-        videoId: asset.id,
-        fileName: asset.file_name,
-        srcLang: opts.srcLang,
-        tgtLang: opts.tgtLang,
-      },
-      phrases,
-    );
-    await replaceVideoSegments(db, asset.id, phrases, stringIds);
-    await db.query(
-      `UPDATE video_assets SET mod_id = $2, status = 'separated', error = NULL, updated_at = NOW()
-       WHERE id = $1`,
-      [asset.id, modId],
-    );
+    await replaceVideoSegments(db, asset.id, phrases, new Map());
+    await syncVideoRecords(db, asset, opts.srcLang, opts.tgtLang);
+    await setVideoAssetStatus(db, asset.id, 'separated');
     log.info(
       `Video #${asset.id} ${asset.file_name}: ${phrases.length} phrase(s), ${result.speakers.length} speaker(s), ${result.elapsed_s ?? '?'} s on audio-intel`,
     );
-    return { modId, phrases: phrases.length, speakers: result.speakers.length };
+    return { modId: asset.mod_id, phrases: phrases.length, speakers: result.speakers.length };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await setVideoAssetStatus(db, asset.id, 'error', message);

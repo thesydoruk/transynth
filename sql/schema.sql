@@ -1061,12 +1061,14 @@ CREATE INDEX IF NOT EXISTS idx_mods_vortex_current
   ON mods(vortex_group_id, is_current) WHERE vortex_group_id IS NOT NULL;
 
 -- ── Cutscene videos ─────────────────────────────────────────────────────────
--- One row per video file the Vortex agent found in the game folder, with the
--- audio track it uploaded and the dubbing state; one row per transcribed
--- segment. Mirrored in src/video/schema.ts (ensureVideoSchema).
+-- One row per video file of a mod, registered from the Vortex agent's manifest,
+-- with the audio track it uploaded and the dubbing state; one row per
+-- transcribed segment. Mirrored in src/video/schema.ts (ensureVideoSchema),
+-- which also brings a database of the first, game-keyed shape over on start —
+-- so only what is safe before that migration stands here.
 CREATE TABLE IF NOT EXISTS video_assets (
   id SERIAL PRIMARY KEY,
-  game TEXT NOT NULL,
+  mod_id INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
   agent_key TEXT,
   file_name TEXT NOT NULL,
   byte_size BIGINT NOT NULL DEFAULT 0,
@@ -1076,13 +1078,13 @@ CREATE TABLE IF NOT EXISTS video_assets (
   source_track_id INTEGER,
   audio_rel_path TEXT,
   status TEXT NOT NULL DEFAULT 'registered',
-  mod_id INTEGER REFERENCES mods(id) ON DELETE SET NULL,
   dub_rel_path TEXT,
   dub_version TEXT,
+  packed_version TEXT,
   error TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (game, file_name)
+  UNIQUE (mod_id, file_name)
 );
 
 CREATE TABLE IF NOT EXISTS video_segments (
@@ -1096,14 +1098,25 @@ CREATE TABLE IF NOT EXISTS video_segments (
   string_id INTEGER REFERENCES strings(id) ON DELETE SET NULL,
   take_rel_path TEXT,
   take_similarity DOUBLE PRECISION,
+  -- What the take was made from (translation + slot), so a dub re-run synthesizes only what changed.
+  take_version TEXT,
   tempo DOUBLE PRECISION,
   overrun BOOLEAN NOT NULL DEFAULT FALSE,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (video_id, idx)
 );
 
--- What a segment's take was made from (translation + slot), so a dub re-run
--- synthesizes only the segments that changed.
-ALTER TABLE video_segments ADD COLUMN IF NOT EXISTS take_version TEXT;
--- The dub version the agent last wrote into the video file.
 ALTER TABLE video_assets ADD COLUMN IF NOT EXISTS packed_version TEXT;
+ALTER TABLE video_segments ADD COLUMN IF NOT EXISTS take_version TEXT;
+ALTER TABLE video_assets DROP CONSTRAINT IF EXISTS video_assets_game_file_name_key;
+CREATE UNIQUE INDEX IF NOT EXISTS video_assets_mod_id_file_name_key
+  ON video_assets (mod_id, file_name);
+-- The mod owns its videos: deleting the mod deletes them.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_constraint
+              WHERE conname = 'video_assets_mod_id_fkey' AND confdeltype <> 'c') THEN
+    ALTER TABLE video_assets DROP CONSTRAINT video_assets_mod_id_fkey;
+    ALTER TABLE video_assets ADD CONSTRAINT video_assets_mod_id_fkey
+      FOREIGN KEY (mod_id) REFERENCES mods(id) ON DELETE CASCADE;
+  END IF;
+END $$;

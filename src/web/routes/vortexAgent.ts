@@ -2,8 +2,9 @@
  * The resident Vortex agent's routes and the group state the Vortex page reads.
  *
  *   POST /api/vortex/agent/heartbeat        — agent state (token); returns the group id,
- *                                             the newest langpack to deliver and the videos
- *                                             whose dub is waiting to be written
+ *                                             the newest langpack to deliver, the videos
+ *                                             waiting for their narration track and the
+ *                                             videos whose dub is waiting to be written
  *   POST /api/vortex/groups/:id/export-order — the group's current load order (token)
  *   GET  /api/vortex/groups/:id/state        — group, agent, current run, langpack,
  *                                             which service kinds have a healthy host
@@ -26,7 +27,7 @@ import { findActiveVortexRun, listVortexSyncRuns } from '../../vortex/dbRuns';
 import { isVortexExportOrder } from '../../vortex/exportOrder';
 import { vortexGroupKey, vortexGroupLabel } from '../../vortex/groupKey';
 import { ensureVortexSchema } from '../../vortex/schema';
-import { listVideoPackTasks } from '../../video/db';
+import { listVideoPackTasks, listVideoUploadTasks } from '../../video/db';
 import { ensureVideoSchema } from '../../video/schema';
 import type { VortexAgentHeartbeat, VortexAgentState, VortexExportOrder } from '../../vortex/types';
 import { parseRouteId } from './parseRouteId';
@@ -121,15 +122,18 @@ export const vortexAgentRoutes = async (app: FastifyInstance, db: Tx) => {
     if (beat.state === 'error') {
       log.warn(`Vortex agent ${beat.agentKey} on group #${group.id}: ${beat.lastError ?? 'error'}`);
     }
-    const [latestLangpack, videoTasks] = await Promise.all([
+    const media = gameHasMedia(beat.game);
+    const [latestLangpack, videoUploads, videoTasks] = await Promise.all([
       getLatestGroupLangpack(db, group.id),
-      gameHasMedia(beat.game) ? listVideoPackTasks(db, beat.game) : Promise.resolve([]),
+      media ? listVideoUploadTasks(db, group.id) : Promise.resolve([]),
+      media ? listVideoPackTasks(db, group.id) : Promise.resolve([]),
     ]);
     return reply.send({
       ok: true,
       groupId: group.id,
       agentId: agent.id,
       latestLangpack,
+      videoUploads,
       videoTasks,
     });
   });

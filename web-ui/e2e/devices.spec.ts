@@ -10,6 +10,8 @@ import { FIXTURE_MOD_ID, mockApi } from './mockApi';
 type PageCase = {
   name: string;
   path: string;
+  /** A step after the page loads (a tab to open) before it is judged. */
+  prepare?: (page: Page) => Promise<void>;
   /** Something that proves the page drew its data, not a spinner. */
   ready: (page: Page) => Locator;
 };
@@ -32,12 +34,17 @@ const PAGES: PageCase[] = [
     path: `/games/fo4/mods/${FIXTURE_MOD_ID}?mode=voice`,
     ready: text('Sturges (MaleEvenToned)'),
   },
+  {
+    name: 'mod editor: media',
+    path: `/games/fo4/mods/${FIXTURE_MOD_ID}?mode=voice`,
+    prepare: (page) => page.getByRole('tab', { name: 'Медіа' }).click(),
+    ready: text('Intro_ru.bk2'),
+  },
   { name: 'nexus', path: '/games/fo4/nexus', ready: heading },
   { name: 'diff', path: '/games/fo4/diff', ready: heading },
   { name: 'coherence', path: '/games/fo4/coherence', ready: heading },
   { name: 'reference', path: '/games/fo4/reference', ready: text('Settler 1') },
   { name: 'vortex', path: '/games/fo4/vortex', ready: text('gaming-pc · 0.10.0') },
-  { name: 'video', path: '/games/fo4/video', ready: text('Intro_ru.bk2') },
   { name: 'glossary', path: '/glossary', ready: text('Commonwealth Minutemen General') },
   { name: 'settings: general', path: '/settings?tab=general', ready: heading },
   { name: 'settings: llm', path: '/settings?tab=llm', ready: text(/Qwen3-30B/) },
@@ -96,6 +103,7 @@ for (const pc of PAGES) {
   test.describe(pc.name, () => {
     test('fits the screen without sideways scrolling', async ({ page }) => {
       const { unmocked, errors } = await open(page, pc.path);
+      await pc.prepare?.(page);
       await expect(pc.ready(page)).toBeVisible();
 
       const { scrollWidth, clientWidth } = await page.evaluate(() => ({
@@ -115,6 +123,7 @@ for (const pc of PAGES) {
 
     test('keeps the top bar on screen and tappable', async ({ page }) => {
       await open(page, pc.path);
+      await pc.prepare?.(page);
       await expect(pc.ready(page)).toBeVisible();
       const viewport = page.viewportSize()!;
 

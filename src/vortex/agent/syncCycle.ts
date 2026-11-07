@@ -12,12 +12,13 @@ import { buildVortexInventory } from '../buildInventory';
 import { discoverVortexExportOrder } from '../exportOrder';
 import { vortexGroupLabel } from '../groupKey';
 import { packVortexUnitZip, vortexUnitZipName } from '../packUnit';
-import type { VortexExportOrder, VortexPlanUnit } from '../types';
+import type { VortexExportOrder, VortexInventory, VortexPlanUnit } from '../types';
 import type { AgentApi } from './apiClient';
 import { exportOrderSignature, unitsSignature } from './changeDetector';
 import type { AgentConfig } from './config';
 import { cachedFileHasher, type HashCache } from './hashCache';
 import type { AgentState } from './state';
+import { videoDescriber } from './videoProbe';
 
 export type SyncOutcome =
   | { kind: 'unchanged' }
@@ -37,6 +38,10 @@ export type SyncContext = {
   api: AgentApi;
   /** Called while the cycle moves through its phases, for the heartbeat. */
   onPhase?: (phase: 'scanning' | 'uploading' | 'waiting-server') => void;
+  /** Called with every inventory the cycle takes, so the loop knows where the videos are. */
+  onInventory?: (inventory: VortexInventory) => void;
+  /** The machine's name, for the video manifests. */
+  agentKey?: string;
 };
 
 const readExportOrder = (config: AgentConfig): VortexExportOrder => {
@@ -85,7 +90,9 @@ export const scanForSync = async (ctx: SyncContext) => {
     gameDir: ctx.config.gameDir,
     channel: ctx.config.channel,
     hashFile: cachedFileHasher(ctx.cache, undefined, counters),
+    videos: ctx.config.videos,
   });
+  ctx.onInventory?.(inventory);
   const exportOrder = readExportOrder(ctx.config);
   return {
     inventory,
@@ -147,11 +154,20 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vortex-agent-'));
   let uploaded = 0;
   const rejected: string[] = [];
+  // A video goes up as its manifest: the hash the inventory already has, plus ffprobe's view.
+  const describe = videoDescriber({
+    ffprobePath: config.ffprobePath,
+    hashFile: cachedFileHasher(ctx.cache),
+    ...(config.videoSourceTrack != null ? { preferredTrackId: config.videoSourceTrack } : {}),
+    ...(ctx.agentKey ? { agentKey: ctx.agentKey } : {}),
+  });
   try {
     for (const unit of scan.inventory.units) {
       if (!needed.has(unit.unitId)) continue;
       const zipPath = path.join(tmp, vortexUnitZipName(unit));
-      await packVortexUnitZip(unit, zipPath);
+      await packVortexUnitZip(unit, zipPath, {
+        describeVideo: (file) => describe(file.absPath, path.basename(file.relPath)),
+      });
       log.info(
         `vortex-agent: uploading ${unit.name} (${(fs.statSync(zipPath).size / 1048576).toFixed(1)} MiB)`,
       );

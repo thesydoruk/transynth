@@ -2,12 +2,12 @@
  * Write the finished dubs back into the videos and hand them to Vortex.
  *
  * The server's heartbeat reply names every video whose dub the agent has not
- * written yet. For each the agent downloads the track, replaces every audio
- * track of the game's own file with it (the picture is untouched) and keeps
- * the result under the agent's data folder. Once something was written the
- * whole folder becomes one archive — `Transynth_<game>_<lang>_videopack_r<N>.zip`
- * — in Vortex's downloads, a mod of its own next to the langpack: the videos
- * weigh gigabytes and change rarely.
+ * written yet. For each the agent downloads the track, finds the video file by
+ * its hash in its own inventory, replaces every audio track of a copy with the
+ * dub (the picture is untouched) and keeps the result under the agent's data
+ * folder. Once something was written the whole folder becomes one archive —
+ * `Transynth_<game>_<lang>_videopack_r<N>.zip` — in Vortex's downloads, a mod
+ * of its own next to the langpack: the videos weigh gigabytes and change rarely.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -16,12 +16,12 @@ import type { GameMediaAdapter } from '../../games/contract';
 import { zipDirectoryToPath } from '../../web/export/zipPack';
 import type { VideoPackTask } from '../types';
 import { replaceBinkTracks, type ReplaceBinkTracksOptions } from './binkMix';
-import { probeVideo, resolveVideoSource } from './videoScan';
+import { probeVideo } from './videoProbe';
 
 export type VideoPackApi = {
-  downloadVideoDub: (game: string, videoId: number, destPath: string) => Promise<number>;
+  downloadVideoDub: (modId: number, videoId: number, destPath: string) => Promise<number>;
   postVideoPacked: (
-    game: string,
+    modId: number,
     videoId: number,
     body: { dubVersion: string },
   ) => Promise<unknown>;
@@ -29,7 +29,7 @@ export type VideoPackApi = {
 
 /** What the agent remembers between ticks about the videos it wrote. */
 export type VideoPackState = {
-  /** file name → the dub version written into it. */
+  /** Video file hash → the dub version written into it. */
   packedVideos: Record<string, string>;
   /** Number of the last videopack archive delivered. */
   videopackSeq: number;
@@ -41,14 +41,13 @@ export const videopackFileName = (game: string, tgtLang: string, seq: number): s
 export type PackVideosOptions = {
   game: string;
   tgtLang: string;
-  gameDir: string;
   media: GameMediaAdapter;
   tasks: readonly VideoPackTask[];
+  /** The video file with this hash, from the agent's inventory; null when it is not there. */
+  locate: (fingerprint: string) => string | null;
   api: VideoPackApi;
   radVideoExe: string;
   ffprobePath: string;
-  /** Lower-case names of the videos deployed from our own videopack: those are mixed from Vortex's backup. */
-  ownNames?: ReadonlySet<string>;
   /** The mod tree under construction: `<packDir>/<media.packDir>/<file>`. */
   packDir: string;
   downloadsDir: string;
@@ -67,26 +66,22 @@ export const packVideos = async (opts: PackVideosOptions): Promise<PackVideosOut
   const zip = opts.zip ?? zipDirectoryToPath;
   const outcome: PackVideosOutcome = { written: 0, skipped: 0, zipFile: null };
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'transynth-videopack-'));
-  const ownNames = opts.ownNames ?? new Set<string>();
   try {
     for (const task of opts.tasks) {
-      if (opts.state.packedVideos[task.fileName] === task.dubVersion) {
-        // Written already; the server asks again when it lost track of that (a re-registration).
-        await opts.api.postVideoPacked(opts.game, task.videoId, { dubVersion: task.dubVersion });
+      if (opts.state.packedVideos[task.fingerprint] === task.dubVersion) {
+        // Written already; the server asks again when it lost track of that (a new mod version).
+        await opts.api.postVideoPacked(task.modId, task.videoId, { dubVersion: task.dubVersion });
         outcome.skipped += 1;
         continue;
       }
-      const source = resolveVideoSource(
-        path.join(opts.gameDir, opts.media.videoDir, task.fileName),
-        ownNames,
-      );
-      if (!fs.existsSync(source)) {
-        opts.log?.(`video ${task.fileName}: not in the game folder any more, skipped`);
+      const source = opts.locate(task.fingerprint);
+      if (!source) {
+        opts.log?.(`video ${task.fileName}: not in the inventory any more, skipped`);
         outcome.skipped += 1;
         continue;
       }
       const wav = path.join(work, `${task.videoId}.wav`);
-      const bytes = await opts.api.downloadVideoDub(opts.game, task.videoId, wav);
+      const bytes = await opts.api.downloadVideoDub(task.modId, task.videoId, wav);
       if (task.byteSize != null && bytes !== task.byteSize) {
         throw new Error(`dub of ${task.fileName} is ${bytes} bytes, server said ${task.byteSize}`);
       }
@@ -103,10 +98,10 @@ export const packVideos = async (opts: PackVideosOptions): Promise<PackVideosOut
         workDir: work,
       });
       fs.rmSync(wav, { force: true });
-      opts.state.packedVideos[task.fileName] = task.dubVersion;
+      opts.state.packedVideos[task.fingerprint] = task.dubVersion;
       outcome.written += 1;
       opts.log?.(`video ${task.fileName}: dub written into ${trackIds.length} track(s)`);
-      await opts.api.postVideoPacked(opts.game, task.videoId, { dubVersion: task.dubVersion });
+      await opts.api.postVideoPacked(task.modId, task.videoId, { dubVersion: task.dubVersion });
     }
     if (outcome.written > 0) {
       const seq = opts.state.videopackSeq + 1;

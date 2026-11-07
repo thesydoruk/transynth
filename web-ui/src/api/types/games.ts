@@ -59,4 +59,6 @@ export type GameInfo = {
   /** Extensions accepted as a direct upload, alongside `.zip` / `.7z` / `.rar`. */
   uploadExtensions: string[];
   editor: GameEditorProfile;
+  /** True when the game ships pre-rendered videos the agent can dub (the voice editor's media tab). */
+  media?: boolean;
 };
