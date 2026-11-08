@@ -13,6 +13,7 @@ import {
 import { adaptTmTranslation } from './tmAdapt';
 import type { GameId } from '../../types';
 import { referenceGameKey } from '../../games/referenceKey';
+import { TM_MATCH_SQL } from './tmMatchSql';
 
 export type TmMatchMethod = 'anchor' | 'edid' | 'text_norm' | 'numeric';
 
@@ -37,15 +38,6 @@ export type TmBulkMatch = {
   /** True when the translation came from the per-game reference base. */
   fromReference: boolean;
 };
-
-const TM_TRANSLATION_STATUS_ORDER = `CASE tr.status
-  WHEN 'reviewed' THEN 1
-  WHEN 'human' THEN 2
-  WHEN 'tm' THEN 3
-  WHEN 'fuzzy' THEN 4
-  WHEN 'auto' THEN 5
-  WHEN 'draft' THEN 6
-  ELSE 7 END`;
 
 const METHOD_META: Record<TmMatchMethod, { rank: number; confidence: number; provenance: string }> =
   {
@@ -84,25 +76,15 @@ const emptyByMethod = (): Record<TmMatchMethod, number> => ({
 });
 
 /**
- * Rank candidates inside one (target, method) partition: an identical source
- * text first, then status.
- */
-const TM_CANDIDATE_ORDER = `ORDER BY CASE WHEN s.text_raw = t.text_raw THEN 0 ELSE 1 END,
-                    ${TM_TRANSLATION_STATUS_ORDER},
-                    COALESCE(tr.confidence, 0) DESC,
-                    tr.updated_at DESC`;
-
-const TM_REFERENCE_ORDER = `ORDER BY CASE WHEN rt.source_text = t.text_raw THEN 0 ELSE 1 END,
-                    rt.updated_at DESC`;
-
-/**
  * Find best TM match per untranslated string using anchor → edid → text_norm priority.
  * One SQL round-trip per batch (replaces up to 3×N per-row lookups).
  *
  * Each method looks in two places: the per-game reference base, which wins
- * over a live mod on the same anchor, and other imported mods. When the
- * matched source differs from the target only by numbers, the translation is
- * adapted via number transplant. Unsafe adaptations are skipped.
+ * over a live mod on the same anchor, and other imported mods. An identical
+ * source text wins over every inexact one regardless of method, and an inexact
+ * anchor/edid hit is skipped when the anchor holds several sibling texts. When
+ * the matched source differs from the target only by numbers, the translation
+ * is adapted via number transplant. Unsafe adaptations are skipped.
  */
 const bulkFindTmMatches = async (
   db: Tx,
@@ -129,117 +111,18 @@ const bulkFindTmMatches = async (
     source_mod_id: number | null;
     from_reference: boolean;
     method: 'anchor' | 'edid' | 'text_norm';
-  }>(
-    `WITH targets AS (
-       SELECT *
-       FROM UNNEST($1::int[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[])
-         AS u(id, formid_hex, path, edid, text_norm, text_raw)
-     ),
-     reference AS (
-       SELECT t.id AS target_id, rt.translation AS text, rt.source_text AS match_source,
-         1 AS method_rank,
-         ROW_NUMBER() OVER (PARTITION BY t.id ${TM_REFERENCE_ORDER}) AS rn
-       FROM targets t
-       JOIN reference_translations rt
-         ON rt.game = $10 AND rt.src_lang = $9 AND rt.tgt_lang = $8
-        AND rt.formid_hex = t.formid_hex AND rt.path = t.path
-       WHERE NULLIF(t.formid_hex, '') IS NOT NULL
-
-       UNION ALL
-
-       SELECT t.id, rt.translation, rt.source_text, 2,
-         ROW_NUMBER() OVER (PARTITION BY t.id ${TM_REFERENCE_ORDER}) AS rn
-       FROM targets t
-       JOIN reference_translations rt
-         ON rt.game = $10 AND rt.src_lang = $9 AND rt.tgt_lang = $8
-        AND rt.edid = t.edid AND rt.path = t.path
-       WHERE NULLIF(t.edid, '') IS NOT NULL
-
-       UNION ALL
-
-       SELECT t.id, rt.translation, rt.source_text, 3,
-         ROW_NUMBER() OVER (PARTITION BY t.id ${TM_REFERENCE_ORDER}) AS rn
-       FROM targets t
-       JOIN reference_translations rt
-         ON rt.game = $10 AND rt.src_lang = $9 AND rt.tgt_lang = $8
-        AND rt.text_norm = t.text_norm
-       WHERE NULLIF(t.text_norm, '') IS NOT NULL
-     ),
-     live AS (
-       SELECT t.id AS target_id, tr.text, s.text_raw AS match_source, r.mod_id AS source_mod_id,
-         1 AS method_rank,
-         ROW_NUMBER() OVER (PARTITION BY t.id ${TM_CANDIDATE_ORDER}) AS rn
-       FROM targets t
-       JOIN records r
-         ON r.formid_hex = t.formid_hex
-        AND r.path = t.path
-        AND r.mod_id != $7
-       JOIN strings s ON s.record_id = r.id AND s.lang = $9
-       JOIN translations tr ON tr.src_string_id = s.id AND tr.target_lang = $8
-       WHERE NULLIF(t.formid_hex, '') IS NOT NULL
-
-       UNION ALL
-
-       SELECT t.id, tr.text, s.text_raw, r.mod_id, 2,
-         ROW_NUMBER() OVER (PARTITION BY t.id ${TM_CANDIDATE_ORDER}) AS rn
-       FROM targets t
-       JOIN records r ON r.edid = t.edid AND r.mod_id != $7
-       JOIN strings s ON s.record_id = r.id AND s.lang = $9
-       JOIN translations tr ON tr.src_string_id = s.id AND tr.target_lang = $8
-       WHERE NULLIF(t.edid, '') IS NOT NULL
-
-       UNION ALL
-
-       SELECT t.id, tr.text, s.text_raw, r.mod_id, 3,
-         ROW_NUMBER() OVER (PARTITION BY t.id ${TM_CANDIDATE_ORDER}) AS rn
-       FROM targets t
-       JOIN strings s ON s.text_norm = t.text_norm AND s.lang = $9
-       JOIN translations tr ON tr.src_string_id = s.id AND tr.target_lang = $8
-       JOIN records r ON r.id = s.record_id
-       WHERE NULLIF(t.text_norm, '') IS NOT NULL
-     ),
-     best_per_method AS (
-       -- Inside one method the reference base (source_rank 0) beats live mods,
-       -- unless a live mod has the identical source text and the reference
-       -- row does not: exactness still comes first.
-       SELECT DISTINCT ON (c.target_id, c.method_rank)
-         c.target_id, c.text, c.match_source, c.source_mod_id, c.method_rank, c.source_rank
-       FROM (
-         SELECT target_id, text, match_source, NULL::int AS source_mod_id, method_rank,
-                0 AS source_rank
-         FROM reference WHERE rn = 1
-         UNION ALL
-         SELECT target_id, text, match_source, source_mod_id, method_rank, 1
-         FROM live WHERE rn = 1
-       ) c
-       JOIN targets t ON t.id = c.target_id
-       ORDER BY c.target_id, c.method_rank,
-                CASE WHEN c.match_source = t.text_raw THEN 0 ELSE 1 END,
-                c.source_rank
-     )
-     SELECT DISTINCT ON (b.target_id)
-       b.target_id, b.text, b.match_source, b.source_mod_id,
-       (b.source_rank = 0) AS from_reference,
-       CASE b.method_rank
-         WHEN 1 THEN 'anchor'
-         WHEN 2 THEN 'edid'
-         ELSE 'text_norm'
-       END AS method
-     FROM best_per_method b
-     ORDER BY b.target_id, b.method_rank`,
-    [
-      ids,
-      formIds,
-      paths,
-      edids,
-      textNorms,
-      textRaws,
-      modId,
-      targetLang,
-      srcLang,
-      referenceGameKey(game),
-    ],
-  );
+  }>(TM_MATCH_SQL, [
+    ids,
+    formIds,
+    paths,
+    edids,
+    textNorms,
+    textRaws,
+    modId,
+    targetLang,
+    srcLang,
+    referenceGameKey(game),
+  ]);
 
   const adapted: TmBulkMatch[] = [];
   for (const row of matchRows) {

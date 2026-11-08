@@ -3,6 +3,7 @@ import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
 import type { TranslationStatus } from '../statusMachine';
 import { upsertTranslation } from './translationsUpsert';
+import { pairVersionStrings } from './importDiffMatch';
 
 // ── Mod diff ──────────────────────────────────────────────────────────────────
 
@@ -48,56 +49,49 @@ export const diffMods = async (
        FROM strings s
        JOIN records r ON s.record_id = r.id
        LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
-       WHERE r.mod_id = $2 AND s.lang = $3`,
+       WHERE r.mod_id = $2 AND s.lang = $3
+       ORDER BY r.id, s.id`,
       [targetLang, modId, srcLang],
     );
     return rows as Row[];
   };
 
-  const newRows = await fetchMod(newModId);
-  const oldMap = new Map<string, Row>();
-  for (const r of await fetchMod(oldModId)) oldMap.set(`${r.formid_hex}|${r.path}`, r);
+  const entry = (r: Row, changeType: DiffEntry['changeType']): DiffEntry => ({
+    ...r,
+    source: r.text_raw,
+    changeType,
+  });
 
-  const added: DiffEntry[] = [];
+  const pairing = pairVersionStrings(await fetchMod(newModId), await fetchMod(oldModId));
   const changed: DiffEntry[] = [];
   let unchanged = 0;
-
-  const newKeys = new Set<string>();
-  for (const r of newRows) {
-    const key = `${r.formid_hex}|${r.path}`;
-    newKeys.add(key);
-    const old = oldMap.get(key);
-    if (!old) {
-      added.push({ ...r, source: r.text_raw, changeType: 'added' });
-    } else if (r.text_norm !== old.text_norm) {
-      changed.push({ ...r, source: r.text_raw, changeType: 'changed' });
-    } else {
-      unchanged++;
-    }
+  for (const pair of pairing.pairs) {
+    if (pair.sourceChanged) changed.push(entry(pair.next, 'changed'));
+    else unchanged++;
   }
 
-  const removed: DiffEntry[] = [];
-  for (const [key, r] of oldMap) {
-    if (!newKeys.has(key)) {
-      removed.push({ ...r, source: r.text_raw, changeType: 'removed' });
-    }
-  }
-
-  return { added, removed, changed, unchanged };
+  return {
+    added: pairing.unmatchedNew.map((r) => entry(r, 'added')),
+    removed: pairing.unmatchedOld.map((r) => entry(r, 'removed')),
+    changed,
+    unchanged,
+  };
 };
 
 /**
  * Carries over translations from an older mod version to a newer one.
  *
- * For each string in the new mod version that also exists in the old version
- * (matched by FormID + path identity key):
+ * Strings are paired per record by {@link pairVersionStrings}: siblings on one
+ * FormID + path by identical normalised source, and a lone leftover on each
+ * side as a changed source.
  *
  * - **Unchanged source**: The translation is copied as-is with its original status.
  * - **Changed source**: The translation is copied but marked as 'draft' so the
  *   translator can review it for the updated source text.
  *
  * Strings that already have a translation in the new version are skipped.
- * Strings that only exist in the old version (removed) are ignored.
+ * Strings without a counterpart in the old version — added, removed, or one of
+ * several changed siblings of a record — are left alone.
  *
  * @param db - Database connection
  * @param newModId - The ID of the newly imported mod version
@@ -112,81 +106,72 @@ export const carryOverTranslations = async (
   targetLang = CONFIG.defaultTgtLang,
   srcLang = CONFIG.defaultSrcLang,
 ): Promise<{ carried: number; needsReview: number; skipped: number }> => {
+  type NewRow = { string_id: number; formid_hex: string; path: string; text_norm: string };
+  type OldRow = {
+    formid_hex: string;
+    path: string;
+    text_norm: string;
+    translation: string | null;
+    status: string | null;
+    provenance: string | null;
+    model: string | null;
+  };
+
   // Step 1: Fetch all strings in the new mod with their normalized source text
-  const { rows: newStrings } = await db.query(
+  const { rows: newStrings } = await db.query<NewRow>(
     `SELECT s.id AS string_id, r.formid_hex, r.path, s.text_norm
      FROM strings s
      JOIN records r ON s.record_id = r.id
-     WHERE r.mod_id = $1 AND s.lang = $2`,
+     WHERE r.mod_id = $1 AND s.lang = $2
+     ORDER BY r.id, s.id`,
     [newModId, srcLang],
   );
 
-  // Step 2: Fetch all strings in the old mod with their best translation
-  const { rows: oldStrings } = await db.query(
+  // Step 2: Fetch all strings in the old mod with their translation, if any.
+  // Untranslated siblings still take part in the pairing so that a changed
+  // sibling is not mistaken for the only one in its record.
+  const { rows: oldStrings } = await db.query<OldRow>(
     `SELECT r.formid_hex, r.path, s.text_norm,
             t.text AS translation, t.status, t.provenance, t.model
      FROM strings s
      JOIN records r ON s.record_id = r.id
-     JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
-     WHERE r.mod_id = $1 AND s.lang = $3`,
+     LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
+     WHERE r.mod_id = $1 AND s.lang = $3
+     ORDER BY r.id, s.id`,
     [oldModId, targetLang, srcLang],
   );
 
-  // Build lookup map: identity key → old translation data
-  type OldEntry = {
-    text_norm: string;
-    translation: string;
-    status: string;
-    provenance: string | null;
-    model: string | null;
-  };
-  const oldMap = new Map<string, OldEntry>();
-  for (const r of oldStrings as Array<{ formid_hex: string; path: string } & OldEntry>) {
-    oldMap.set(`${r.formid_hex}|${r.path}`, r);
-  }
-
   // Step 3: Check which new strings already have translations (skip those)
-  const newStringIds = (newStrings as Array<{ string_id: number }>).map((r) => r.string_id);
+  const newStringIds = newStrings.map((r) => r.string_id);
   const alreadyTranslated = new Set<number>();
   if (newStringIds.length > 0) {
-    const { rows: existing } = await db.query(
+    const { rows: existing } = await db.query<{ src_string_id: number }>(
       `SELECT DISTINCT src_string_id FROM translations
        WHERE src_string_id = ANY($1) AND target_lang = $2`,
       [newStringIds, targetLang],
     );
-    for (const r of existing as Array<{ src_string_id: number }>) {
-      alreadyTranslated.add(r.src_string_id);
-    }
+    for (const r of existing) alreadyTranslated.add(r.src_string_id);
   }
 
-  // Step 4: Copy translations for matching strings
+  // Step 4: Copy translations for paired strings
   let carried = 0;
   let needsReview = 0;
   let skipped = 0;
+  const pairing = pairVersionStrings(newStrings, oldStrings);
+  const provenance = `carry_over_from_mod_${oldModId}`;
 
-  for (const row of newStrings as Array<{
-    string_id: number;
-    formid_hex: string;
-    path: string;
-    text_norm: string;
-  }>) {
-    if (alreadyTranslated.has(row.string_id)) {
+  for (const { next, old, sourceChanged } of pairing.pairs) {
+    if (old.translation === null || old.status === null) continue;
+    if (alreadyTranslated.has(next.string_id)) {
       skipped++;
       continue;
     }
 
-    const key = `${row.formid_hex}|${row.path}`;
-    const old = oldMap.get(key);
-    if (!old) continue; // String doesn't exist in old version
-
-    // Determine status: keep original status if source unchanged, else mark as draft
-    const sourceChanged = row.text_norm !== old.text_norm;
+    // Keep the original status if the source is unchanged, else mark as draft
     const newStatus = sourceChanged ? 'draft' : old.status;
-    const provenance = `carry_over_from_mod_${oldModId}`;
-
     await upsertTranslation(
       db,
-      row.string_id,
+      next.string_id,
       old.translation,
       newStatus as Exclude<TranslationStatus, 'deleted'>,
       targetLang,
@@ -194,15 +179,13 @@ export const carryOverTranslations = async (
       old.model ?? undefined,
     );
 
-    if (sourceChanged) {
-      needsReview++;
-    } else {
-      carried++;
-    }
+    if (sourceChanged) needsReview++;
+    else carried++;
   }
 
   log.info(
-    `Carry-over: ${carried} carried, ${needsReview} need review, ${skipped} skipped (already translated)`,
+    `Carry-over: ${carried} carried, ${needsReview} need review, ${skipped} skipped (already translated), ` +
+      `${pairing.unmatchedNew.length} new strings without a counterpart`,
   );
   return { carried, needsReview, skipped };
 };
