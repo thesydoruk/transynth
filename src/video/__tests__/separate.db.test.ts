@@ -178,7 +178,11 @@ describe('separateVideo', () => {
       `UPDATE video_segments SET take_rel_path = 'assets/1/takes/0000.wav', take_version = 'tv' WHERE video_id = $1`,
       [videoId],
     );
-    await db().query(`UPDATE video_assets SET status = 'packed' WHERE id = $1`, [videoId]);
+    // A packed video whose route handler has already flipped the status to `separating`.
+    await db().query(
+      `UPDATE video_assets SET status = 'separating', dub_version = 'v1', packed_version = 'v1' WHERE id = $1`,
+      [videoId],
+    );
     const speech = resolveVideoAudioPath(
       videoAudioRelPath((await getVideoAsset(db(), videoId))!, 'speech'),
     );
