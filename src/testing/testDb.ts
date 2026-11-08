@@ -157,3 +157,21 @@ export const waitFor = async <T>(
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
 };
+
+/**
+ * A second source string in the record that already holds `siblingOf` — what a
+ * record repeating one subrecord (INFO NAM1, BPTD BPTN) looks like after import.
+ */
+export const insertSiblingString = async (
+  db: pg.Pool,
+  siblingOf: number,
+  text: string,
+): Promise<number> => {
+  const { rows } = await db.query<{ id: number }>(
+    `INSERT INTO strings(record_id, lang, text_raw, text_norm, text_norm_nopunct)
+     SELECT record_id, lang, $2, $3, $4 FROM strings WHERE id = $1
+     RETURNING id`,
+    [siblingOf, text, normalizeForHash(text), normalizeNoPunct(text)],
+  );
+  return rows[0]!.id;
+};

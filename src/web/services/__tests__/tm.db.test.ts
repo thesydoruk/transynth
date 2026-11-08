@@ -4,6 +4,7 @@ import { applyTMToMod } from '../tm';
 import { normalizeForHash } from '../../../utils/textNorm';
 import {
   insertMod,
+  insertSiblingString,
   insertString,
   insertTranslation,
   translationOf,
@@ -169,6 +170,104 @@ describe('applyTMToMod', () => {
     expect(await translationOf(db(), translated)).toMatchObject({ text: 'Вже є', status: 'draft' });
     expect(await translationOf(db(), skipped)).toBeNull();
     expect(await translationOf(db(), german)).toBeNull();
+  });
+
+  describe('a record repeating one subrecord (BPTD BPTN, INFO NAM1)', () => {
+    /** The reference knows two body parts on the anchor, neither is the target's. */
+    const bodyPartSiblings = async (targetText: string) => {
+      for (const [source, translation] of [
+        ['Torso', 'Тулуб'],
+        ['Head', 'Голова'],
+      ]) {
+        await insertReference(db(), {
+          formid: '0003BPTD',
+          path: 'BPTD\\BPTN',
+          source: source!,
+          translation: translation!,
+        });
+      }
+      const targetMod = await insertMod(db(), { name: 'DLC' });
+      const target = await insertString(db(), {
+        modId: targetMod,
+        text: targetText,
+        formid: '0003BPTD',
+        signature: 'BPTD',
+        path: 'BPTD\\BPTN',
+      });
+      return { targetMod, target };
+    };
+
+    it('lets an exact text match from elsewhere beat a sibling on the anchor', async () => {
+      await insertReference(db(), { source: 'LeftFoot', translation: 'Ліва стопа' });
+      const { targetMod, target } = await bodyPartSiblings('LeftFoot');
+
+      const result = await applyTMToMod(db(), targetMod, 'uk', 'en');
+
+      expect(result).toMatchObject({ applied: 1, approved: 1, byMethod: { text_norm: 1 } });
+      expect(await translationOf(db(), target)).toEqual({
+        text: 'Ліва стопа',
+        status: 'reviewed',
+        provenance: 'tm_reference_text_norm',
+      });
+    });
+
+    it('copies nothing from an anchor with several sibling texts when none is exact', async () => {
+      const { targetMod, target } = await bodyPartSiblings('RightFoot');
+
+      const result = await applyTMToMod(db(), targetMod, 'uk', 'en');
+
+      expect(result.applied).toBe(0);
+      expect(await translationOf(db(), target)).toBeNull();
+    });
+
+    it('skips a live donor record with several sibling texts the same way', async () => {
+      const donorMod = await insertMod(db(), { name: 'Donor' });
+      const torso = await insertString(db(), {
+        modId: donorMod,
+        text: 'Torso',
+        formid: '0003BPTD',
+        signature: 'BPTD',
+        path: 'BPTD\\BPTN',
+      });
+      const head = await insertSiblingString(db(), torso, 'Head');
+      await insertTranslation(db(), { stringId: torso, text: 'Тулуб' });
+      await insertTranslation(db(), { stringId: head, text: 'Голова' });
+      const targetMod = await insertMod(db(), { name: 'DLC' });
+      const target = await insertString(db(), {
+        modId: targetMod,
+        text: 'LeftFoot',
+        formid: '0003BPTD',
+        signature: 'BPTD',
+        path: 'BPTD\\BPTN',
+      });
+
+      await applyTMToMod(db(), targetMod, 'uk', 'en');
+
+      expect(await translationOf(db(), target)).toBeNull();
+    });
+  });
+
+  it('still falls back to a lone anchor row whose wording changed, as tm', async () => {
+    await insertReference(db(), {
+      formid: '0001F00A',
+      path: 'NPC_\\FULL',
+      source: 'Sturges',
+      translation: 'Стерджес',
+    });
+    const targetMod = await insertMod(db());
+    const target = await insertString(db(), {
+      modId: targetMod,
+      text: 'Sturges the Mechanic',
+      formid: '0001F00A',
+    });
+
+    const result = await applyTMToMod(db(), targetMod, 'uk', 'en');
+
+    expect(result).toMatchObject({ applied: 1, approved: 0, byMethod: { anchor: 1 } });
+    expect(await translationOf(db(), target)).toMatchObject({
+      status: 'tm',
+      provenance: 'tm_reference_anchor',
+    });
   });
 
   it('records a revision for every string it fills', async () => {
