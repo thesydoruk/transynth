@@ -1,7 +1,6 @@
 /** Rows of `video_assets`: registration by the import, listing for the editor and the agent. */
 import type { Tx } from '../db';
-import { sha1Hex } from '../utils/hash';
-import type { VideoUploadTask, VortexLatestVideopack } from '../vortex/types';
+import type { VideoUploadTask } from '../vortex/types';
 import { videoFile, videoPackedFile } from './audioStore';
 import type {
   VideoAssetProbe,
@@ -162,34 +161,21 @@ export const listVideoUploadTasks = async (db: Tx, groupId: number): Promise<Vid
       fingerprint: asset.fingerprint,
     }));
 
-/** The group's dubbed videos as the agent delivers them: every asset whose copy carries its current dub. */
-export const listVideopackEntries = async (
+/**
+ * A mod's dubbed videos for its langpack: every asset whose copy carries its
+ * current dub. A dub not yet written into the video stays out until it is.
+ */
+export const listDubbedVideos = async (
   db: Tx,
-  groupId: number,
+  modId: number,
 ): Promise<Array<{ asset: VideoAssetRow; file: string }>> => {
   const out: Array<{ asset: VideoAssetRow; file: string }> = [];
-  for (const asset of await listGroupAssets(db, groupId)) {
+  for (const asset of await listVideoAssets(db, modId)) {
     if (asset.packed_version == null || asset.packed_version !== asset.dub_version) continue;
     const file = videoPackedFile(asset);
     if (file) out.push({ asset, file });
   }
   return out;
-};
-
-/** What the agent is told about the group's videopack; null while no video is written. */
-export const latestGroupVideopack = async (
-  db: Tx,
-  groupId: number,
-): Promise<VortexLatestVideopack | null> => {
-  const entries = await listVideopackEntries(db, groupId);
-  if (entries.length === 0) return null;
-  const version = sha1Hex(
-    entries
-      .map(({ asset }) => `${asset.file_name}:${asset.packed_version}`)
-      .sort()
-      .join('\n'),
-  );
-  return { version, videos: entries.length };
 };
 
 /** The dub version written into the asset's copy of the video (null: the copy is gone). */

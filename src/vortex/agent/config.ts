@@ -35,9 +35,9 @@ export type AgentConfig = {
   autoStages: AgentAutoStage;
   deliverLangpack: boolean;
   /**
-   * Register the game's cutscene videos, upload their files and deliver the
-   * dubbed ones as a videopack. Off by default. Nothing else is needed on this
-   * machine: the server reads, dubs and writes the videos.
+   * Register the game's cutscene videos and upload their files; the dubbed ones
+   * come back inside the langpack. Off by default. Nothing else is needed on
+   * this machine: the server reads, dubs and writes the videos.
    */
   videos: boolean;
 };

@@ -51,13 +51,16 @@ describe('cutscene videos in the inventory', () => {
     writeFile(path.join(data, 'DLCCoast.esm'), 'dlc');
     writeFile(path.join(data, 'Video', 'Intro_ru.bk2'), 'our dub');
     writeFile(path.join(data, 'Video', 'Intro_ru.bk2.vortex_backup'), 'the game file');
-    writeFile(path.join(data, 'Video', 'LUCK.bk2'), 'luck');
+    writeFile(path.join(data, 'Video', 'LUCK.bk2'), 'our dub');
+    writeFile(path.join(data, 'Video', 'LUCK.bk2.vortex_backup'), 'luck');
     writeFile(path.join(data, 'Video', 'Mod.bk2'), 'some mod');
     writeFile(
       path.join(data, 'vortex.deployment.json'),
       JSON.stringify({
         files: [
+          // The langpack carries the dubs now; a videopack an older agent delivered still counts.
           { relPath: 'Video\\Intro_ru.bk2', source: 'Transynth_fo4_uk_videopack_r1' },
+          { relPath: 'Video\\LUCK.bk2', source: 'Transynth_fo4_uk_langpack_r21' },
           { relPath: 'Video\\Mod.bk2', source: 'Some Video Mod' },
         ],
       }),
@@ -82,7 +85,7 @@ describe('cutscene videos in the inventory', () => {
     expect(master.files.map((f) => [f.relPath, path.basename(f.absPath)])).toEqual([
       ['Fallout4.esm', 'Fallout4.esm'],
       ['Video/Intro_ru.bk2', 'Intro_ru.bk2.vortex_backup'],
-      ['Video/LUCK.bk2', 'LUCK.bk2'],
+      ['Video/LUCK.bk2', 'LUCK.bk2.vortex_backup'],
     ]);
     // A DLC owns no videos; a video another mod deployed is that mod's.
     const dlc = inventory.units.find((u) => u.pluginFileName === 'DLCCoast.esm')!;

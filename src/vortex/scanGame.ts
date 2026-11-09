@@ -8,7 +8,8 @@ import { merkleContentHash, type FileHasher } from './hashSubset';
 import { readPeProductVersion } from './exeVersion';
 import { exeNameForGame, isOfficialGamePlugin, officialMasterNames } from './gameProfiles';
 import type { VortexGameReleaseHint, VortexInventoryFile, VortexInventoryUnit } from './types';
-import { isTransynthVideopackFolder, isVideoRelPath, VORTEX_BACKUP_SUFFIX } from './videoFiles';
+import { isTransynthPackFolderName } from './scanStaging';
+import { isVideoRelPath, VORTEX_BACKUP_SUFFIX } from './videoFiles';
 
 const resolveGameDataDir = (gameDir: string): string => {
   const direct = path.resolve(gameDir);
@@ -28,7 +29,7 @@ const resolveGameDataDir = (gameDir: string): string => {
  * not to the game: hashing them would make the base game look changed, and
  * re-import it, every time a mod or the langpack is deployed.
  *
- * A video our own videopack deployed is the game's video with our dub in it:
+ * A video our own langpack deployed is the game's video with our dub in it:
  * the game's file, which Vortex keeps beside it as `<file>.vortex_backup`, is
  * what the unit lists, so the base game keeps its videos once they are dubbed.
  */
@@ -48,7 +49,7 @@ const withoutVortexDeployed = (
       out.push(file);
       continue;
     }
-    if (!isVideoRelPath(file.relPath) || !isTransynthVideopackFolder(owner)) continue;
+    if (!isVideoRelPath(file.relPath) || !isTransynthPackFolderName(owner)) continue;
     const backup = `${file.absPath}${VORTEX_BACKUP_SUFFIX}`;
     if (fs.existsSync(backup)) out.push({ absPath: backup, relPath: file.relPath });
   }

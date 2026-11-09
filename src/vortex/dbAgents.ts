@@ -30,7 +30,6 @@ export const upsertVortexAgent = async (
     pending: beat.pending,
     lastRunId: beat.lastRunId,
     delivered: beat.delivered,
-    deliveredVideopack: beat.deliveredVideopack ?? null,
   };
   const { rows } = await db.query<VortexAgentRow>(
     `INSERT INTO vortex_agents

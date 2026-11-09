@@ -13,16 +13,21 @@ import { UA_SOUND_PACK_ESP } from '../web/export/uaSoundPack';
 const SKIP_TOP_NAMES = new Set(['.git', 'node_modules', '.transynth-extracted']);
 
 /**
- * Transynth's own output, installed through Vortex — the langpack and the
- * videopack — is not a mod to translate: syncing it would upload gigabytes of
- * our voice archive or our dubbed videos and register a mod with nothing to
- * translate. Vortex names the mod after the archive we delivered; a renamed
- * langpack is still known by the dummy voice plugin.
+ * The staging folder of an archive we delivered, by the name Vortex gives the
+ * mod: the langpack, or a videopack an older agent delivered before the dubbed
+ * videos moved into the langpack.
+ */
+export const isTransynthPackFolderName = (folderName: string): boolean =>
+  /^transynth_.+_langpack_r\d+/i.test(folderName) || isTransynthVideopackFolder(folderName);
+
+/**
+ * Transynth's own output, installed through Vortex, is not a mod to translate:
+ * syncing it would upload gigabytes of our voice archive or our dubbed videos
+ * and register a mod with nothing to translate. A renamed langpack is still
+ * known by the dummy voice plugin.
  */
 export const isTransynthOutputFolder = (folderPath: string, folderName: string): boolean =>
-  /^transynth_.+_langpack_r\d+/i.test(folderName) ||
-  isTransynthVideopackFolder(folderName) ||
-  fs.existsSync(path.join(folderPath, UA_SOUND_PACK_ESP));
+  isTransynthPackFolderName(folderName) || fs.existsSync(path.join(folderPath, UA_SOUND_PACK_ESP));
 
 const unitIdFor = (folderName: string, pluginFileName: string | null): string => {
   const stem = pluginFileName

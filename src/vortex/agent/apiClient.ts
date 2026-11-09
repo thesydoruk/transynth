@@ -14,7 +14,6 @@ import type {
   VortexAgentHeartbeat,
   VortexExportOrder,
   VortexLatestLangpack,
-  VortexLatestVideopack,
 } from '../types';
 
 export type VortexRunView = {
@@ -30,11 +29,10 @@ export type VortexRunView = {
 export type HeartbeatReply = {
   ok: boolean;
   groupId: number;
+  /** The newest langpack; the group's dubbed videos travel in it. */
   latestLangpack: VortexLatestLangpack | null;
   /** Videos the import registered whose file the agent has not uploaded yet. */
   videoUploads?: VideoUploadTask[];
-  /** The group's dubbed videos as one archive, or null while none is written. */
-  latestVideopack?: VortexLatestVideopack | null;
 };
 
 export type AgentApi = ReturnType<typeof createAgentApi>;
@@ -177,7 +175,5 @@ export const createAgentApi = (opts: { api: string; token?: string }) => {
         'application/octet-stream',
         `video #${id}`,
       ),
-    downloadVideopack: (groupId: number, destPath: string) =>
-      downloadFile(`/api/vortex/groups/${groupId}/videopack`, destPath),
   };
 };

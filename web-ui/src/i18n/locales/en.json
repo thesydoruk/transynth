@@ -1607,7 +1607,6 @@
       "settleUntil": "syncs after {{when}} if nothing else changes",
       "lastError": "Last error",
       "delivered": "Delivered",
-      "deliveredVideopack": "Videopack delivered",
       "howToStart": "Run npm run vortex:agent on the machine with Vortex; the first heartbeat registers it here.",
       "states": {
         "idle": "idle",

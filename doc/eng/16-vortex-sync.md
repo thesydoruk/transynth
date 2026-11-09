@@ -92,10 +92,9 @@ With `"videos": true` the cutscene videos are part of the units as files of thei
 carries a manifest in a video's place, and the agent uploads the files of the videos the
 server registered and asked for through the heartbeat. The server reads, dubs and writes
 the videos itself (ffmpeg in the web and worker images, RAD's BinkMix in `bethesda-tools`),
-and the agent drops the finished videopack into Vortex's downloads like a langpack; nothing
-else is installed on the Vortex machine. A video Vortex deployed from our own videopack is
-read from `<file>.vortex_backup`, the game's file Vortex keeps next to it; the videopack's
-staging folder is skipped, like the langpack's. The rest happens in the "Media" tab of the
+and the dubbed videos ship in the group's langpack at `Video/<file>.bk2`; nothing else is
+installed on the Vortex machine. A video Vortex deployed from our own langpack is read from
+`<file>.vortex_backup`, the game's file Vortex keeps next to it. The rest happens in the "Media" tab of the
 mod's voice mode. See [Dubbing the cutscenes](18-video-dubbing.md).
 
 ### State and journal

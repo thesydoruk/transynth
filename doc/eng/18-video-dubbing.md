@@ -26,7 +26,7 @@ dub (Fish Speech): a take per phrase, cloned from the video itself → mix over 
    ↓
 bethesda-tools: BinkMix under Wine → the asset's copy of Video/<file>.bk2 with the dub
    ↓
-agent: the videopack (one zip of the dubbed videos) → Vortex's downloads
+export: the group's langpack carries Video/<file>.bk2 → the agent drops it into Vortex's downloads
 ```
 
 The agent only lists, uploads and downloads: everything that reads, writes or converts a
@@ -48,10 +48,10 @@ the game folder and the staging. In its config:
 are part of a unit's files: the ones in `Data/Video` belong to the main master's unit, the
 ones in a mod's staging folder to that mod's (a folder of nothing but videos is a unit
 too). A video's hash is the file's plain sha1 from the agent's cache, so a changed video
-changes the mod's version. A video Vortex deployed from our own videopack is read from
+changes the mod's version. A video Vortex deployed from our own langpack is read from
 `<file>.vortex_backup`, the game's file Vortex keeps beside it; otherwise the previous dub
-would count as a new video. The videopack's own staging folder is skipped, like the
-langpack's.
+would count as a new video. The langpack's staging folder is skipped (so is a separate
+videopack an earlier build delivered).
 
 The video does not travel in the unit zip: a manifest, `Video/<file>.video.json` (name,
 size, sha1, the agent's machine), stands in for it. The mod's import registers an asset
@@ -170,14 +170,15 @@ carries (state "written into the video"). A dub the video does not carry yet (a 
 failed, or a file that reached the server after its dub) shows **Write into the video** in
 the Media tab (`POST …/pack`). The game's own file is never touched.
 
-**The videopack.** The heartbeat tells the agent the group's videopack version: a hash of
-which videos carry which dub over the group's current mods, so a lost agent state does not
-look like a new archive. When it differs from the one last delivered, the agent downloads
-`GET /api/vortex/groups/:id/videopack` — a stored zip the server streams from the dubbed
-copies, laid out as Vortex deploys them (`Video/<file>.bk2`) — as
-`Transynth_<game>_<lang>_videopack_<version>.zip` into Vortex's downloads: a mod of its own
-next to the langpack, since the videos weigh gigabytes and change rarely. Vortex deploys
-`Video\*.bk2` over the game's files; the agent never writes into them.
+**In the langpack.** The group's export takes, for every exported mod, each video whose copy
+carries its current dub and puts it at `Video/<file>.bk2` beside the strings and the voice
+archive, so the one langpack Vortex installs carries the whole localization. A dub not yet
+written into its video stays out; a new dub reaches the game with the group's next export
+(the stage button on the Vortex page), which the agent then delivers like any langpack. The
+videos are hard-linked into the export's staging tree, not copied. Vortex deploys
+`Video*.bk2` over the game's files; the agent never writes into them. A videopack an
+earlier build delivered as a mod of its own can be removed from Vortex once the new
+langpack is installed: both ship the same files.
 
 ## API
 
@@ -193,11 +194,9 @@ next to the langpack, since the videos weigh gigabytes and change rarely. Vortex
 | POST   | `/api/mods/:id/video/:videoId/dub`                   | Job `video-dub`, body `{ "scope": "changed" }`; packs after            |
 | POST   | `/api/mods/:id/video/:videoId/pack`                  | Job `video-pack` (409: busy, no dub or file, no tools host)            |
 | GET    | `/api/video-separate/:jobId`, `…-dub/…`, `…-pack/…`  | Job status; `POST …/stop` stops it                                     |
-| GET    | `/api/vortex/groups/:id/videopack`                   | The dubbed videos as one stored zip (404 while none)                   |
 
 The agent's heartbeat (`POST /api/vortex/agent/heartbeat`) returns `videoUploads` (the group's
-videos whose file is not on the server, with `modId` and the file's hash) and
-`latestVideopack` (`version`, `videos`), and takes `deliveredVideopack` back.
+videos whose file is not on the server, with `modId` and the file's hash).
 
 Tables: `video_assets` (a mod's video, hash, tracks, state, dub, the dub written into the
 copy) and `video_segments` (phrases, the mod's string, take, speed-up, `overrun`).

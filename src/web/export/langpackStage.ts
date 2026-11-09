@@ -11,6 +11,20 @@ const isInsideRoot = (rootDir: string, destPath: string): boolean => {
   return dest === root || dest.startsWith(`${root}${path.sep}`);
 };
 
+/**
+ * A hard link where the volume allows one: a dubbed video weighs hundreds of
+ * megabytes and the staging tree only lives until it is zipped, so copying it
+ * would double the disk traffic for nothing. Nothing writes into a staged file.
+ */
+const linkOrCopy = (src: string, dest: string): void => {
+  fs.rmSync(dest, { force: true });
+  try {
+    fs.linkSync(src, dest);
+  } catch {
+    fs.copyFileSync(src, dest);
+  }
+};
+
 /** Write merged langpack entries into a staging tree (later files overwrite). */
 export const writeLangpackEntriesToDir = (
   rootDir: string,
@@ -31,7 +45,7 @@ export const writeLangpackEntriesToDir = (
     }
     if (entry.absPath) {
       // A game's finalize pass may already have written the file in place.
-      if (path.resolve(entry.absPath) !== path.resolve(dest)) fs.copyFileSync(entry.absPath, dest);
+      if (path.resolve(entry.absPath) !== path.resolve(dest)) linkOrCopy(entry.absPath, dest);
       written += 1;
     }
   }

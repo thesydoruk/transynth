@@ -1609,7 +1609,6 @@
       "settleUntil": "синк після {{when}}, якщо більше нічого не зміниться",
       "lastError": "Остання помилка",
       "delivered": "Доставлено",
-      "deliveredVideopack": "Доставлено videopack",
       "howToStart": "Запустіть npm run vortex:agent на машині з Vortex; перший heartbeat зареєструє його тут.",
       "states": {
         "idle": "спокій",

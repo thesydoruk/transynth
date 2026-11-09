@@ -25,9 +25,10 @@ export const isVideoRelPath = (relPath: string): boolean => {
 };
 
 /**
- * The staging folder of a videopack this agent delivered: Vortex names the mod after the
- * archive, `Transynth_<game>_<lang>_videopack_<version>` (`r<N>` before the server built
- * the packs, the first eight hex digits of the pack version since).
+ * The staging folder of a videopack an older agent delivered, before the dubbed videos
+ * moved into the langpack: Vortex names the mod after the archive,
+ * `Transynth_<game>_<lang>_videopack_<version>` (`r<N>` or eight hex digits). Still
+ * known, so an installed one is neither synced nor counted as the game's video.
  */
 export const isTransynthVideopackFolder = (folderName: string): boolean =>
   /^transynth_.+_videopack_[0-9a-z]+/i.test(folderName);

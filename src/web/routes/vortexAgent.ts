@@ -2,21 +2,18 @@
  * The resident Vortex agent's routes and the group state the Vortex page reads.
  *
  *   POST /api/vortex/agent/heartbeat        — agent state (token); returns the group id,
- *                                             the newest langpack to deliver, the videos
- *                                             waiting for their file and the videopack
- *                                             (the dubbed videos) to deliver
+ *                                             the newest langpack to deliver (the dubbed
+ *                                             videos travel in it) and the videos waiting
+ *                                             for their file
  *   POST /api/vortex/groups/:id/export-order — the group's current load order (token)
  *   GET  /api/vortex/groups/:id/state        — group, agent, current run, langpack,
  *                                             which service kinds have a healthy host
  *   GET  /api/vortex/groups/:id/runs         — run history
- *   GET  /api/vortex/groups/:id/videopack    — the dubbed videos as one stored zip,
- *                                             laid out as the mod manager deploys them
  */
-import archiver from 'archiver';
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
 import { log } from '../../logger';
-import { allGamePlugins, gamePlugin } from '../../games/registry';
+import { allGamePlugins } from '../../games/registry';
 import { probeKindsHealthy } from '../../services/kindHealth';
 import type { GameId } from '../../types';
 import { getVortexGroup, getOrCreateVortexGroup } from '../../vortex/db';
@@ -30,7 +27,7 @@ import { findActiveVortexRun, listVortexSyncRuns } from '../../vortex/dbRuns';
 import { isVortexExportOrder } from '../../vortex/exportOrder';
 import { vortexGroupKey, vortexGroupLabel } from '../../vortex/groupKey';
 import { ensureVortexSchema } from '../../vortex/schema';
-import { latestGroupVideopack, listVideoUploadTasks, listVideopackEntries } from '../../video/db';
+import { listVideoUploadTasks } from '../../video/db';
 import { ensureVideoSchema } from '../../video/schema';
 import type { VortexAgentHeartbeat, VortexAgentState, VortexExportOrder } from '../../vortex/types';
 import { parseRouteId } from './parseRouteId';
@@ -69,7 +66,6 @@ export const parseHeartbeat = (
   const str = (v: unknown): string | null => (typeof v === 'string' ? v : null);
   const pending = b.pending as Record<string, unknown> | null | undefined;
   const delivered = b.delivered as Record<string, unknown> | null | undefined;
-  const videopack = b.deliveredVideopack as Record<string, unknown> | null | undefined;
   return {
     ok: true,
     beat: {
@@ -100,14 +96,6 @@ export const parseHeartbeat = (
               at: str(delivered.at) ?? new Date().toISOString(),
             }
           : null,
-      deliveredVideopack:
-        videopack && str(videopack.version)
-          ? {
-              version: str(videopack.version)!,
-              fileName: str(videopack.fileName) ?? '',
-              at: str(videopack.at) ?? new Date().toISOString(),
-            }
-          : null,
     },
   };
 };
@@ -134,11 +122,9 @@ export const vortexAgentRoutes = async (app: FastifyInstance, db: Tx) => {
     if (beat.state === 'error') {
       log.warn(`Vortex agent ${beat.agentKey} on group #${group.id}: ${beat.lastError ?? 'error'}`);
     }
-    const media = gameHasMedia(beat.game);
-    const [latestLangpack, videoUploads, latestVideopack] = await Promise.all([
+    const [latestLangpack, videoUploads] = await Promise.all([
       getLatestGroupLangpack(db, group.id),
-      media ? listVideoUploadTasks(db, group.id) : Promise.resolve([]),
-      media ? latestGroupVideopack(db, group.id) : Promise.resolve(null),
+      gameHasMedia(beat.game) ? listVideoUploadTasks(db, group.id) : Promise.resolve([]),
     ]);
     return reply.send({
       ok: true,
@@ -146,38 +132,7 @@ export const vortexAgentRoutes = async (app: FastifyInstance, db: Tx) => {
       agentId: agent.id,
       latestLangpack,
       videoUploads,
-      latestVideopack,
     });
-  });
-
-  app.get<{ Params: { id: string } }>('/api/vortex/groups/:id/videopack', async (req, reply) => {
-    const id = parseRouteId(req.params.id);
-    if (id === null) return reply.code(400).send({ error: 'Invalid group id' });
-    const group = await getVortexGroup(db, id);
-    if (!group) return reply.code(404).send({ error: 'Group not found' });
-    const media = gamePlugin(group.game).media;
-    const entries = media ? await listVideopackEntries(db, id) : [];
-    if (!media || entries.length === 0) {
-      return reply.code(404).send({ error: 'No dubbed video to deliver yet' });
-    }
-    const latest = await latestGroupVideopack(db, id);
-    // Stored, not compressed: Bink is already compressed, and the archive streams as it is built.
-    const archive = archiver('zip', { store: true });
-    archive.on('error', (err) => {
-      log.warn(`videopack of group #${id}: ${err.message}`);
-      reply.raw.destroy(err);
-    });
-    for (const { asset, file } of entries) {
-      archive.file(file, { name: `${media.packDir}/${asset.file_name}` });
-    }
-    void archive.finalize();
-    return reply
-      .header('Content-Type', 'application/zip')
-      .header(
-        'Content-Disposition',
-        `attachment; filename="videopack_${latest?.version.slice(0, 8) ?? 'none'}.zip"`,
-      )
-      .send(archive);
   });
 
   app.post<{ Params: { id: string }; Body: { exportOrder?: VortexExportOrder } }>(

@@ -2,9 +2,9 @@
  * The watch loop: a cheap look at staging every tick, a settle window after a
  * change (Vortex installs step by step, then deploys), one sync when it is
  * quiet, a heartbeat every tick, and the deliveries the heartbeat asks for:
- * the langpack, the files of new videos up to the server, the videopack of
- * dubbed videos down into Vortex's downloads. Errors go to the journal and
- * back off; a new change resets that.
+ * the files of new videos up to the server, the langpack (dubbed videos
+ * included) down into Vortex's downloads. Errors go to the journal and back
+ * off; a new change resets that.
  */
 import os from 'node:os';
 import path from 'node:path';
@@ -23,7 +23,6 @@ import { agentDataDir, type AgentConfig } from './config';
 import { cachedFileHasher, loadHashCache, saveHashCache } from './hashCache';
 import { deliverLangpack, looksLikeVortexDownloads, shouldDeliver } from './langpackDelivery';
 import { runSyncCycle, scanForSync } from './syncCycle';
-import { deliverVideopack, shouldDeliverVideopack } from './videopackDelivery';
 import { uploadVideoFiles } from './videoUpload';
 import {
   appendJournal,
@@ -108,14 +107,6 @@ export class VortexAgentLoop {
               at: this.state.deliveredAt ?? '',
             }
           : null,
-      deliveredVideopack:
-        this.state.deliveredVideopackVersion != null
-          ? {
-              version: this.state.deliveredVideopackVersion,
-              fileName: this.state.deliveredVideopackFileName ?? '',
-              at: this.state.deliveredVideopackAt ?? '',
-            }
-          : null,
     };
   }
 
@@ -123,7 +114,6 @@ export class VortexAgentLoop {
     const reply = await this.opts.api.heartbeat(this.heartbeatBody());
     this.state.groupId = reply.groupId;
     await this.uploadVideosQuietly(reply.videoUploads);
-    await this.deliverVideopackQuietly(reply.groupId, reply.latestVideopack);
     if (!this.opts.config.deliverLangpack) return;
     if (!shouldDeliver(reply.latestLangpack, this.state.deliveredArchiveId)) return;
     this.agentState = 'delivering';
@@ -199,44 +189,6 @@ export class VortexAgentLoop {
       const message = err instanceof Error ? err.message : String(err);
       this.journal({ event: 'video-upload-error', message });
       log.warn(`vortex-agent: video upload failed: ${message}`);
-    } finally {
-      this.agentState = 'idle';
-    }
-  }
-
-  /**
-   * The dubbed videos, as one archive, into Vortex's downloads — a mod of its
-   * own next to the langpack, since the videos weigh gigabytes and change
-   * rarely. A failure is logged and retried on the next heartbeat.
-   */
-  private async deliverVideopackQuietly(
-    groupId: number,
-    latest: HeartbeatReply['latestVideopack'],
-  ): Promise<void> {
-    const { config } = this.opts;
-    if (!config.videos || !config.deliverLangpack) return;
-    if (!shouldDeliverVideopack(latest, this.state.deliveredVideopackVersion)) return;
-    this.agentState = 'delivering';
-    try {
-      const delivered = await deliverVideopack(this.opts.api, {
-        groupId,
-        latest,
-        downloadsDir: config.downloadsDir,
-        game: config.game,
-        tgtLang: config.tgtLang,
-      });
-      this.state.deliveredVideopackVersion = latest.version;
-      this.state.deliveredVideopackFileName = delivered.fileName;
-      this.state.deliveredVideopackAt = new Date().toISOString();
-      this.save();
-      this.journal({ event: 'videopack-delivered', ...delivered, videos: latest.videos });
-      log.info(
-        `vortex-agent: videopack ${delivered.fileName} (${latest.videos} video(s)) ${delivered.skipped ? 'already' : ''} in Vortex downloads`,
-      );
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.journal({ event: 'videopack-error', message });
-      log.warn(`vortex-agent: videopack delivery failed: ${message}`);
     } finally {
       this.agentState = 'idle';
     }

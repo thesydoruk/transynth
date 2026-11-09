@@ -93,7 +93,6 @@ export type VortexAgentHeartbeat = {
   lastRunId: number | null;
   lastError: string | null;
   delivered: { archiveId: number; fileName: string; at: string } | null;
-  deliveredVideopack?: { version: string; fileName: string; at: string } | null;
 };
 
 /** A video of one of the group's mods whose file the agent has not uploaded yet. */
@@ -103,16 +102,6 @@ export type VideoUploadTask = {
   fileName: string;
   /** sha1 of the video file: how the agent finds it in its inventory. */
   fingerprint: string;
-};
-
-/**
- * The group's dubbed videos as one archive for the mod manager. The version
- * is a hash of which videos carry which dub, so the agent delivers once per
- * change and a lost agent state does not look like a new archive.
- */
-export type VortexLatestVideopack = {
-  version: string;
-  videos: number;
 };
 
 /** The newest finished langpack of a group, for the agent to deliver into Vortex. */

@@ -4,7 +4,7 @@
  * Bink 2 is written by RAD's tools alone, which run under Wine in
  * bethesda-tools (the `tools` pool): the video and the dub go there, the
  * mixed video comes back as `assets/<id>/<file name>` and `packed_version`
- * records which dub it carries. The group's videopack is built from these
+ * records which dub it carries. The mod's langpack takes the video from these
  * copies; the game's own file is never touched.
  */
 import fs from 'node:fs';

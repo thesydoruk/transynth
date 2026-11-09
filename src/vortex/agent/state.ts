@@ -30,10 +30,6 @@ export type AgentState = {
    * runs the stages even when nothing is left to upload.
    */
   resyncNeeded: boolean;
-  /** The videopack version (the server's hash of the dubbed videos) last delivered to Vortex. */
-  deliveredVideopackVersion: string | null;
-  deliveredVideopackFileName: string | null;
-  deliveredVideopackAt: string | null;
 };
 
 export const emptyAgentState = (): AgentState => ({
@@ -49,9 +45,6 @@ export const emptyAgentState = (): AgentState => ({
   failures: 0,
   retryAfter: null,
   resyncNeeded: false,
-  deliveredVideopackVersion: null,
-  deliveredVideopackFileName: null,
-  deliveredVideopackAt: null,
 });
 
 export const readAgentState = (file: string): AgentState => {
