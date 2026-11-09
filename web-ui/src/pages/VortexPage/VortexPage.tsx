@@ -68,7 +68,6 @@ export const VortexPage = () => {
               group={p.state.group}
               agent={p.state.agent}
               latestLangpack={p.state.latestLangpack}
-              onDownload={() => void p.downloadLangpack()}
             />
             <VortexRunPanel
               run={p.run}

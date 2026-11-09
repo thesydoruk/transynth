@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { ExportArchive } from '../../api';
+import { api, type ExportArchive } from '../../api';
 import { importStatusKey, statusColorBase } from './modsShared';
 import rowS from './UnifiedJobRow/UnifiedJobRow.module.scss';
 import s from './ModsPageRow.module.scss';
@@ -7,7 +7,6 @@ import s from './ModsPageRow.module.scss';
 type ExportArchiveRowProps = {
   archive: ExportArchive;
   deleting?: boolean;
-  onDownload: () => void;
   onDelete: () => void;
 };
 
@@ -19,12 +18,7 @@ const formatBytes = (raw: string | null): string | null => {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-export const ExportArchiveRow = ({
-  archive,
-  deleting,
-  onDownload,
-  onDelete,
-}: ExportArchiveRowProps) => {
+export const ExportArchiveRow = ({ archive, deleting, onDelete }: ExportArchiveRowProps) => {
   const { t } = useTranslation();
   const pct =
     archive.total_count > 0
@@ -61,14 +55,14 @@ export const ExportArchiveRow = ({
         )}
         <div className={s.actions}>
           {archive.status === 'completed' && (
-            <button
-              type="button"
+            <a
               className={rowS.actionBtn}
-              onClick={onDownload}
+              href={api.exports.fileUrl(archive.id)}
+              download={archive.file_name}
               title={t('mods.exportDownload')}
             >
               {t('mods.exportDownload')}
-            </button>
+            </a>
           )}
           <button
             type="button"

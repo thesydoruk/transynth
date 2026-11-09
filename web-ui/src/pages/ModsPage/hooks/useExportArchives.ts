@@ -26,10 +26,6 @@ export const useExportArchives = (gameId: string) => {
     return () => window.clearInterval(timer);
   }, [archives, refresh]);
 
-  const download = useCallback(async (archive: ExportArchive) => {
-    await api.exports.download(archive.id, archive.file_name);
-  }, []);
-
   const remove = useCallback(
     async (archive: ExportArchive) => {
       setDeletingId(archive.id);
@@ -43,5 +39,5 @@ export const useExportArchives = (gameId: string) => {
     [refresh],
   );
 
-  return { archives, deletingId, refresh, download, remove };
+  return { archives, deletingId, refresh, remove };
 };

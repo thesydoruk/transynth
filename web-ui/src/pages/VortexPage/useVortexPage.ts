@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type VortexStage } from '../../api';
-import { downloadBinary } from '../../api/client';
 
 /** Service kinds a stage needs, mirrored from the server's STAGE_NEEDS. */
 export const STAGE_NEEDS: Record<VortexStage, Array<'llm' | 'embed' | 'tts'>> = {
@@ -100,12 +99,6 @@ export const useVortexPage = (gameId: string) => {
     return { ok: !missing, missing: missing ?? null };
   };
 
-  const downloadLangpack = async () => {
-    const latest = state.data?.latestLangpack;
-    if (!latest) return;
-    await downloadBinary(api.vortex.langpackPath(latest.runId), latest.fileName);
-  };
-
   return {
     groups: groupList,
     groupId,
@@ -120,7 +113,6 @@ export const useVortexPage = (gameId: string) => {
     starting: start.isPending,
     stop: (runId: number) => stop.mutate(runId),
     canStart,
-    downloadLangpack,
     error,
     clearError: () => setError(null),
   };

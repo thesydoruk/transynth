@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { VortexAgent, VortexGroup, VortexLatestLangpack } from '../../api';
+import { api, type VortexAgent, type VortexGroup, type VortexLatestLangpack } from '../../api';
 import { agentIsOffline } from './useVortexPage';
 import s from './VortexPage.module.scss';
 
@@ -7,14 +7,13 @@ type Props = {
   group: VortexGroup;
   agent: VortexAgent | null;
   latestLangpack: VortexLatestLangpack | null;
-  onDownload: () => void;
 };
 
 const when = (iso: string | null | undefined): string =>
   iso ? new Date(iso).toLocaleString() : '—';
 
 /** The resident agent's heartbeat: where it watches, what it waits for, what it last did. */
-export const VortexAgentPanel = ({ group, agent, latestLangpack, onDownload }: Props) => {
+export const VortexAgentPanel = ({ group, agent, latestLangpack }: Props) => {
   const { t } = useTranslation();
   const offline = agent ? agentIsOffline(agent.last_seen_at, agent.state_json?.pollSec) : true;
   const pending = agent?.state_json?.pending ?? null;
@@ -93,12 +92,16 @@ export const VortexAgentPanel = ({ group, agent, latestLangpack, onDownload }: P
         <dt>{t('vortex.langpack.latest')}</dt>
         <dd>
           {latestLangpack ? (
-            <button type="button" className={s.linkButton} onClick={onDownload}>
+            <a
+              className={s.linkButton}
+              href={api.vortex.langpackUrl(latestLangpack.runId)}
+              download={latestLangpack.fileName}
+            >
               {latestLangpack.fileName}
               {latestLangpack.byteSize != null
                 ? ` (${(latestLangpack.byteSize / 1048576).toFixed(0)} MiB)`
                 : ''}
-            </button>
+            </a>
           ) : (
             t('vortex.langpack.none')
           )}

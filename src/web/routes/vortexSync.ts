@@ -8,7 +8,7 @@ import { log } from '../../logger';
 import { PATHS } from '../../paths';
 import { ensureDir } from '../../utils/file';
 import { getExportArchive } from '../data/queries';
-import { resolveExportArchiveFile } from '../export/exportArchiveFiles';
+import { sendExportArchive } from '../export/sendExportArchive';
 import { startBackgroundJob } from '../../../worker/src/api/startBackgroundJob';
 import {
   getOrCreateVortexGroup,
@@ -221,16 +221,7 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
     const run = await getVortexSyncRun(db, runId);
     if (!run?.export_archive_id) return reply.code(404).send({ error: 'Langpack not ready' });
     const archive = await getExportArchive(db, run.export_archive_id);
-    if (!archive || archive.status !== 'completed' || !archive.rel_path) {
-      return reply.code(409).send({ error: 'Langpack is not ready' });
-    }
-    const filePath = resolveExportArchiveFile(archive.rel_path);
-    if (!filePath || !fs.existsSync(filePath)) {
-      return reply.code(404).send({ error: 'Archive file is missing' });
-    }
-    return reply
-      .header('Content-Type', 'application/zip')
-      .header('Content-Disposition', `attachment; filename="${archive.file_name}"`)
-      .send(fs.createReadStream(filePath));
+    if (!archive) return reply.code(404).send({ error: 'Langpack not ready' });
+    return sendExportArchive(reply, archive);
   });
 };

@@ -1,6 +1,13 @@
 // Thin API client — all calls go through the same base URL
 export const BASE = import.meta.env.VITE_API_URL ?? '';
 
+/**
+ * The absolute URL of an API path, for links the browser follows itself.
+ * A multi-gigabyte archive goes through `<a href download>`, never through
+ * `fetch` + Blob: Chromium stops building a Blob near 2 GB.
+ */
+export const apiUrl = (path: string): string => `${BASE}${path}`;
+
 export const req = async <T>(path: string, init?: RequestInit): Promise<T> => {
   /* Only set Content-Type: application/json when the request carries a body.
      Fastify 5 rejects requests with Content-Type: application/json but no body

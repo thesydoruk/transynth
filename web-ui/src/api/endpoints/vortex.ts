@@ -1,4 +1,4 @@
-import { req } from '../client';
+import { apiUrl, req } from '../client';
 import type {
   VortexGameRelease,
   VortexGroup,
@@ -30,5 +30,6 @@ export const vortexEndpoints = {
     ),
   stopRun: (runId: number) =>
     req<{ ok: true; stopped: number[] }>(`/api/vortex/sync/${runId}/stop`, { method: 'POST' }),
-  langpackPath: (runId: number) => `/api/vortex/sync/${runId}/langpack`,
+  /** The run's finished langpack, for a download link. */
+  langpackUrl: (runId: number) => apiUrl(`/api/vortex/sync/${runId}/langpack`),
 };

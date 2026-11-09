@@ -80,8 +80,9 @@ describe('VortexPage', () => {
     expect(screen.getByRole('button', { name: 'Verify' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Voice' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Export langpack' })).toBeEnabled();
-    expect(
-      screen.getByRole('button', { name: /fo4_uk_langpack\.zip \(1 MiB\)/ }),
-    ).toBeInTheDocument();
+    // A link, not a fetch: the browser's download manager takes a 5 GB langpack.
+    const langpack = screen.getByRole('link', { name: /fo4_uk_langpack\.zip \(1 MiB\)/ });
+    expect(langpack).toHaveAttribute('href', '/api/vortex/sync/5/langpack');
+    expect(langpack).toHaveAttribute('download', 'fo4_uk_langpack.zip');
   });
 });

@@ -200,7 +200,6 @@ export const ModsPage = () => {
           appJobs={visibleAppJobs}
           exportArchives={exportArchives.archives}
           deletingExportId={exportArchives.deletingId}
-          onDownloadExport={(archive) => void exportArchives.download(archive)}
           onDeleteExport={(archive) => void exportArchives.remove(archive)}
           llmJobs={visibleLlmJobs}
           activeImportJobs={activeImportJobs}

@@ -19,7 +19,6 @@ type ModsPageJobListProps = {
   appJobs: AppJob[];
   exportArchives: ExportArchive[];
   deletingExportId: number | null;
-  onDownloadExport: (archive: ExportArchive) => void;
   onDeleteExport: (archive: ExportArchive) => void;
   llmJobs: OpsLlmJob[];
   activeImportJobs: UnifiedJob[];
@@ -70,7 +69,6 @@ export const ModsPageJobList = ({
   appJobs,
   exportArchives,
   deletingExportId,
-  onDownloadExport,
   onDeleteExport,
   llmJobs,
   activeImportJobs,
@@ -126,7 +124,6 @@ export const ModsPageJobList = ({
         key={`export-${archive.id}`}
         archive={archive}
         deleting={deletingExportId === archive.id}
-        onDownload={() => onDownloadExport(archive)}
         onDelete={() => onDeleteExport(archive)}
       />
     ))}

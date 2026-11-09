@@ -25,6 +25,8 @@
   border-radius: 4px;
   color: var(--text);
   cursor: pointer;
+  // The download action is a link, so the browser handles the file itself.
+  text-decoration: none;
   padding: 4px 8px;
   font-size: 14px;
   line-height: 1;
