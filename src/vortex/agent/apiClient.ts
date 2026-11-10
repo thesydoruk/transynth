@@ -8,6 +8,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { Agent, fetch as undiciFetch } from 'undici';
+import { vortexUnitKey } from '../groupKey';
 import type { VortexFanOutStage } from '../stages';
 import type {
   VideoUploadTask,
@@ -41,6 +42,24 @@ export type AgentApi = ReturnType<typeof createAgentApi>;
 const uploadAgent = new Agent({ headersTimeout: 60 * 60 * 1000, bodyTimeout: 0 });
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * The server looked at the unit and refused it (nothing it can import). Only
+ * the route's own 5xx counts: a page or an empty 2xx is an upload that went
+ * nowhere, not a refusal.
+ */
+export const isUploadRejection = (message: string): boolean =>
+  /^Upload .+ failed: 5\d\d\b/.test(message) || /Archive holds no/.test(message);
+
+/** The upload route answers `{ job: { id }, unitId }` for the unit it registered. */
+export const isRegisteredUpload = (body: string, unitId: string): boolean => {
+  try {
+    const parsed = JSON.parse(body) as { job?: { id?: unknown }; unitId?: unknown };
+    return parsed.unitId === unitId && typeof parsed.job?.id === 'number';
+  } catch {
+    return false;
+  }
+};
 
 export const createAgentApi = (opts: { api: string; token?: string }) => {
   const base = opts.api.replace(/\/+$/, '');
@@ -90,7 +109,7 @@ export const createAgentApi = (opts: { api: string; token?: string }) => {
     filePath: string,
     mime: string,
     label: string,
-  ): Promise<void> => {
+  ): Promise<{ status: number; text: string }> => {
     const blob = await openAsBlob(filePath, { type: mime });
     const form = new FormData();
     form.append('file', blob, path.basename(filePath));
@@ -105,16 +124,28 @@ export const createAgentApi = (opts: { api: string; token?: string }) => {
       const message = err instanceof Error ? err.message : String(err);
       throw new Error(`Upload ${label} failed: ${message}${cause ? ` (${cause})` : ''}`);
     });
-    if (!res.ok) throw new Error(`Upload ${label} failed: ${await res.text()}`);
+    const text = await res.text();
+    if (!res.ok) throw new Error(`Upload ${label} failed: ${res.status} ${text}`);
+    return { status: res.status, text };
   };
 
-  const putUnitZip = (runId: number, unitId: string, zipPath: string): Promise<void> =>
-    putFile(
-      `/api/vortex/sync/${runId}/packs/${encodeURIComponent(unitId)}`,
+  /**
+   * Upload one unit and insist the server registered it. A 2xx that is not the
+   * route's own answer (a page, an empty body) means the upload went nowhere.
+   */
+  const putUnitZip = async (runId: number, unitId: string, zipPath: string): Promise<void> => {
+    const { status, text } = await putFile(
+      `/api/vortex/sync/${runId}/packs/${vortexUnitKey(unitId)}`,
       zipPath,
       'application/zip',
       unitId,
     );
+    if (!isRegisteredUpload(text, unitId)) {
+      throw new Error(
+        `Upload ${unitId} was not registered by the server (${status}: ${text.slice(0, 120)})`,
+      );
+    }
+  };
 
   /** Poll a run until it completes; throws on failure or cancellation. */
   const waitRun = async (
@@ -168,12 +199,13 @@ export const createAgentApi = (opts: { api: string; token?: string }) => {
       ),
     downloadLangpack: (runId: number, destPath: string) =>
       downloadFile(`/api/vortex/sync/${runId}/langpack`, destPath),
-    putVideoFile: (modId: number, id: number, filePath: string) =>
-      putFile(
+    putVideoFile: async (modId: number, id: number, filePath: string): Promise<void> => {
+      await putFile(
         `/api/mods/${modId}/video/${id}/file`,
         filePath,
         'application/octet-stream',
         `video #${id}`,
-      ),
+      );
+    },
   };
 };

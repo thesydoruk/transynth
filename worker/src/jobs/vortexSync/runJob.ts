@@ -19,6 +19,7 @@ import {
   upsertCurrentGameRelease,
   type VortexSyncRunRow,
 } from '../../../../src/vortex/db';
+import { unitsNeverUploaded } from '../../../../src/vortex/planUnits';
 import {
   isFanOutStage,
   type ServerVortexStage,
@@ -75,6 +76,14 @@ const runImportStage = async (db: Tx, run: VortexSyncRunRow): Promise<number[]> 
     log.info(`Vortex sync: importing ${unit.name} (job #${job.id})`);
     const result = await runModImport(db, job);
     if (result.mod_id) importedModIds.push(result.mod_id);
+  }
+  // What arrived is imported (a retry then skips it instead of uploading it
+  // again); a unit that never arrived fails the run so the agent syncs again.
+  const missing = unitsNeverUploaded(planUnits(run));
+  if (missing.length > 0) {
+    throw new Error(
+      `Planned upload never reached the server: ${missing.map((unit) => unit.name).join(', ')}`,
+    );
   }
   const hint = (run.plan_json as { gameRelease?: { versionLabel: string; releaseHash: string } })
     ?.gameRelease;

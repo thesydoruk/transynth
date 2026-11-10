@@ -19,7 +19,7 @@ import type {
   VortexInventoryFile,
   VortexPlanUnit,
 } from '../types';
-import type { AgentApi } from './apiClient';
+import { isUploadRejection, type AgentApi } from './apiClient';
 import { exportOrderSignature, unitsSignature } from './changeDetector';
 import type { AgentConfig } from './config';
 import { cachedFileHasher, type HashCache } from './hashCache';
@@ -181,8 +181,10 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
       } catch (err) {
         // A unit the importer cannot register (a folder with nothing to
         // translate) must not stop the mods it can: note it and move on.
+        // Anything else — a lost connection, an upload nobody registered — fails
+        // the cycle, which leaves the signatures unsaved so the next one retries.
         const message = err instanceof Error ? err.message : String(err);
-        if (!/\b5\d\d\b|Archive holds no/.test(message)) throw err;
+        if (!isUploadRejection(message)) throw err;
         log.warn(`vortex-agent: ${unit.name} rejected by the server, skipping: ${message}`);
         rejected.push(unit.name);
       }

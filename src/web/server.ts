@@ -68,6 +68,7 @@ import { closeJobsQueueEvents } from '../../worker/src/core/queueEvents';
 import { closeSharedRedis } from '../../worker/src/core/connection';
 import { installVoiceLivePublisher } from '../../worker/src/core/voiceLiveChannel';
 import { isLoopbackHost, resolveListenHost } from './listenHost';
+import { spaNotFoundHandler } from './spaFallback';
 import { closeVoiceLiveHub } from './voice/voiceLiveHub';
 
 /** Directory of this module file (ESM replacement for __dirname). */
@@ -78,7 +79,12 @@ const WEB_UI_DIST = path.resolve(__dirname, '../../web-ui/dist');
 
 /** Fastify app instance; Fastify logging is disabled in favour of `src/logger.ts`. */
 ensureDataDirs();
-const app = Fastify({ logger: false, bodyLimit: UPLOAD_FILE_SIZE_LIMIT_BYTES });
+const app = Fastify({
+  logger: false,
+  bodyLimit: UPLOAD_FILE_SIZE_LIMIT_BYTES,
+  // Older agents put the whole unitId (Vortex folder name included) in the URL.
+  routerOptions: { maxParamLength: 512 },
+});
 
 await app.register(cors, {
   origin: true,
@@ -96,10 +102,8 @@ try {
     decorateReply: true,
   });
 
-  // Fallback: serve index.html for all non-API routes (SPA routing)
-  app.setNotFoundHandler((_req, reply) => {
-    reply.sendFile('index.html');
-  });
+  // Fallback: index.html for browser navigation only; API misses get a JSON 404.
+  app.setNotFoundHandler(spaNotFoundHandler);
 } catch {
   // web-ui/dist not present — API-only mode
   log.warn('web-ui/dist not found — running in API-only mode');

@@ -47,6 +47,8 @@ export type VortexPlanUnit = {
   scopedFileHash: string;
   existingModId: number | null;
   existingJobId: number | null;
+  /** Why the server refused the unit's upload (nothing it can import). */
+  rejected?: string | null;
   pluginStem: string | null;
   pluginFileName: string | null;
   sourceFolder: string | null;
