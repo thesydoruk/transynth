@@ -5,6 +5,7 @@ import { collectFolderUnitFiles, collectNamedPluginFiles } from '../collectSubse
 import { scanStagingUnits } from '../scanStaging';
 import {
   hasVortexImportAnchor,
+  isMcmConfigJsonPath,
   isVoiceSourceRelPath,
   isVortexSyncArchiveName,
   isVortexSyncFile,
@@ -114,6 +115,33 @@ describe('vortex sync file selection', () => {
     } finally {
       fs.rmSync(folder, { recursive: true, force: true });
     }
+  });
+
+  it("sends an MCM menu's config.json, but not the rest of its MCM folder", () => {
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'vortex-mod-'));
+    try {
+      fs.writeFileSync(path.join(folder, 'SS2.esm'), 'plugin');
+      const config = path.join(folder, 'MCM', 'Config', 'SS2');
+      fs.mkdirSync(config, { recursive: true });
+      for (const name of ['config.json', 'keybinds.json', 'settings.ini', 'lib.swf']) {
+        fs.writeFileSync(path.join(config, name), '{}');
+      }
+      fs.mkdirSync(path.join(folder, 'fomod'), { recursive: true });
+      fs.writeFileSync(path.join(folder, 'fomod', 'info.json'), '{}');
+
+      const files = collectFolderUnitFiles(folder);
+      expect(files.map((f) => f.relPath).sort()).toEqual(['MCM/Config/SS2/config.json', 'SS2.esm']);
+    } finally {
+      fs.rmSync(folder, { recursive: true, force: true });
+    }
+  });
+
+  it('matches config.json only in an MCM/Config/<mod> folder', () => {
+    expect(isMcmConfigJsonPath('MCM/Config/SS2/config.json')).toBe(true);
+    expect(isMcmConfigJsonPath('Data\\mcm\\config\\FallUIHUD\\Config.json')).toBe(true);
+    expect(isMcmConfigJsonPath('MCM/Config/config.json')).toBe(false);
+    expect(isMcmConfigJsonPath('MCM/Config/SS2/keybinds.json')).toBe(false);
+    expect(isMcmConfigJsonPath('Interface/config.json')).toBe(false);
   });
 
   it('skips pex-only staging folders that the importer cannot register', async () => {

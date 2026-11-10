@@ -20,12 +20,16 @@ export type PexSourceLocateResult = {
   contextLines: PexSourceLine[];
 };
 
-/** `PEX\\ScriptName` → `scriptname` (lowercase key used by import). */
+/**
+ * `PEX\\ScriptName` → `scriptname`, `PEX\\Ns:ScriptName` → `ns:scriptname`
+ * (lowercase key used by import).
+ */
 export const pexScriptKeyFromRecordPath = (recordPath: string): string | null => {
   const trimmed = recordPath.trim();
   if (!trimmed.toUpperCase().startsWith('PEX\\')) return null;
   const key = trimmed.slice(4).trim();
   if (!key) return null;
+  if (!/[\\/]/.test(key)) return key.replace(/\.(pex|psc)$/i, '').toLowerCase();
   return normalizePexScriptKey(key).toLowerCase();
 };
 

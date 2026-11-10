@@ -8,7 +8,7 @@ import { PATHS } from '../../paths';
 import { ensureChampollionInstalled } from '../../champollionPath';
 import { execFileAsync } from '../../utils/execFile';
 import { sha1Hex } from '../../utils/hash';
-import { collectModPexSources } from '../../formats/pex';
+import { collectModPexSources, pexScriptBaseName } from '../../formats/pex';
 import {
   locatePexLiteralInPsc,
   pexScriptKeyFromRecordPath,
@@ -88,7 +88,7 @@ const decompilePexToPsc = async (
   scriptKey: string,
   cacheBucket: number | string,
 ): Promise<{ pscPath: string; headerSourceFile: string }> => {
-  const fileStem = normalizePexScriptKey(scriptKey);
+  const fileStem = normalizePexScriptKey(pexScriptBaseName(scriptKey));
   const digest = sha1Hex(pexData);
   const cacheDir = path.join(PATHS.pexDecompile, String(cacheBucket), digest);
   fs.mkdirSync(cacheDir, { recursive: true });

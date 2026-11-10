@@ -30,6 +30,14 @@ export const isVoiceSourceRelPath = (relPath: string): boolean => {
   return lower.includes('/sound/voice/') || lower.startsWith('sound/voice/');
 };
 
+/**
+ * MCM Helper's menu definition, `MCM/Config/<mod>/config.json`. Many mods (Sim
+ * Settlements 2, Workshop Framework) write their menu text inline there instead
+ * of in translation txt, and the server reads the mod's MCM prefix from it.
+ */
+export const isMcmConfigJsonPath = (relPath: string): boolean =>
+  /(^|\/)mcm\/config\/[^/]+\/config\.json$/i.test(relPath.replace(/\\/g, '/'));
+
 const isSyncTxt = (relPath: string): boolean =>
   isInterfaceTranslatePath(relPath) || isMcmTranslationArchivePath(relPath);
 
@@ -58,6 +66,7 @@ export const isVortexSyncFile = (
   if (STRING_TABLE_EXT.has(ext)) return true;
   if (ext === '.pex') return true;
   if (ext === '.txt' && isSyncTxt(relPath)) return true;
+  if (ext === '.json' && isMcmConfigJsonPath(relPath)) return true;
   if (isVoiceSourceRelPath(relPath)) return true;
   if (options.videos && isVideoRelPath(relPath)) return true;
   if (ext === '.ba2') return isVortexSyncArchiveName(fileName) && isBa2GnrArchive(absPath);
