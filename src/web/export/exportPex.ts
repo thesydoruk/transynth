@@ -1,5 +1,5 @@
 import type { Tx } from '../../db';
-import { patchPexBuffer, collectModPexSources } from '../../formats/pex';
+import { patchPexBuffer, collectModPexSources, isPexDisplayOnlyString } from '../../formats/pex';
 import { log } from '../../logger';
 import type { ExportedStringsFile } from './exportTypes';
 
@@ -9,7 +9,10 @@ type PexScriptOverlays = Map<string, Map<string, string>>;
 /**
  * Load translation overlays for all PEX rows of a mod.
  *
- * Keys are lowercased script names (`PEX\\{script}` path suffix).
+ * Keys are lowercased script names (`PEX\\{script}` path suffix). A
+ * translation is used only for a literal the script shows and uses for
+ * nothing else (`isPexDisplayOnlyString`). Any other literal keeps its source
+ * text, because a translated state, event or stat name breaks the script.
  */
 export const getPexTranslationOverlays = async (
   db: Tx,
@@ -18,8 +21,7 @@ export const getPexTranslationOverlays = async (
   targetLang: string,
 ): Promise<PexScriptOverlays> => {
   const { rows } = await db.query(
-    `SELECT r.path, s.text_raw AS source_text,
-            COALESCE(t.text, s.text_raw) AS export_text
+    `SELECT r.path, s.text_raw AS source_text, s.context, t.text AS translation
      FROM strings s
      JOIN records r ON r.id = s.record_id
      LEFT JOIN translations t
@@ -28,13 +30,28 @@ export const getPexTranslationOverlays = async (
     [modId, srcLang, targetLang],
   );
 
+  type PexRow = {
+    path: string;
+    source_text: string;
+    context: string | null;
+    translation: string | null;
+  };
   const overlays: PexScriptOverlays = new Map();
-  for (const row of rows as Array<{ path: string; source_text: string; export_text: string }>) {
+  let withheld = 0;
+  for (const row of rows as PexRow[]) {
     const match = row.path.match(/^PEX\\(.+)$/i);
     if (!match) continue;
     const scriptKey = match[1]!.toLowerCase();
     if (!overlays.has(scriptKey)) overlays.set(scriptKey, new Map());
-    overlays.get(scriptKey)!.set(row.source_text, row.export_text);
+    const translated = row.translation != null && row.translation !== row.source_text;
+    const shown = translated && isPexDisplayOnlyString(row.source_text, row.context);
+    if (translated && !shown) withheld++;
+    overlays.get(scriptKey)!.set(row.source_text, shown ? row.translation! : row.source_text);
+  }
+  if (withheld > 0) {
+    log.info(
+      `PEX export: mod ${modId} keeps ${withheld} literal(s) in the source (not display-only)`,
+    );
   }
   return overlays;
 };

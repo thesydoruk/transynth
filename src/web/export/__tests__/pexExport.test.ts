@@ -3,7 +3,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from '@jest/globals';
 import type { Tx } from '../../../db';
-import { parsePexBuffer, patchPexBuffer, writeWString } from '../../../formats/pex';
+import {
+  parsePexBuffer,
+  patchPexBuffer,
+  serializePexStoredContext,
+  writeWString,
+} from '../../../formats/pex';
 import { exportPatchedPexFiles } from '../index';
 
 const buildPex = (strings: string[], sourceFile = 'DialogScript.psc'): Buffer => {
@@ -45,6 +50,15 @@ const buildPex = (strings: string[], sourceFile = 'DialogScript.psc'): Buffer =>
   return buf;
 };
 
+/** Stored import context: the literal used on one decompiled line. */
+const usedOn = (text: string) =>
+  serializePexStoredContext({
+    scriptLabel: 'DialogScript.psc',
+    headerSourceFile: 'DialogScript.psc',
+    matchLineNumbers: [10],
+    contextLines: [{ lineNumber: 10, text, highlight: true }],
+  });
+
 const tempDirs: string[] = [];
 
 afterEach(() => {
@@ -72,7 +86,8 @@ describe('exportPatchedPexFiles', () => {
               {
                 path: 'PEX\\DialogScript',
                 source_text: 'Hello world',
-                export_text: 'Привіт, світ',
+                context: usedOn('  Debug.MessageBox("Hello world") ; #DEBUG_LINE_NO:5'),
+                translation: 'Привіт, світ',
               },
             ],
           };
@@ -90,6 +105,43 @@ describe('exportPatchedPexFiles', () => {
     expect(parsed.strings).not.toContain('Hello world');
   });
 
+  it('keeps a translated literal the script uses as a name, not text', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pex-export-'));
+    tempDirs.push(root);
+    const pluginPath = path.join(root, 'MyMod.esp');
+    fs.mkdirSync(path.join(root, 'Scripts'), { recursive: true });
+    fs.writeFileSync(pluginPath, Buffer.from('TES4', 'ascii'));
+    fs.writeFileSync(
+      path.join(root, 'Scripts', 'DialogScript.pex'),
+      buildPex(['Done', 'Reset', 'Saved!']),
+    );
+
+    const row = (source_text: string, line: string, translation: string) => ({
+      path: 'PEX\\DialogScript',
+      source_text,
+      context: usedOn(line),
+      translation,
+    });
+    const db = {
+      query: async () => ({
+        rows: [
+          row('Done', '  Self.GoToState("Done") ; #DEBUG_LINE_NO:3', 'Готово'),
+          row('Reset', '  Self.PlayAnimation("Reset") ; #DEBUG_LINE_NO:4', 'Скинути'),
+          row('Saved!', '  Debug.Notification("Saved!") ; #DEBUG_LINE_NO:5', 'Збережено!'),
+        ],
+      }),
+    } as unknown as Tx;
+
+    const exported = await exportPatchedPexFiles(db, 1, pluginPath, 'en', 'uk');
+    // parsePexBuffer().strings lists only user-looking text, so read the raw table.
+    const raw = Buffer.from(exported[0]!.contentBase64, 'base64').toString('utf8');
+    expect(raw).toContain('Збережено!');
+    expect(raw).toContain('Done');
+    expect(raw).toContain('Reset');
+    expect(raw).not.toContain('Готово');
+    expect(raw).not.toContain('Скинути');
+  });
+
   it('uses source fallback when no translation row exists', async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pex-export-'));
     tempDirs.push(root);
@@ -105,7 +157,8 @@ describe('exportPatchedPexFiles', () => {
           {
             path: 'PEX\\DialogScript',
             source_text: 'Hello world',
-            export_text: 'Hello world',
+            context: null,
+            translation: null,
           },
         ],
       }),
