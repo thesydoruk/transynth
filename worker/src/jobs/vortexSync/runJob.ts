@@ -11,15 +11,14 @@ import { runModImport } from '../../../../src/import/mod/run/runImport';
 import { getModImportJob } from '../../../../src/import/mod/jobs';
 import { log } from '../../../../src/logger';
 import {
-  findPreviousVortexMod,
   getVortexSyncRun,
   listCurrentGroupModIds,
-  markCurrentVortexMods,
   updateVortexSyncRun,
   upsertCurrentGameRelease,
   type VortexSyncRunRow,
 } from '../../../../src/vortex/db';
 import { unitsNeverUploaded } from '../../../../src/vortex/planUnits';
+import { findPreviousVortexMod, markCurrentVortexMods } from '../../../../src/vortex/dbFamily';
 import {
   isFanOutStage,
   type ServerVortexStage,
@@ -104,18 +103,12 @@ const runImportStage = async (db: Tx, run: VortexSyncRunRow): Promise<number[]> 
 
 const runCarryStage = async (db: Tx, run: VortexSyncRunRow, modIds: number[]): Promise<void> => {
   for (const modId of modIds) {
-    const { rows } = await db.query<{ name: string; nexus_mod_id: number | null }>(
-      `SELECT name, nexus_mod_id FROM mods WHERE id = $1`,
-      [modId],
-    );
-    const mod = rows[0];
-    if (!mod) continue;
+    const { rows } = await db.query<{ id: number }>(`SELECT id FROM mods WHERE id = $1`, [modId]);
+    if (!rows[0]) continue;
     await updateVortexSyncRun(db, run.id, { current_stage: 'carry', current_mod_id: modId });
     const prev = await findPreviousVortexMod(db, {
       groupId: run.vortex_group_id,
       newModId: modId,
-      nexusModId: mod.nexus_mod_id,
-      name: mod.name,
     });
     if (prev) await carryOverTranslations(db, modId, prev, run.tgt_lang, run.src_lang);
     const voice = await reuseSynthesizedVoice(db, modId, run.tgt_lang);

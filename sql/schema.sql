@@ -1060,6 +1060,16 @@ CREATE INDEX IF NOT EXISTS idx_mods_vortex_group ON mods(vortex_group_id)
 CREATE INDEX IF NOT EXISTS idx_mods_vortex_current
   ON mods(vortex_group_id, is_current) WHERE vortex_group_id IS NOT NULL;
 
+-- The plugin a Vortex mod is anchored on, lower-cased; NULL for a plugin-less mod.
+-- A plugin is one load-order slot, so it names the mod's version family
+-- (src/vortex/family.ts). chr(92) is a backslash: an anchor may be a Windows path.
+ALTER TABLE mods ADD COLUMN IF NOT EXISTS vortex_plugin TEXT;
+UPDATE mods
+SET vortex_plugin = lower(regexp_replace(replace(abs_path, chr(92), '/'), '^.*/', ''))
+WHERE vortex_group_id IS NOT NULL
+  AND vortex_plugin IS NULL
+  AND abs_path ~* '[.](esp|esm|esl)$';
+
 -- ── Cutscene videos ─────────────────────────────────────────────────────────
 -- One row per video file of a mod, registered from the Vortex agent's manifest,
 -- with the audio track it uploaded and the dubbing state; one row per

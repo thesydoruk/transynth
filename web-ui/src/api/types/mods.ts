@@ -12,6 +12,8 @@ export type Mod = {
   channel?: string | null;
   game_release_id?: number | null;
   version_label?: string | null;
+  /** Lower-cased plugin a Vortex mod is anchored on; null without one. */
+  vortex_plugin?: string | null;
   is_current?: boolean;
   created_at: string;
   record_count: number;
