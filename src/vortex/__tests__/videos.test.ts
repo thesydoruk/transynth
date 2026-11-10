@@ -110,8 +110,8 @@ describe('cutscene videos in the inventory', () => {
 
     const withVideos = await scanStagingUnits(staging, undefined, { videos: true });
     expect(withVideos.map((u) => [u.unitId, u.files.map((f) => f.relPath)])).toEqual([
-      ['mods:better intro-7-2:folder', ['Video/Intro_ru.bk2']],
-      ['mods:cool mod-1-1:coolmod', ['CoolMod.esp', 'Video/CoolIntro.bk2']],
+      ['mods:better intro-7-2', ['Video/Intro_ru.bk2']],
+      ['mods:cool mod-1-1', ['CoolMod.esp', 'Video/CoolIntro.bk2']],
     ]);
   });
 

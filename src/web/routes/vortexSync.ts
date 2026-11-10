@@ -143,9 +143,9 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
       await pipeline(data.file, fs.createWriteStream(zipPath));
 
       const extractDir = vortexExtractDir(groupRoot, scoped);
-      let job: Awaited<ReturnType<typeof registerVortexPack>>;
+      let registered: Awaited<ReturnType<typeof registerVortexPack>>;
       try {
-        job = await registerVortexPack(db, {
+        registered = await registerVortexPack(db, {
           groupId: run.vortex_group_id,
           fileName: data.filename || `${String(unit.name)}.zip`,
           zipPath,
@@ -157,6 +157,8 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
           nexusModId: typeof unit.nexusModId === 'number' ? unit.nexusModId : null,
           nexusModName: typeof unit.nexusModName === 'string' ? unit.nexusModName : null,
           sourceFolder: typeof unit.sourceFolder === 'string' ? unit.sourceFolder : null,
+          plugins: Array.isArray(unit.plugins) ? unit.plugins.map(String) : null,
+          pluginFileName: typeof unit.pluginFileName === 'string' ? unit.pluginFileName : null,
         });
       } catch (err) {
         // A unit the importer refuses leaves nothing behind: an unpacked tree
@@ -169,12 +171,15 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
         throw err;
       }
 
+      const job = registered.primary;
+      const jobs = registered.jobs.map((row) => ({ plugin: row.plugin, jobId: row.job.id }));
       await patchVortexPlanUnit(db, run.id, unitId, {
         existingJobId: job.id,
         existingModId: job.mod_id,
+        jobs,
         rejected: null,
       });
-      return reply.send({ job, unitId });
+      return reply.send({ job, jobs, unitId });
     },
   );
 

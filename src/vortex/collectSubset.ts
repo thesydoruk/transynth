@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { isSecondaryPluginPath } from '../import/mod/importAnchor';
-import { isPlugin } from '../import/mod/discovery';
 import type { VortexInventoryFile } from './types';
 import { toPosixRel } from './hashSubset';
 import {
@@ -43,31 +42,20 @@ const listTranslatableFiles = (root: string, options: VortexSyncFileOptions): st
   return files;
 };
 
-export const collectPluginUnitFiles = (
+/**
+ * Everything a Vortex mod folder ships that the server can translate: every
+ * plugin (not the installer's optional copies), every text-bearing archive and
+ * the loose text. One folder is one upload, unpacked once on the server, where
+ * each plugin then becomes its own mod.
+ */
+export const collectFolderUnitFiles = (
   folderRoot: string,
-  pluginPath: string | null,
   options: VortexSyncFileOptions = {},
-): VortexInventoryFile[] => {
-  const all = listTranslatableFiles(folderRoot, options);
-  const stem = pluginPath
-    ? path.basename(pluginPath, path.extname(pluginPath)).toLowerCase()
-    : null;
-
-  const picked = all.filter((absPath) => {
-    const base = path.basename(absPath).toLowerCase();
-    const ext = path.extname(base);
-    if (pluginPath && path.resolve(absPath) === path.resolve(pluginPath)) return true;
-    if (!stem) return true;
-    if (ext === '.ba2' || ext === '.bsa') return base.startsWith(stem);
-    if (isPlugin(base) && path.resolve(absPath) !== path.resolve(pluginPath ?? '')) return false;
-    return true;
-  });
-
-  return picked.map((absPath) => ({
+): VortexInventoryFile[] =>
+  listTranslatableFiles(folderRoot, options).map((absPath) => ({
     absPath,
     relPath: toPosixRel(folderRoot, absPath),
   }));
-};
 
 /**
  * The game's own files of one official plugin: the plugin, its archives, its

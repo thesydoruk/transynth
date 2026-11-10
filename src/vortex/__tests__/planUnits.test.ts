@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { vortexUnitKey } from '../groupKey';
-import { findPlanUnit, unitsNeverUploaded } from '../planUnits';
+import { findPlanUnit, unitJobIds, unitsNeverUploaded } from '../planUnits';
 import type { VortexPlanUnit } from '../types';
 
 // A real unitId from production: 101 characters, past the router's default limit.
@@ -45,6 +45,21 @@ describe('findPlanUnit', () => {
 
   it('finds nothing for an unknown key', () => {
     expect(findPlanUnit(units, vortexUnitKey('mods:y:y'))).toBeUndefined();
+  });
+});
+
+describe('unitJobIds', () => {
+  it('lists every plugin job of a folder upload', () => {
+    const jobs = [
+      { plugin: 'SS2.esm', jobId: 181 },
+      { plugin: 'SS2_XPAC_Chapter2.esm', jobId: 182 },
+    ];
+    expect(unitJobIds(unit({ existingJobId: 181, jobs }))).toEqual([181, 182]);
+  });
+
+  it('falls back to the single job of an older plan', () => {
+    expect(unitJobIds(unit({ existingJobId: 7 }))).toEqual([7]);
+    expect(unitJobIds(unit({}))).toEqual([]);
   });
 });
 

@@ -7,4 +7,7 @@ export const ensureModImportSchema = async (db: Tx) => {
   await db.query('ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS extract_dir TEXT');
   await db.query('ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS archive_manifest JSONB');
   await db.query('ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS vortex_group_id INTEGER');
+  await db.query(
+    'ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS import_extras BOOLEAN NOT NULL DEFAULT TRUE',
+  );
 };

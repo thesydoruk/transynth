@@ -39,6 +39,13 @@ export const patchVortexPlanUnit = async (
   );
 };
 
+/** The jobs an upload registered: one per plugin of the folder, or the one job. */
+export const unitJobIds = (unit: VortexPlanUnit): number[] => {
+  const fromJobs = (unit.jobs ?? []).map((row) => row.jobId).filter((id) => id > 0);
+  if (fromJobs.length > 0) return [...new Set(fromJobs)];
+  return unit.existingJobId ? [unit.existingJobId] : [];
+};
+
 /**
  * Units the plan asked the agent to upload that the server never registered
  * and never refused: their upload did not reach the route, so importing the

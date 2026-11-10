@@ -14,6 +14,21 @@ import { deriveModNameFromFileName } from '../jobs';
 
 export type { ModImportRunContext } from '../../../games/contract';
 import type { ModImportRunContext } from '../../../games/contract';
+import type { ModImportJob } from '../types';
+
+/**
+ * ` · <plugin>` for one plugin of a Vortex folder that ships several (its job
+ * hash is `v<group>:<content>:<stem>`), so their mods do not all carry the
+ * folder's name. Empty for every other job.
+ */
+export const vortexPluginNameSuffix = (
+  job: Pick<ModImportJob, 'file_hash' | 'esp_path'>,
+): string => {
+  if (!/^v\d+:[^:]+:[^:]+$/.test(job.file_hash) || !job.esp_path) return '';
+  const base = job.esp_path.split(/[\\/]/).pop() ?? '';
+  const stem = base.replace(/\.(esp|esm|esl)$/i, '');
+  return stem ? ` · ${stem}` : '';
+};
 
 /**
  * Create (or reuse) the `mods` row this import writes into, and link the job
@@ -22,10 +37,11 @@ import type { ModImportRunContext } from '../../../games/contract';
 export const ensureImportModId = async (ctx: ModImportRunContext): Promise<number> => {
   if (ctx.importModId != null) return ctx.importModId;
 
-  const modName =
+  const folderName =
     ctx.job.nexus_mod_name?.trim() ||
     (ctx.job.source_folder ? parseVortexModFolder(ctx.job.source_folder)?.modName : null) ||
     deriveModNameFromFileName(ctx.job.file_name);
+  const modName = folderName + vortexPluginNameSuffix(ctx.job);
   const versionHash = ctx.job.file_hash.includes(':')
     ? ctx.job.file_hash.slice(ctx.job.file_hash.indexOf(':') + 1)
     : ctx.job.file_hash;

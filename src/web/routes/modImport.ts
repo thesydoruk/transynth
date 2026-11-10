@@ -10,7 +10,11 @@ import { DEFAULT_GAME_ID, isGameId } from '../../games/registry';
 import type { GameId } from '../../types';
 import { log } from '../../logger';
 import { deleteModData } from '../data/queries';
-import { deleteModsCompletely, scheduleModDeleteFileCleanup } from '../../import/mod/deleteMods';
+import {
+  deleteModsCompletely,
+  findExtractRootsInUse,
+  scheduleModDeleteFileCleanup,
+} from '../../import/mod/deleteMods';
 import { snapshotModsToReference } from '../services/referenceHooks';
 import {
   ensureModImportSchema,
@@ -218,6 +222,7 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
     scheduleModDeleteFileCleanup(
       [job],
       job.mod_id != null ? new Map([[job.mod_id, modAbsPath]]) : new Map(),
+      await findExtractRootsInUse(db, [job]),
     );
 
     return { ok: true };

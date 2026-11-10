@@ -3,6 +3,7 @@
  * or one fan-out stage (`tm`, `llm`, `verify`, `skip`, `gender`, `voice`) that
  * enqueues the per-mod jobs one at a time — see fanOutStage.ts.
  */
+import path from 'node:path';
 import type { Tx } from '../../../../src/db';
 import { carryOverTranslations } from '../../../../src/web/data/queries/importDiff';
 import { reuseSynthesizedVoice } from '../../../../src/voice/reuseSynthesizedVoice';
@@ -17,7 +18,7 @@ import {
   upsertCurrentGameRelease,
   type VortexSyncRunRow,
 } from '../../../../src/vortex/db';
-import { unitsNeverUploaded } from '../../../../src/vortex/planUnits';
+import { unitJobIds, unitsNeverUploaded } from '../../../../src/vortex/planUnits';
 import { findPreviousVortexMod, markCurrentVortexMods } from '../../../../src/vortex/dbFamily';
 import {
   isFanOutStage,
@@ -62,19 +63,22 @@ const runImportStage = async (db: Tx, run: VortexSyncRunRow): Promise<number[]> 
   const importedModIds: number[] = [];
   for (const unit of planUnits(run)) {
     if (unit.action === 'skip' && unit.existingModId) {
-      importedModIds.push(unit.existingModId);
+      importedModIds.push(...(unit.existingModIds ?? [unit.existingModId]));
       continue;
     }
-    if (!unit.existingJobId) continue;
-    const job = await getModImportJob(db, unit.existingJobId);
-    if (!job) continue;
-    if (job.status === 'completed' && job.mod_id) {
-      importedModIds.push(job.mod_id);
-      continue;
+    // A folder with several plugins registered one job per plugin.
+    for (const jobId of unitJobIds(unit)) {
+      const job = await getModImportJob(db, jobId);
+      if (!job) continue;
+      if (job.status === 'completed' && job.mod_id) {
+        importedModIds.push(job.mod_id);
+        continue;
+      }
+      const plugin = job.esp_path ? ` · ${path.basename(job.esp_path)}` : '';
+      log.info(`Vortex sync: importing ${unit.name}${plugin} (job #${job.id})`);
+      const result = await runModImport(db, job);
+      if (result.mod_id) importedModIds.push(result.mod_id);
     }
-    log.info(`Vortex sync: importing ${unit.name} (job #${job.id})`);
-    const result = await runModImport(db, job);
-    if (result.mod_id) importedModIds.push(result.mod_id);
   }
   // What arrived is imported (a retry then skips it instead of uploading it
   // again); a unit that never arrived fails the run so the agent syncs again.

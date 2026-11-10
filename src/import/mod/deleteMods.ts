@@ -9,6 +9,7 @@ import { log } from '../../logger';
 import { PATHS } from '../../paths';
 import {
   isOwnedModStoragePath,
+  isVortexExtractRoot,
   modImportLocalizeRoot,
   modImportPackOutputDir,
   modUploadedFilePath,
@@ -26,36 +27,43 @@ type ModImportJobRow = Pick<ModImportJob, 'id' | 'file_name' | 'esp_path' | 'mod
 const collectDeletePaths = (
   jobs: ModImportJobRow[],
   modAbsPaths: Map<number, string | null>,
+  keptRoots: ReadonlySet<string>,
 ): { filePaths: Set<string>; extractedDirs: Set<string> } => {
   const filePaths = new Set<string>();
   const extractedDirs = new Set<string>();
+  const kept = new Set([...keptRoots].map((root) => path.resolve(root)));
+  /** The tree a path lives in (null: none), or KEEP when another mod still imports from it. */
+  const KEEP = Symbol('keep');
+  const ownRoot = (filePath: string): string | null | typeof KEEP => {
+    const root = resolveModImportExtractRoot(filePath);
+    if (root && kept.has(path.resolve(root))) return KEEP;
+    return root;
+  };
 
   for (const job of jobs) {
-    filePaths.add(modUploadedFilePath(job.file_name));
-    if (job.esp_path) {
-      filePaths.add(job.esp_path);
-      const fromJobEsp = resolveModImportExtractRoot(job.esp_path);
-      if (fromJobEsp) {
-        extractedDirs.add(fromJobEsp);
-        extractedDirs.add(modImportLocalizeRoot(fromJobEsp));
-      }
+    const root = job.esp_path ? ownRoot(job.esp_path) : null;
+    if (root === KEEP) continue;
+    // A Vortex pack is stored as `<tree>.zip` beside its tree, never under uploads/mod.
+    if (root && isVortexExtractRoot(root)) filePaths.add(`${root}.zip`);
+    else filePaths.add(modUploadedFilePath(job.file_name));
+    if (job.esp_path) filePaths.add(job.esp_path);
+    if (root) {
+      extractedDirs.add(root);
+      extractedDirs.add(modImportLocalizeRoot(root));
     }
   }
 
   for (const [modId, absPath] of modAbsPaths) {
-    if (absPath) {
-      filePaths.add(absPath);
-      const fromModAbs = resolveModImportExtractRoot(absPath);
-      if (fromModAbs) extractedDirs.add(fromModAbs);
-    }
     extractedDirs.add(path.join(PATHS.pexDecompile, String(modId)));
     extractedDirs.add(path.join(PATHS.voicePreview, String(modId)));
-    if (absPath) {
-      const extractRoot = resolveModImportExtractRoot(absPath);
-      if (extractRoot) {
-        extractedDirs.add(modImportPackOutputDir(extractRoot));
-        extractedDirs.add(modImportLocalizeRoot(extractRoot));
-      }
+    if (!absPath) continue;
+    const root = ownRoot(absPath);
+    if (root === KEEP) continue;
+    filePaths.add(absPath);
+    if (root) {
+      extractedDirs.add(root);
+      extractedDirs.add(modImportPackOutputDir(root));
+      extractedDirs.add(modImportLocalizeRoot(root));
     }
   }
 
@@ -63,15 +71,43 @@ const collectDeletePaths = (
 };
 
 /**
+ * The extract trees among `jobs` that import jobs left in the DB still read
+ * from: the plugins of one Vortex folder share one tree, and deleting one of
+ * those mods must not pull the files from under the others.
+ */
+export const findExtractRootsInUse = async (
+  db: Tx,
+  jobs: ModImportJobRow[],
+): Promise<Set<string>> => {
+  const roots = [
+    ...new Set(
+      jobs
+        .map((job) => (job.esp_path ? resolveModImportExtractRoot(job.esp_path) : null))
+        .filter((root): root is string => root != null),
+    ),
+  ];
+  const inUse = new Set<string>();
+  for (const root of roots) {
+    const { rows } = await db.query(
+      `SELECT 1 FROM mod_imports WHERE starts_with(esp_path, $1) LIMIT 1`,
+      [root + path.sep],
+    );
+    if (rows.length > 0) inUse.add(root);
+  }
+  return inUse;
+};
+
+/**
  * Remove upload/extract/PEX cache files for deleted mods. Plugin paths outside
  * mod storage belong to the user (scan:mods registers them in place) and are
- * left alone.
+ * left alone, and so is a tree in `keptRoots` (other mods still use it).
  */
 export const removeModDeleteFiles = async (
   jobs: ModImportJobRow[],
   modAbsPaths: Map<number, string | null>,
+  keptRoots: ReadonlySet<string> = new Set(),
 ): Promise<void> => {
-  const { filePaths, extractedDirs } = collectDeletePaths(jobs, modAbsPaths);
+  const { filePaths, extractedDirs } = collectDeletePaths(jobs, modAbsPaths, keptRoots);
 
   for (const filePath of filePaths) {
     if (!isOwnedModStoragePath(filePath)) {
@@ -89,9 +125,10 @@ export const removeModDeleteFiles = async (
 export const scheduleModDeleteFileCleanup = (
   jobs: ModImportJobRow[],
   modAbsPaths: Map<number, string | null>,
+  keptRoots: ReadonlySet<string> = new Set(),
 ): void => {
   setImmediate(() => {
-    void removeModDeleteFiles(jobs, modAbsPaths);
+    void removeModDeleteFiles(jobs, modAbsPaths, keptRoots);
   });
 };
 
@@ -149,7 +186,8 @@ export const deleteModsCompletely = async (
     await client.query(`DELETE FROM mod_imports WHERE mod_id = ANY($1::int[])`, [existingIds]);
     await deleteModGraphAndRow(client, existingIds);
 
-    scheduleModDeleteFileCleanup(importJobs, modAbsPaths);
+    const keptRoots = await findExtractRootsInUse(client, importJobs);
+    scheduleModDeleteFileCleanup(importJobs, modAbsPaths, keptRoots);
 
     log.info(
       `deleteModsCompletely modIds=${existingIds.join(',')} deletedRecords=${deletedRecords} referencePromoted=${referencePromoted} ms=${Date.now() - started}`,

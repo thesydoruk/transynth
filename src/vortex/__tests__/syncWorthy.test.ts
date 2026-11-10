@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { collectNamedPluginFiles, collectPluginUnitFiles } from '../collectSubset';
+import { collectFolderUnitFiles, collectNamedPluginFiles } from '../collectSubset';
 import { scanStagingUnits } from '../scanStaging';
 import {
   hasVortexImportAnchor,
@@ -104,7 +104,7 @@ describe('vortex sync file selection', () => {
       writeGnrlStub(path.join(folder, 'CoolMod - Main.ba2'));
       writeGnrlStub(path.join(folder, 'CoolMod - Meshes.ba2'));
 
-      const files = collectPluginUnitFiles(folder, path.join(folder, 'CoolMod.esp'));
+      const files = collectFolderUnitFiles(folder);
       expect(files.map((f) => f.relPath).sort()).toEqual([
         'CoolMod - Main.ba2',
         'CoolMod.esp',

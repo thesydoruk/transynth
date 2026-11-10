@@ -3,7 +3,9 @@ import path from 'node:path';
 import { filterPrimaryPlugins } from '../import/mod/importAnchor';
 import { discoverModFiles, isPlugin } from '../import/mod/discovery';
 import { parseVortexModFolder } from '../utils/vortexFolder';
-import { collectPluginUnitFiles } from './collectSubset';
+import { readPluginMasterNames } from '../formats/esp';
+import { collectFolderUnitFiles } from './collectSubset';
+import { comparePluginNames, pickPrimaryPlugin } from './primaryPlugin';
 import { merkleContentHash, type FileHasher } from './hashSubset';
 import { hasVortexImportAnchor, type VortexSyncFileOptions } from './syncWorthy';
 import type { VortexInventoryUnit } from './types';
@@ -29,11 +31,15 @@ export const isTransynthPackFolderName = (folderName: string): boolean =>
 export const isTransynthOutputFolder = (folderPath: string, folderName: string): boolean =>
   isTransynthPackFolderName(folderName) || fs.existsSync(path.join(folderPath, UA_SOUND_PACK_ESP));
 
-const unitIdFor = (folderName: string, pluginFileName: string | null): string => {
-  const stem = pluginFileName
-    ? path.basename(pluginFileName, path.extname(pluginFileName))
-    : 'folder';
-  return `mods:${folderName}:${stem}`.toLowerCase();
+/** One unit per staging folder, whatever number of plugins it ships. */
+const unitIdFor = (folderName: string): string => `mods:${folderName}`.toLowerCase();
+
+const readMasters = (pluginPath: string): string[] => {
+  try {
+    return readPluginMasterNames(pluginPath);
+  } catch {
+    return [];
+  }
 };
 
 export const scanStagingUnits = async (
@@ -58,33 +64,31 @@ export const scanStagingUnits = async (
     const folderPath = path.join(stagingPath, entry.name);
     if (isTransynthOutputFolder(folderPath, entry.name)) continue;
     const vortex = parseVortexModFolder(entry.name);
-    const discovered = discoverModFiles(folderPath);
-    const primary = filterPrimaryPlugins(discovered.plugins);
-    const pluginTargets = primary.length > 0 ? primary : [null];
+    const pluginPaths = filterPrimaryPlugins(discoverModFiles(folderPath).plugins);
+    const plugins = pluginPaths.map((p) => path.basename(p)).sort(comparePluginNames);
 
-    for (const pluginPath of pluginTargets) {
-      const files = collectPluginUnitFiles(folderPath, pluginPath, options);
-      if (files.length === 0) continue;
-      if (!hasVortexImportAnchor(files.map((file) => file.relPath))) continue;
-      const pluginFileName = pluginPath ? path.basename(pluginPath) : null;
-      const pluginStem = pluginFileName
-        ? path.basename(pluginFileName, path.extname(pluginFileName))
-        : null;
-      const name = vortex?.modName || pluginStem || entry.name;
-      const contentHash = await merkleContentHash(files, hashFile);
-      units.push({
-        unitId: unitIdFor(entry.name, pluginFileName),
-        channel: 'mods',
-        name,
-        pluginStem,
-        pluginFileName,
-        sourceFolder: entry.name,
-        nexusModId: vortex?.nexusModId ?? null,
-        nexusModName: vortex?.modName ?? null,
-        contentHash,
-        files,
-      });
-    }
+    const files = collectFolderUnitFiles(folderPath, options);
+    if (files.length === 0) continue;
+    if (!hasVortexImportAnchor(files.map((file) => file.relPath))) continue;
+    const pluginFileName = pickPrimaryPlugin(
+      pluginPaths.map((p) => ({ fileName: path.basename(p), masters: readMasters(p) })),
+    );
+    const pluginStem = pluginFileName
+      ? path.basename(pluginFileName, path.extname(pluginFileName))
+      : null;
+    units.push({
+      unitId: unitIdFor(entry.name),
+      channel: 'mods',
+      name: vortex?.modName || pluginStem || entry.name,
+      pluginStem,
+      pluginFileName,
+      ...(plugins.length > 1 ? { plugins } : {}),
+      sourceFolder: entry.name,
+      nexusModId: vortex?.nexusModId ?? null,
+      nexusModName: vortex?.modName ?? null,
+      contentHash: await merkleContentHash(files, hashFile),
+      files,
+    });
   }
 
   units.sort((a, b) => a.unitId.localeCompare(b.unitId, 'en'));
