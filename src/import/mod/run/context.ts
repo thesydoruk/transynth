@@ -8,6 +8,7 @@
 import { upsertMod, upsertVortexMod } from '../../../db';
 import { logImport } from '../../../logging/loggers';
 import { parseVortexModFolder } from '../../../utils/vortexFolder';
+import { vortexPluginKey } from '../../../vortex/family';
 import { inferModVersionLabel } from '../../../vortex/versionLabel';
 import { deriveModNameFromFileName } from '../jobs';
 
@@ -58,6 +59,7 @@ export const ensureImportModId = async (ctx: ModImportRunContext): Promise<numbe
           groupId: ctx.job.vortex_group_id,
           channel,
           versionLabel,
+          vortexPlugin: vortexPluginKey(ctx.anchorPath),
           nexus: {
             nexusModId: ctx.job.nexus_mod_id ?? undefined,
             nexusName: ctx.job.nexus_mod_name ?? undefined,

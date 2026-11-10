@@ -20,10 +20,10 @@ import {
   listCurrentGroupModIds,
   listGameReleases,
   listVortexGroups,
-  planVortexUnits,
   updateVortexSyncRun,
 } from '../../vortex/db';
 import { findPlanUnit, patchVortexPlanUnit } from '../../vortex/planUnits';
+import { planVortexUnits } from '../../vortex/dbFamily';
 import { ensureVortexSchema } from '../../vortex/schema';
 import { registerVortexPack, vortexExtractDir } from '../../vortex/registerPack';
 import { scopedVortexFileHash, vortexGroupLabel } from '../../vortex/groupKey';

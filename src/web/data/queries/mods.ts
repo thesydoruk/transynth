@@ -53,6 +53,7 @@ export const listMods = async (
       channel: string | null;
       game_release_id: number | null;
       version_label: string | null;
+      vortex_plugin: string | null;
       is_current: boolean;
       created_at: Date;
       record_count: string;
@@ -75,6 +76,7 @@ export const listMods = async (
         m.channel,
         m.game_release_id,
         m.version_label,
+        m.vortex_plugin,
         COALESCE(m.is_current, TRUE) AS is_current,
         m.created_at,
         COALESCE(st.record_count, 0)::bigint AS record_count,

@@ -87,8 +87,19 @@ export const ensureVortexSchema = async (db: Tx): Promise<void> => {
   await db.query(`
     CREATE INDEX IF NOT EXISTS idx_mods_vortex_current
       ON mods(vortex_group_id, is_current) WHERE vortex_group_id IS NOT NULL`);
+  // The plugin a Vortex mod is anchored on, lower-cased: its version family (see family.ts).
+  await db.query(`ALTER TABLE mods ADD COLUMN IF NOT EXISTS vortex_plugin TEXT`);
+  await db.query(VORTEX_PLUGIN_BACKFILL_SQL);
   await backfillVortexModVersions(db);
 };
+
+// chr(92) is a backslash: an anchor path may come from Windows.
+const VORTEX_PLUGIN_BACKFILL_SQL = `
+  UPDATE mods
+  SET vortex_plugin = lower(regexp_replace(replace(abs_path, chr(92), '/'), '^.*/', ''))
+  WHERE vortex_group_id IS NOT NULL
+    AND vortex_plugin IS NULL
+    AND abs_path ~* '[.](esp|esm|esl)$'`;
 
 const backfillVortexModVersions = async (db: Tx): Promise<void> => {
   const { rows } = await db.query<{

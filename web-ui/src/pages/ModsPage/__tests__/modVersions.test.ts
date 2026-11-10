@@ -51,4 +51,41 @@ describe('groupModVersions', () => {
     });
     expect(groupModVersions([old, current])).toEqual([{ current, previous: [old] }]);
   });
+
+  // FallUI ships several plugins in one folder: same Nexus id, separate mods.
+  it('keeps plugins that share a Nexus id apart', () => {
+    const inventory = mod({
+      id: 1,
+      name: 'FallUI - Inventory',
+      nexus_mod_id: 48758,
+      vortex_plugin: 'fallui - inventory.esp',
+    });
+    const vrPatch = mod({
+      id: 2,
+      name: 'FallUI - VR-Patch',
+      nexus_mod_id: 48758,
+      vortex_plugin: 'fallui - vr-patch.esp',
+    });
+    expect(groupModVersions([inventory, vrPatch])).toEqual([
+      { current: inventory, previous: [] },
+      { current: vrPatch, previous: [] },
+    ]);
+  });
+
+  it('nests versions of one plugin even when the Nexus id changed', () => {
+    const current = mod({
+      id: 2,
+      name: 'Workshop Plus',
+      nexus_mod_id: 1234,
+      vortex_plugin: 'workshopplus.esp',
+      created_at: '2026-02-01T00:00:00.000Z',
+    });
+    const old = mod({
+      id: 1,
+      name: 'Workshop Plus',
+      vortex_plugin: 'WorkshopPlus.esp',
+      is_current: false,
+    });
+    expect(groupModVersions([old, current])).toEqual([{ current, previous: [old] }]);
+  });
 });

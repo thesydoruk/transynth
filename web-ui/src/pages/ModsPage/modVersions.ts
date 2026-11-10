@@ -13,8 +13,11 @@ export const formatModDisplayName = (mod: {
   return version ? `${mod.name} · ${version}` : mod.name;
 };
 
+// A plugin is one load-order slot, so it names the family even when the plugins
+// of one Vortex folder share a Nexus id; a plugin-less mod keeps Nexus id / name.
 const familyKey = (mod: Mod): string => {
   const channel = mod.channel ?? '';
+  if (mod.vortex_plugin) return `${channel}:plugin:${mod.vortex_plugin.toLowerCase()}`;
   if (mod.nexus_mod_id) return `${channel}:nexus:${mod.nexus_mod_id}`;
   return `${channel}:name:${mod.name.toLowerCase()}`;
 };
@@ -24,7 +27,7 @@ const createdAt = (mod: Mod): number => {
   return Number.isFinite(ts) ? ts : 0;
 };
 
-/** Current version first; older siblings of the same Nexus id / name go under it. */
+/** Current version first; older siblings of the same plugin / Nexus id / name go under it. */
 export const groupModVersions = (mods: Mod[]): ModVersionGroup[] => {
   const buckets = new Map<string, Mod[]>();
   for (const mod of mods) {

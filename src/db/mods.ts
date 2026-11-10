@@ -51,6 +51,8 @@ export const upsertVortexMod = async (
     channel: 'mods' | 'game';
     gameReleaseId?: number | null;
     versionLabel?: string | null;
+    /** Lower-cased plugin file the mod is anchored on; null when it has none. */
+    vortexPlugin?: string | null;
     nexus?: { nexusModId?: number; nexusName?: string };
   },
 ): Promise<number> => {
@@ -58,12 +60,13 @@ export const upsertVortexMod = async (
   const { rows } = await db.query(
     `INSERT INTO mods(
        name, abs_path, version_hash, game, nexus_mod_id, nexus_name,
-       origin, vortex_group_id, channel, game_release_id, version_label
+       origin, vortex_group_id, channel, game_release_id, version_label, vortex_plugin
      )
-     VALUES ($1, $2, $3, $4, $5, $6, 'vortex', $7, $8, $9, $10)
+     VALUES ($1, $2, $3, $4, $5, $6, 'vortex', $7, $8, $9, $10, $11)
      ON CONFLICT (vortex_group_id, name, version_hash) WHERE vortex_group_id IS NOT NULL
      DO UPDATE SET
        abs_path = EXCLUDED.abs_path,
+       vortex_plugin = EXCLUDED.vortex_plugin,
        game = EXCLUDED.game,
        channel = EXCLUDED.channel,
        game_release_id = COALESCE(EXCLUDED.game_release_id, mods.game_release_id),
@@ -82,6 +85,7 @@ export const upsertVortexMod = async (
       params.channel,
       params.gameReleaseId ?? null,
       params.versionLabel ?? null,
+      params.vortexPlugin ?? null,
     ],
   );
   return rows[0].id;

@@ -28,17 +28,6 @@ const planExportOrder = (run: VortexSyncRunRow): VortexExportOrder | null => {
   return isVortexExportOrder(raw?.exportOrder) ? raw.exportOrder : null;
 };
 
-const pluginNameForRow = (
-  row: { name: string; abs_path: string | null; source_folder: string | null },
-  units: VortexPlanUnit[],
-): string | null => {
-  const byFolder = row.source_folder
-    ? units.find((unit) => unit.sourceFolder === row.source_folder)
-    : undefined;
-  if (byFolder?.pluginFileName) return byFolder.pluginFileName;
-  return units.find((unit) => unit.name === row.name)?.pluginFileName ?? null;
-};
-
 export const runExportStage = async (
   db: Tx,
   run: VortexSyncRunRow,
@@ -53,9 +42,10 @@ export const runExportStage = async (
   // A run started without an order (an agent-planned import, a UI button)
   // exports with the load order the agent last reported for the group.
   const exportOrder = planExportOrder(run) ?? (await getGroupExportOrder(db, run.vortex_group_id));
-  const units = planUnits(run);
   const rows = await listVortexExportModRows(db, currentIds);
-  const refs = rows.map((row) => ({ ...row, pluginFileName: pluginNameForRow(row, units) }));
+  // Each mod ranks by its own plugin: plugins of one folder are separate mods,
+  // and a plugin-less mod falls back to its folder's place in the deployment.
+  const refs = rows.map((row) => ({ ...row, pluginFileName: row.vortex_plugin }));
   const enabled = filterVortexLangpackMods(refs, exportOrder);
   if (enabled.length === 0) throw new Error('No enabled Vortex mods to export');
   if (exportOrder && enabled.length !== refs.length) {
