@@ -1,4 +1,5 @@
 export { collectModPexSources } from './pexSources';
+export { listLoosePexFiles, pexScriptBaseName, pexScriptKeyFromRelPath } from './pexScriptKey';
 export type { PexSourceFile } from './pexSources';
 export {
   formatPexStringContext,

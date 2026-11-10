@@ -1,14 +1,16 @@
 /**
  * Discover compiled Papyrus scripts (.pex) next to a mod plugin.
  *
- * Mirrors the import-side PEX scan: GNRL BA2 archives first,
- * then loose `Scripts/*.pex` files (loose wins on name collision).
+ * Mirrors the import-side PEX scan: GNRL BA2 archives first, then loose
+ * `Scripts/**.pex` files at any depth (loose wins on name collision). Scripts
+ * in a namespace folder are keyed `namespace:name` (see `pexScriptKey`).
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { BsaReader } from '../bsa';
 import { getBa2Reader, isBa2GnrArchive } from '../ba2';
 import { parsePexBuffer, pexScriptKeyFromInfo } from './pexParser';
+import { listLoosePexFiles, pexScriptKeyFromRelPath } from './pexScriptKey';
 
 export type PexSourceFile = {
   /** Lowercase script key matching DB `PEX\\{key}` record paths. */
@@ -52,77 +54,51 @@ const listBsaFilesInDir = (modDir: string): string[] => {
   }
 };
 
-const loadPexFromBa2 = (ba2Path: string): PexSourceFile[] => {
-  const reader = getBa2Reader(ba2Path);
-  const result: PexSourceFile[] = [];
-
-  for (const entry of reader.listByExt('pex')) {
-    try {
-      const data = reader.extractEntry(entry);
-      const { info } = parsePexBuffer(data);
-      const scriptKey = pexScriptKeyFromInfo(info).toLowerCase();
-      if (!scriptKey) continue;
-      result.push({
-        scriptKey,
-        archivePath: normalizeArchivePath(entry.name),
-        data,
-      });
-    } catch {
-      // Skip unreadable entries — export proceeds with whatever parses cleanly.
-    }
+/** One script buffer → source entry, or null when it does not parse. */
+const toPexSource = (archivePath: string, data: Buffer): PexSourceFile | null => {
+  try {
+    const { info } = parsePexBuffer(data);
+    const scriptKey = pexScriptKeyFromRelPath(archivePath, pexScriptKeyFromInfo(info));
+    if (!scriptKey) return null;
+    return { scriptKey: scriptKey.toLowerCase(), archivePath, data };
+  } catch {
+    // Skip unreadable entries — export proceeds with whatever parses cleanly.
+    return null;
   }
-
-  return result;
 };
 
-const loadPexFromBsa = (bsaPath: string): PexSourceFile[] => {
-  const reader = new BsaReader(bsaPath);
+type PexArchiveReader = {
+  listByExt(ext: string): Array<{ name: string }>;
+  extractEntry(entry: { name: string }): Buffer;
+};
+
+const loadPexFromArchive = (reader: PexArchiveReader): PexSourceFile[] => {
   const result: PexSourceFile[] = [];
-
   for (const entry of reader.listByExt('pex')) {
+    let data: Buffer;
     try {
-      const data = reader.extractEntry(entry);
-      const { info } = parsePexBuffer(data);
-      const scriptKey = pexScriptKeyFromInfo(info).toLowerCase();
-      if (!scriptKey) continue;
-      result.push({
-        scriptKey,
-        archivePath: normalizeArchivePath(entry.name),
-        data,
-      });
+      data = reader.extractEntry(entry);
     } catch {
-      // Skip unreadable entries.
+      continue;
     }
+    const source = toPexSource(normalizeArchivePath(entry.name), data);
+    if (source) result.push(source);
   }
-
   return result;
 };
 
 const loadPexFromLooseFiles = (modDir: string): PexSourceFile[] => {
-  const scriptsDir = path.join(modDir, 'Scripts');
-  let files: string[];
-  try {
-    files = fs.readdirSync(scriptsDir).filter((f) => f.toLowerCase().endsWith('.pex'));
-  } catch {
-    return [];
-  }
-
   const result: PexSourceFile[] = [];
-  for (const file of files) {
+  for (const file of listLoosePexFiles(modDir)) {
+    let data: Buffer;
     try {
-      const data = fs.readFileSync(path.join(scriptsDir, file));
-      const { info } = parsePexBuffer(data);
-      const scriptKey = pexScriptKeyFromInfo(info).toLowerCase() || file.replace(/\.pex$/i, '');
-      result.push({
-        scriptKey: scriptKey.toLowerCase(),
-        archivePath: `Scripts\\${file}`,
-        data,
-      });
+      data = fs.readFileSync(file.absPath);
     } catch {
-      // Skip unreadable files.
+      continue;
     }
+    const source = toPexSource(file.archivePath, data);
+    if (source) result.push(source);
   }
-
   return result;
 };
 
@@ -136,13 +112,13 @@ export const collectModPexSources = (modPath: string): Map<string, PexSourceFile
   const merged = new Map<string, PexSourceFile>();
 
   for (const ba2Path of listCompanionGnrlBa2ForPlugin(modPath)) {
-    for (const source of loadPexFromBa2(ba2Path)) {
+    for (const source of loadPexFromArchive(getBa2Reader(ba2Path))) {
       if (!merged.has(source.scriptKey)) merged.set(source.scriptKey, source);
     }
   }
 
   for (const bsaPath of listBsaFilesInDir(modDir)) {
-    for (const source of loadPexFromBsa(bsaPath)) {
+    for (const source of loadPexFromArchive(new BsaReader(bsaPath))) {
       if (!merged.has(source.scriptKey)) merged.set(source.scriptKey, source);
     }
   }

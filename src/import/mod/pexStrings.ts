@@ -10,6 +10,8 @@ import {
   serializePexStoredContext,
   extractQuotedStringLiteralsFromPsc,
   isPexLiteralTranslatable,
+  listLoosePexFiles,
+  pexScriptKeyFromRelPath,
   type PexStringUsage,
 } from '../../formats/pex';
 import { CONFIG } from '../../config';
@@ -49,6 +51,23 @@ const pexBundleFromParse = (
   })),
 });
 
+/** Parse one script; null when it holds no strings or does not parse. */
+const parsePexScript = (
+  archivePath: string,
+  data: Buffer,
+): { scriptKey: string; bundle: PexScriptStrings } | null => {
+  try {
+    const parsed = parsePexBuffer(data);
+    if (parsed.strings.length === 0) return null;
+    const scriptKey = pexScriptKeyFromRelPath(archivePath, pexScriptKeyFromInfo(parsed.info));
+    if (!scriptKey) return null;
+    return { scriptKey, bundle: pexBundleFromParse(parsed, archivePath, data) };
+  } catch (err) {
+    logImport.debug(`PEX: skipping "${archivePath}": ${err instanceof Error ? err.message : err}`);
+    return null;
+  }
+};
+
 /**
  * Extract translatable strings from all .pex script files inside a BA2 archive.
  *
@@ -59,52 +78,39 @@ const loadPexStringsFromBA2 = (ba2Path: string): Map<string, PexScriptStrings> =
   const result = new Map<string, PexScriptStrings>();
 
   for (const entry of reader.listByExt('pex')) {
+    let buf: Buffer;
     try {
-      const buf = reader.extractEntry(entry);
-      const parsed = parsePexBuffer(buf);
-      if (parsed.strings.length === 0) continue;
-      const scriptKey = pexScriptKeyFromInfo(parsed.info) || entry.name.replace(/\.pex$/i, '');
-      result.set(scriptKey, pexBundleFromParse(parsed, entry.name, buf));
+      buf = reader.extractEntry(entry);
     } catch (err) {
       logImport.debug(`PEX: skipping "${entry.name}": ${err instanceof Error ? err.message : err}`);
+      continue;
     }
+    const script = parsePexScript(entry.name, buf);
+    if (script) result.set(script.scriptKey, script.bundle);
   }
 
   return result;
 };
 
 /**
- * Extract translatable strings from loose .pex files found under
- * `<modDir>/Scripts/` on disk.
+ * Extract translatable strings from loose .pex files under `<modDir>/Scripts/`,
+ * at any depth: an unpacked archive leaves namespaced scripts in subfolders
+ * (`Scripts/SimSettlementsV2/Quests/…`).
  *
  * @param modDir - Directory containing the mod files (parent of the .esp)
  */
 const loadPexStringsFromLooseFiles = (modDir: string): Map<string, PexScriptStrings> => {
-  const scriptsDir = path.join(modDir, 'Scripts');
   const result = new Map<string, PexScriptStrings>();
-  if (!fs.existsSync(scriptsDir)) return result;
-
-  let files: string[];
-  try {
-    files = fs.readdirSync(scriptsDir).filter((f) => f.toLowerCase().endsWith('.pex'));
-  } catch {
-    return result;
-  }
-
-  for (const file of files) {
+  for (const file of listLoosePexFiles(modDir)) {
+    let buf: Buffer;
     try {
-      const buf = fs.readFileSync(path.join(scriptsDir, file));
-      const parsed = parsePexBuffer(buf);
-      if (parsed.strings.length === 0) continue;
-      const scriptKey = pexScriptKeyFromInfo(parsed.info) || file.replace(/\.pex$/i, '');
-      result.set(scriptKey, pexBundleFromParse(parsed, file, buf));
-    } catch (err) {
-      logImport.debug(
-        `PEX: skipping loose file "${file}": ${err instanceof Error ? err.message : err}`,
-      );
+      buf = fs.readFileSync(file.absPath);
+    } catch {
+      continue;
     }
+    const script = parsePexScript(file.archivePath, buf);
+    if (script) result.set(script.scriptKey, script.bundle);
   }
-
   return result;
 };
 
@@ -128,14 +134,23 @@ const collectPexStrings = async (espPath: string): Promise<Map<string, PexScript
     },
   );
 
+  // The game matches script names without case, and an archive may spell the
+  // folders differently from the loose copy: one script, one key.
+  const keyByLower = new Map<string, string>();
+  const put = (script: string, bundle: PexScriptStrings, override: boolean): void => {
+    const known = keyByLower.get(script.toLowerCase());
+    if (known && !override) return;
+    if (known) merged.delete(known);
+    keyByLower.set(script.toLowerCase(), script);
+    merged.set(script, bundle);
+  };
+
   for (const pexMap of ba2Results) {
-    for (const [script, bundle] of pexMap) {
-      if (!merged.has(script)) merged.set(script, bundle);
-    }
+    for (const [script, bundle] of pexMap) put(script, bundle, false);
   }
 
   for (const [script, bundle] of loadPexStringsFromLooseFiles(modDir)) {
-    merged.set(script, bundle);
+    put(script, bundle, true);
   }
 
   return merged;
