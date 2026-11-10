@@ -1,4 +1,13 @@
+import crypto from 'node:crypto';
 import path from 'node:path';
+
+/**
+ * Short, URL-safe handle of a unit for the upload path. A unitId carries the
+ * Vortex folder name and can be longer than the router accepts in one path
+ * segment; this key is what the agent puts in the URL instead.
+ */
+export const vortexUnitKey = (unitId: string): string =>
+  crypto.createHash('sha1').update(unitId).digest('hex').slice(0, 16);
 
 /** Stable group identity: game + normalized staging path. */
 export const vortexGroupKey = (game: string, stagingPath: string): string => {

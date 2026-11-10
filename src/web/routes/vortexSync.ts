@@ -23,6 +23,7 @@ import {
   planVortexUnits,
   updateVortexSyncRun,
 } from '../../vortex/db';
+import { findPlanUnit, patchVortexPlanUnit } from '../../vortex/planUnits';
 import { ensureVortexSchema } from '../../vortex/schema';
 import { registerVortexPack, vortexExtractDir } from '../../vortex/registerPack';
 import { scopedVortexFileHash, vortexGroupLabel } from '../../vortex/groupKey';
@@ -130,8 +131,9 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!data) return reply.code(400).send({ error: 'No file uploaded' });
 
       const plan = run.plan_json as { units?: Array<Record<string, unknown>> };
-      const unit = (plan.units ?? []).find((row) => row.unitId === req.params.unitId);
+      const unit = findPlanUnit(plan.units ?? [], req.params.unitId);
       if (!unit) return reply.code(404).send({ error: 'Unit not in plan' });
+      const unitId = String(unit.unitId);
 
       const contentHash = String(unit.contentHash ?? '');
       const scoped = scopedVortexFileHash(run.vortex_group_id, contentHash);
@@ -161,16 +163,18 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
         // next to the group's real mods would be found by sibling lookups.
         fs.rmSync(extractDir, { recursive: true, force: true });
         fs.rmSync(zipPath, { force: true });
+        // The run must know the unit was refused, not lost on the way.
+        const message = err instanceof Error ? err.message : String(err);
+        await patchVortexPlanUnit(db, run.id, unitId, { rejected: message });
         throw err;
       }
 
-      const units = (plan.units ?? []).map((row) =>
-        row.unitId === req.params.unitId
-          ? { ...row, existingJobId: job.id, existingModId: job.mod_id }
-          : row,
-      );
-      await updateVortexSyncRun(db, run.id, { plan_json: { ...plan, units } });
-      return reply.send({ job, unitId: req.params.unitId });
+      await patchVortexPlanUnit(db, run.id, unitId, {
+        existingJobId: job.id,
+        existingModId: job.mod_id,
+        rejected: null,
+      });
+      return reply.send({ job, unitId });
     },
   );
 

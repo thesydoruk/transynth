@@ -7,15 +7,18 @@ import { parseAgentConfig } from '../config';
 import { runSyncCycle } from '../syncCycle';
 import { emptyAgentState, type AgentState } from '../state';
 
-/** A server that already holds every unit: the plan needs no upload. */
-const makeApi = () => {
+/**
+ * By default a server that already holds every unit: the plan needs no upload.
+ * With `uploadError` it asks for every unit and the upload fails that way.
+ */
+const makeApi = (opts: { uploadError?: string } = {}) => {
   const calls: string[] = [];
   const api = {
     post: jest.fn(async (url: string, body: unknown) => {
       calls.push(`post ${url}`);
       const units = (body as { units: Array<{ unitId: string }> }).units.map((u) => ({
         unitId: u.unitId,
-        action: 'skip',
+        action: opts.uploadError ? 'upload' : 'skip',
       }));
       return { run: { id: 7 }, group: { id: 1 }, units };
     }),
@@ -24,6 +27,7 @@ const makeApi = () => {
     }),
     putUnitZip: jest.fn(async () => {
       calls.push('upload');
+      if (opts.uploadError) throw new Error(opts.uploadError);
     }),
     startRange: jest.fn(async () => {
       calls.push('start import..carry');
@@ -54,7 +58,7 @@ describe('runSyncCycle after a failed cycle', () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  const run = async (state: AgentState) => {
+  const run = async (state: AgentState, opts: { uploadError?: string } = {}) => {
     const config = parseAgentConfig({
       api: 'http://localhost:1',
       game: 'fo4',
@@ -64,10 +68,32 @@ describe('runSyncCycle after a failed cycle', () => {
       channel: 'mods',
       autoStages: 'carry',
     });
-    const { api, calls } = makeApi();
+    const { api, calls } = makeApi(opts);
     const outcome = await runSyncCycle({ config, state, cache: {}, api });
     return { outcome, calls, state };
   };
+
+  it('fails the cycle and keeps the old signature when an upload went unregistered', async () => {
+    const state = { ...emptyAgentState(), lastRunId: 5, groupId: 1 };
+    const before = state.signatures.units;
+
+    await expect(
+      run(state, {
+        uploadError:
+          'Upload mods:cool mod-1-1:coolmod was not registered by the server (200: <!doctype html>)',
+      }),
+    ).rejects.toThrow('was not registered');
+    expect(state.signatures.units).toBe(before);
+  });
+
+  it('skips a unit the server refused and carries on', async () => {
+    const state = { ...emptyAgentState(), lastRunId: 5, groupId: 1 };
+    const { outcome } = await run(state, {
+      uploadError:
+        'Upload mods:cool mod-1-1:coolmod failed: 500 {"message":"Archive holds no files"}',
+    });
+    expect(outcome.kind).toBe('order-only');
+  });
 
   it('runs the stages for an inventory the server already holds when the last cycle failed', async () => {
     const state = { ...emptyAgentState(), lastRunId: 5, groupId: 1, resyncNeeded: true };
