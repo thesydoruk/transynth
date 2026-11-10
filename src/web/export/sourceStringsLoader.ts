@@ -6,9 +6,12 @@ import { BsaReader } from '../../formats/bsa';
 import {
   parseStringsBuffer,
   resolveLooseStringsDirForPlugin,
-  stringsTypeFromPath,
   type StringsType,
 } from '../../formats/strings';
+import {
+  parsePluginStringsFileName,
+  parseStringsFileName,
+} from '../../import/stringsPack/constants';
 import { log } from '../../logger';
 import { discoverCompanionBa2 } from './archiveExportPlan';
 import { DEFAULT_GAME_ID } from '../../games/registry';
@@ -25,29 +28,6 @@ export type SourceStringsFile = {
   nameStem: string;
   type: StringsType;
   sourceMap: Map<number, string>;
-};
-
-/**
- * Parse a localized strings table file name while preserving the original
- * basename casing.
- *
- * Expected shape: `{Stem}_{locale}.{STRINGS|DLSTRINGS|ILSTRINGS}`.
- * Matching is case-insensitive, but the returned stem keeps the exact bytes
- * from the original file name so exports can preserve the visible file naming.
- *
- * @param fileName - Basename only, without directory components.
- * @returns Parsed descriptor or null if the file is not a strings table.
- */
-const parseStringsFileName = (
-  fileName: string,
-): { nameStem: string; locale: string; type: StringsType } | null => {
-  const match = fileName.match(/^(.*)_([a-z]+)\.(strings|dlstrings|ilstrings)$/i);
-  if (!match) return null;
-  return {
-    nameStem: match[1],
-    locale: match[2].toLowerCase(),
-    type: stringsTypeFromPath(fileName),
-  };
 };
 
 /**
@@ -102,7 +82,7 @@ const loadSourceStringsFromBSA = (bsaPath: string, srcLang: string): SourceStrin
       const sourceMap = parseStringsBuffer(bsa.extractEntry(entry), parsed.type);
       files.push({
         sourceFileName: base,
-        nameStem: parsed.nameStem,
+        nameStem: parsed.stem,
         type: parsed.type,
         sourceMap,
       });
@@ -131,7 +111,7 @@ const loadSourceStringsFromBA2 = (ba2Path: string, srcLang: string): SourceStrin
       const sourceMap = parseStringsBuffer(ba2.extractEntry(entry), parsed.type);
       files.push({
         sourceFileName: base,
-        nameStem: parsed.nameStem,
+        nameStem: parsed.stem,
         type: parsed.type,
         sourceMap,
       });
@@ -155,14 +135,15 @@ const loadSourceStringsFromLooseFiles = (modPath: string, srcLang: string): Sour
   const dir = resolveLooseStringsDirForPlugin(modPath);
   if (!dir) return [];
 
+  const stem = path.basename(modPath, path.extname(modPath));
   const files: SourceStringsFile[] = [];
   for (const file of fs.readdirSync(dir)) {
-    const parsed = parseStringsFileName(file);
+    const parsed = parsePluginStringsFileName(file, stem);
     if (!parsed || parsed.locale !== srcLang.toLowerCase()) continue;
     const sourceMap = parseStringsBuffer(fs.readFileSync(path.join(dir, file)), parsed.type);
     files.push({
       sourceFileName: file,
-      nameStem: parsed.nameStem,
+      nameStem: parsed.stem,
       type: parsed.type,
       sourceMap,
     });

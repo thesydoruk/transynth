@@ -12,6 +12,7 @@ import { stringsTypeFromPath, resolveLooseStringsDirForPlugin } from '../../form
 import type { StringsType } from '../../formats/strings';
 import type { CreationEngineTitle } from '../../games/creation-engine/title';
 import { logImport } from '../../logging/loggers';
+import { parsePluginStringsFileName } from '../stringsPack/constants';
 
 export type LocaleStringsFileRef =
   | { kind: 'loose'; filePath: string; type: StringsType }
@@ -47,18 +48,20 @@ const catalogToSources = (catalog: Map<string, LocaleStringsFileRef[]>): LocaleS
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([locale, files]) => ({ locale, files }));
 
+/** Loose tables next to the plugin — only its own `<stem>_<locale>.*`, as the engine reads them. */
 const discoverLooseLocaleSources = (espPath: string): LocaleStringsSource[] => {
   const dir = resolveLooseStringsDirForPlugin(espPath);
   const catalog = new Map<string, LocaleStringsFileRef[]>();
   if (!dir) return [];
 
+  const stem = path.basename(espPath, path.extname(espPath));
   for (const file of fs.readdirSync(dir)) {
-    const locale = localeFromStringsFileName(file);
-    if (!locale) continue;
-    addLocaleFile(catalog, locale, {
+    const parsed = parsePluginStringsFileName(file, stem);
+    if (!parsed) continue;
+    addLocaleFile(catalog, parsed.locale, {
       kind: 'loose',
       filePath: path.join(dir, file),
-      type: stringsTypeFromPath(file),
+      type: parsed.type,
     });
   }
 

@@ -10,8 +10,17 @@ import {
 import type { ArchiveInputFile } from '../../formats/types';
 import { readModImportExtractManifest } from '../../modImport/archiveManifest';
 import { resolveModImportExtractRoot } from '../../modStorage/paths';
+import { parsePluginStringsFileName } from '../../import/stringsPack/constants';
 
-const STRINGS_LOOSE_RE = /^strings\/.*\.(strings|dlstrings|ilstrings)$/i;
+/** Manifest path of one of the plugin's own tables: `Strings/<pluginStem>_<locale>.*`. */
+const isPluginStringsManifestPath = (loosePath: string, pluginStem: string): boolean => {
+  const parts = loosePath.replace(/\\/g, '/').split('/');
+  return (
+    parts.length === 2 &&
+    parts[0]!.toLowerCase() === 'strings' &&
+    parsePluginStringsFileName(parts[1]!, pluginStem) !== null
+  );
+};
 
 /** Discover a companion GNRL BA2 next to the plugin (Main, Interface, or stem.ba2). */
 export const discoverCompanionBa2 = (
@@ -52,8 +61,8 @@ export const discoverCompanionBa2 = (
 /**
  * Resolve the BA2/BSA file name that should hold localized STRINGS tables.
  *
- * Prefers the import manifest provenance (e.g. vanilla `Fallout4 - Interface.ba2`),
- * then an existing companion archive on disk, then Creation Kit defaults.
+ * Prefers the import manifest provenance of the plugin's own tables (e.g. vanilla
+ * `Fallout4 - Interface.ba2`; another plugin's tables in the same tree do not count), then an existing companion archive on disk, then Creation Kit defaults.
  */
 export const resolveStringsArchiveFileName = (
   modPath: string,
@@ -65,8 +74,7 @@ export const resolveStringsArchiveFileName = (
     const manifest = readModImportExtractManifest(extractRoot);
     if (manifest) {
       for (const [loosePath, provenance] of Object.entries(manifest.files)) {
-        const normalized = loosePath.replace(/\\/g, '/');
-        if (!STRINGS_LOOSE_RE.test(normalized)) continue;
+        if (!isPluginStringsManifestPath(loosePath, pluginStem)) continue;
         if (provenance.packing === 'ba2' || provenance.packing === 'bsa') {
           return path.basename(provenance.sourceArchiveRelativePath.replace(/\\/g, '/'));
         }

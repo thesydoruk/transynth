@@ -140,11 +140,11 @@ describe('localized export golden corpus', () => {
   it('falls back to loose Strings when only DX10 texture BA2 files are present', async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'golden-export-textures-'));
     tempDirs.push(root);
-    const pluginPath = path.join(root, 'Fallout4.esm');
+    const pluginPath = path.join(root, LOCALIZED_EXPORT_GOLDEN_CORPUS.pluginFileName);
     const stringsDir = path.join(root, 'Strings');
     fs.mkdirSync(stringsDir, { recursive: true });
     fs.writeFileSync(pluginPath, Buffer.from('TES4', 'ascii'));
-    writeFakeDx10Ba2(path.join(root, 'Fallout4 - Textures1.ba2'));
+    writeFakeDx10Ba2(path.join(root, 'GoldenWorkshop - Textures1.ba2'));
 
     for (const file of LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceFiles) {
       fs.writeFileSync(
