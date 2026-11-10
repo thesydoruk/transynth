@@ -6,6 +6,7 @@ import { buildPex } from '../../../formats/pex/__tests__/pexFixture';
 import { collectPexStrings } from '../pexStrings';
 
 describe('collectPexStrings on an unpacked mod folder', () => {
+  let root: string;
   let modDir: string;
 
   const writePex = (rel: string, strings: string[], sourceFile: string) => {
@@ -15,12 +16,16 @@ describe('collectPexStrings on an unpacked mod folder', () => {
   };
 
   beforeEach(() => {
-    modDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pex-import-'));
+    // The companion-archive search also walks the plugin folder's parent, so the
+    // mod sits one level down rather than directly in the system temp folder.
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'pex-import-'));
+    modDir = path.join(root, 'mod');
+    fs.mkdirSync(modDir);
     fs.writeFileSync(path.join(modDir, 'SS2.esm'), '');
   });
 
   afterEach(() => {
-    fs.rmSync(modDir, { recursive: true, force: true });
+    fs.rmSync(root, { recursive: true, force: true });
   });
 
   it('reads namespaced scripts that an archive left in Scripts subfolders', async () => {
