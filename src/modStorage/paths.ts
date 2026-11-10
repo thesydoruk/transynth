@@ -109,7 +109,7 @@ const walkForExtractRoot = (
 };
 
 /** Vortex extract: `uploads/vortex/{groupId}/{contentHash}/`. */
-const isVortexExtractRoot = (dir: string): boolean => {
+export const isVortexExtractRoot = (dir: string): boolean => {
   const vortexRoot = path.resolve(PATHS.vortexUploads);
   const parent = path.dirname(dir);
   return parent !== vortexRoot && path.dirname(parent) === vortexRoot;

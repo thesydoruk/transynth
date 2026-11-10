@@ -38,7 +38,7 @@ const patchModImportScanContext = async (
   );
 };
 
-const insertModImportJob = async (
+export const insertModImportJob = async (
   db: Tx,
   params: {
     fileName: string;
@@ -51,6 +51,7 @@ const insertModImportJob = async (
     espPath: string;
     extractDir?: string | null;
     scan?: ModScanContext;
+    importExtras?: boolean;
   },
 ): Promise<ModImportJob> => {
   await db.query(
@@ -58,8 +59,8 @@ const insertModImportJob = async (
        file_name, file_hash, mod_id, total_records, status,
        src_lang, tgt_lang, is_localized, game, esp_path,
        extract_dir, archive_manifest,
-       nexus_mod_id, source_folder, nexus_mod_name, vortex_group_id
-     ) VALUES ($1, $2, NULL, $3, 'pending', $4, $5, $6, $7, $8, $9, NULL, $10, $11, $12, $13)`,
+       nexus_mod_id, source_folder, nexus_mod_name, vortex_group_id, import_extras
+     ) VALUES ($1, $2, NULL, $3, 'pending', $4, $5, $6, $7, $8, $9, NULL, $10, $11, $12, $13, $14)`,
     [
       params.fileName,
       params.fileHash,
@@ -74,6 +75,7 @@ const insertModImportJob = async (
       params.scan?.sourceFolder ?? null,
       params.scan?.nexusModName ?? null,
       params.scan?.vortexGroupId ?? null,
+      params.importExtras ?? true,
     ],
   );
 

@@ -125,6 +125,48 @@ describe('vortex inventory', () => {
     expect(isOfficialGamePlugin('fo4', 'MyMod.esp')).toBe(false);
   });
 
+  it('makes one unit of a folder with several plugins, the shared files sent once', async () => {
+    const staging = path.join(root, 'staging');
+    const folder = path.join(
+      staging,
+      'Sim Settlements 2 - All Chapters Pack 73394 3.8.1a 2026-10-27T05-48Z 86DAb3Tia',
+    );
+    writeFile(path.join(folder, 'SS2.esm'), 'a');
+    writeFile(path.join(folder, 'SS2_XPAC_Chapter2.esm'), 'b');
+    writeFile(path.join(folder, 'SS2Extended.esp'), 'c');
+    writeFile(path.join(folder, 'Optional', 'SS2_Debug.esp'), 'installer copy');
+    writeFile(path.join(folder, 'Scripts', 'SimSettlementsV2', 'Quest.pex'), 'pex');
+
+    const units = await scanStagingUnits(staging);
+    expect(units).toHaveLength(1);
+    const [unit] = units;
+    expect(unit?.unitId).toBe(`mods:${path.basename(folder).toLowerCase()}`);
+    expect(unit?.plugins).toEqual(['SS2.esm', 'SS2_XPAC_Chapter2.esm', 'SS2Extended.esp']);
+    expect(unit?.pluginFileName).toBe('SS2.esm');
+    expect(unit?.files.map((f) => f.relPath).sort()).toEqual([
+      'SS2.esm',
+      'SS2Extended.esp',
+      'SS2_XPAC_Chapter2.esm',
+      'Scripts/SimSettlementsV2/Quest.pex',
+    ]);
+  });
+
+  it('keeps the content hash of a one-plugin folder, so it is not uploaded again', async () => {
+    const staging = path.join(root, 'staging');
+    const folder = path.join(staging, 'Cool Mod-12345-1-0');
+    writeFile(path.join(folder, 'CoolMod.esp'), 'plugin');
+    writeFile(path.join(folder, 'Scripts', 'Cool.pex'), 'pex');
+    // What the per-plugin unit hashed: the plugin and the loose text beside it.
+    const before = await merkleContentHash([
+      { absPath: path.join(folder, 'CoolMod.esp'), relPath: 'CoolMod.esp' },
+      { absPath: path.join(folder, 'Scripts', 'Cool.pex'), relPath: 'Scripts/Cool.pex' },
+    ]);
+
+    const [unit] = await scanStagingUnits(staging);
+    expect(unit?.contentHash).toBe(before);
+    expect(unit?.plugins).toBeUndefined();
+  });
+
   it('collects staging plugin basenames', async () => {
     const staging = path.join(root, 'staging');
     writeFile(path.join(staging, 'Pack-1-1', 'One.esp'), '1');

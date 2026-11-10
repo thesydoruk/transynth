@@ -78,14 +78,18 @@ const ingestPlugin = async (
   await prep.batch.commitOpenTx();
 
   const stopped = () => ctx.state.cancel || ctx.state.pause;
+  // The plugins of one Vortex folder share a tree; its loose text and videos
+  // belong to the folder's main plugin only, or every plugin's mod would hold
+  // a copy and the langpack would keep whichever came last.
+  const extras = ctx.job.import_extras !== false;
 
-  if (!stopped()) await importMcmStringRows(ctx);
-  if (!stopped()) await importInterfaceTranslateRows(ctx);
-  if (!stopped()) {
+  if (extras && !stopped()) await importMcmStringRows(ctx);
+  if (extras && !stopped()) await importInterfaceTranslateRows(ctx);
+  if (extras && !stopped()) {
     await importPexStringRows(ctx, prep.batch);
     await prep.batch.commitOpenTx();
   }
-  if (!stopped()) await importVideoManifests(ctx, path.dirname(ctx.anchorPath));
+  if (extras && !stopped()) await importVideoManifests(ctx, path.dirname(ctx.anchorPath));
   if (stopped()) return;
 
   await finalizeModImport(ctx, {

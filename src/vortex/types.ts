@@ -12,8 +12,11 @@ export type VortexInventoryUnit = {
   unitId: string;
   channel: VortexUnitChannel;
   name: string;
+  /** The folder's main plugin (see `pickPrimaryPlugin`). */
   pluginStem: string | null;
   pluginFileName: string | null;
+  /** Every plugin the folder ships, sorted; more than one becomes one mod each. */
+  plugins?: string[];
   sourceFolder: string | null;
   nexusModId: number | null;
   nexusModName: string | null;
@@ -49,8 +52,13 @@ export type VortexPlanUnit = {
   existingJobId: number | null;
   /** Why the server refused the unit's upload (nothing it can import). */
   rejected?: string | null;
+  /** Every job the upload registered, one per plugin; the main one is `existingJobId`. */
+  jobs?: Array<{ plugin: string | null; jobId: number }>;
+  /** For a skipped unit: every mod its jobs imported into. */
+  existingModIds?: number[];
   pluginStem: string | null;
   pluginFileName: string | null;
+  plugins?: string[];
   sourceFolder: string | null;
   nexusModId: number | null;
   nexusModName: string | null;
@@ -130,6 +138,7 @@ export type VortexPlanPayload = {
     name: string;
     pluginStem: string | null;
     pluginFileName: string | null;
+    plugins?: string[];
     sourceFolder: string | null;
     nexusModId: number | null;
     nexusModName: string | null;

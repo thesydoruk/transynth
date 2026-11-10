@@ -12,20 +12,23 @@ export const planVortexUnits = async (
   const planned: VortexPlanUnit[] = [];
   for (const unit of payload.units) {
     const scoped = scopedVortexFileHash(groupId, unit.contentHash);
+    // A folder with several plugins has one job per plugin, `<scoped>:<stem>`.
     const { rows: jobs } = await db.query<{ id: number; mod_id: number | null; status: string }>(
       `SELECT id, mod_id, status FROM mod_imports
-       WHERE file_hash = $1 LIMIT 1`,
+       WHERE file_hash = $1 OR starts_with(file_hash, $1 || ':')
+       ORDER BY import_extras DESC, id`,
       [scoped],
     );
     const job = jobs[0];
     const meta = {
       pluginStem: unit.pluginStem,
       pluginFileName: unit.pluginFileName,
+      ...(unit.plugins ? { plugins: unit.plugins } : {}),
       sourceFolder: unit.sourceFolder,
       nexusModId: unit.nexusModId,
       nexusModName: unit.nexusModName,
     };
-    if (job?.status === 'completed' && job.mod_id) {
+    if (job && jobs.every((row) => row.status === 'completed' && row.mod_id)) {
       planned.push({
         unitId: unit.unitId,
         action: 'skip',
@@ -35,6 +38,7 @@ export const planVortexUnits = async (
         scopedFileHash: scoped,
         existingModId: job.mod_id,
         existingJobId: job.id,
+        existingModIds: jobs.map((row) => row.mod_id!),
         ...meta,
       });
       continue;

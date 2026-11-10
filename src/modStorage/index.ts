@@ -7,6 +7,7 @@ export {
   modNexusDownloadTempPath,
   modStorageRoot,
   isOwnedModStoragePath,
+  isVortexExtractRoot,
   modUploadTempPath,
   modUploadedFilePath,
   resolveModImportExtractRoot,

@@ -422,6 +422,9 @@ ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS source_folder TEXT;
 ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS nexus_mod_name TEXT;
 ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS extract_dir TEXT;
 ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS archive_manifest JSONB;
+-- False for the other plugins of a folder sharing one extract tree: the loose
+-- MCM / Interface / PEX text and the videos are imported once, by the main one.
+ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS import_extras BOOLEAN NOT NULL DEFAULT TRUE;
 
 -- Indices
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mods_name_version ON mods(name, version_hash);

@@ -21,6 +21,11 @@ export interface ModImportJob {
   source_folder: string | null;
   nexus_mod_name: string | null;
   vortex_group_id: number | null;
+  /**
+   * Whether this job imports the loose MCM / Interface / PEX text and videos.
+   * False for the other plugins of a folder that share one extract tree.
+   */
+  import_extras: boolean;
   created_at: string;
   updated_at: string;
 }

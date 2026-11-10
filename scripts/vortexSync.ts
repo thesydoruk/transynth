@@ -169,6 +169,7 @@ if (needInventory) {
         name: unit.name,
         pluginStem: unit.pluginStem,
         pluginFileName: unit.pluginFileName,
+        ...(unit.plugins ? { plugins: unit.plugins } : {}),
         sourceFolder: unit.sourceFolder,
         nexusModId: unit.nexusModId,
         nexusModName: unit.nexusModName,
