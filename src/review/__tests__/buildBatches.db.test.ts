@@ -129,4 +129,59 @@ describe('buildModBatches', () => {
       ids.skipped,
     );
   });
+
+  it('works only on untranslated lines in an untranslated run', async () => {
+    const { modId, ids } = await fixture();
+    await db().query(
+      `INSERT INTO dialog_nodes(topic_id, info_formid_hex)
+       SELECT id, '0001A002' FROM dialog_topics WHERE mod_id = $1`,
+      [modId],
+    );
+    const at = { signature: 'INFO', path: 'INFO\\NAM1', formid: '0001A002' };
+    const fresh = await insertString(db(), { modId, text: 'Name your price.', ...at });
+    const terminal = await insertString(db(), {
+      modId,
+      text: 'Welcome, Overseer.',
+      signature: 'TERM',
+      path: 'TERM\\DESC',
+      formid: '0001F000',
+    });
+    await insertString(db(), {
+      modId,
+      text: '100',
+      signature: 'MISC',
+      path: 'MISC\\FULL',
+      formid: '0001F001',
+    });
+    await db().query(`UPDATE records SET path_simplified = path WHERE mod_id = $1`, [modId]);
+
+    const { batches } = await buildModBatches(db(), {
+      modId,
+      srcLang: 'en',
+      targetLang: 'uk',
+      focus: { untranslated: true },
+    });
+
+    const lines = batches.flatMap((b) => b.units.flatMap((u) => u.lines));
+    expect(lines.filter((l) => !l.context_only).map((l) => [l.id, l.tr])).toEqual([
+      [fresh, ''],
+      [terminal, ''],
+    ]);
+    // The scene around the new reply comes along as context; unrelated text does not.
+    expect(lines.filter((l) => l.context_only).map((l) => l.id)).toEqual([ids.prompt, ids.reply]);
+  });
+
+  it('reviews only the named provenance in a provenance run', async () => {
+    const { modId, ids } = await fixture();
+
+    const { batches } = await buildModBatches(db(), {
+      modId,
+      srcLang: 'en',
+      targetLang: 'uk',
+      focus: { provenances: new Set(['tm_final_review']) },
+    });
+
+    const lines = batches.flatMap((b) => b.units.flatMap((u) => u.lines));
+    expect(lines.filter((l) => !l.context_only).map((l) => l.id)).toEqual([ids.canon]);
+  });
 });

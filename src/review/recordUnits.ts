@@ -6,6 +6,7 @@
 import type { Tx } from '../db';
 import type { LlmPromptFamily } from '../llm/promptFamily';
 import { UNREVIEWABLE_STATUSES } from './dialogUnits';
+import { isFocusTarget, type ReviewFocus } from './focus';
 import type { ReviewLine, ReviewUnit } from './types';
 
 export type ModStringRow = {
@@ -22,29 +23,38 @@ export type ModStringRow = {
   narrator_gender_source: string | null;
 };
 
-/** Translated, reviewable source strings of one mod, in id order. */
+/**
+ * Translated, reviewable source strings of one mod, in id order; with
+ * `withUntranslated`, also the ones nobody translated yet (translation `''`).
+ */
 export const loadModStrings = async (
   db: Tx,
   modId: number,
   srcLang: string,
   targetLang: string,
+  withUntranslated = false,
 ): Promise<ModStringRow[]> => {
   const { rows } = await db.query<ModStringRow>(
     `SELECT s.id, r.signature, split_part(r.path_simplified, '\\', 2) AS field, r.edid, r.formid_hex,
-            s.text_raw AS source, s.context, t.text AS translation, t.provenance,
+            s.text_raw AS source, s.context, COALESCE(t.text, '') AS translation, t.provenance,
             COALESCE(NULLIF(r.narrator_gender_override, ''), r.narrator_gender) AS narrator_gender,
             r.narrator_gender_source
        FROM records r
        JOIN strings s ON s.record_id = r.id AND s.lang = $2
-       JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $3
-      WHERE r.mod_id = $1 AND NOT s.is_ignored AND t.status <> ALL($4::text[])
+       LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $3
+      WHERE r.mod_id = $1 AND NOT s.is_ignored
+        AND (t.status <> ALL($4::text[]) OR (t.id IS NULL AND $5::boolean))
       ORDER BY s.id`,
-    [modId, srcLang, targetLang, [...UNREVIEWABLE_STATUSES]],
+    [modId, srcLang, targetLang, [...UNREVIEWABLE_STATUSES], withUntranslated],
   );
   return rows;
 };
 
-const recordLine = (row: ModStringRow, contextProvenances?: ReadonlySet<string>): ReviewLine => {
+const recordLine = (
+  row: ModStringRow,
+  contextProvenances?: ReadonlySet<string>,
+  focus?: ReviewFocus,
+): ReviewLine => {
   const out: ReviewLine = {
     id: row.id,
     kind: row.signature === 'INFO' ? (row.field === 'RNAM' ? 'prompt' : 'response') : row.field,
@@ -61,6 +71,7 @@ const recordLine = (row: ModStringRow, contextProvenances?: ReadonlySet<string>)
     out.narrator_gender = trusted ? row.narrator_gender : `${row.narrator_gender} (inferred)`;
   }
   if (row.provenance && contextProvenances?.has(row.provenance)) out.context_only = true;
+  if (!isFocusTarget(focus, row)) out.context_only = true;
   return out;
 };
 
@@ -84,6 +95,7 @@ export const collectRecordUnits = (
   familyOf: (signature: string, field: string) => LlmPromptFamily,
   seen: ReadonlySet<number>,
   contextProvenances?: ReadonlySet<string>,
+  focus?: ReviewFocus,
 ): Map<LlmPromptFamily, ReviewUnit[]> => {
   const groups = new Map<LlmPromptFamily, Map<string, ModStringRow[]>>();
   for (const row of rows) {
@@ -109,7 +121,7 @@ export const collectRecordUnits = (
         return {
           unit_id: key,
           kind,
-          lines: unitRows.map((r) => recordLine(r, contextProvenances)),
+          lines: unitRows.map((r) => recordLine(r, contextProvenances, focus)),
         };
       });
     out.set(family, units);

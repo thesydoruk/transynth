@@ -14,6 +14,7 @@ import {
   type DialogScope,
   type DialogTranscriptRow,
 } from '../web/data/queries/dialogs';
+import { isFocusTarget, type ReviewFocus } from './focus';
 import type { ReviewLine, ReviewUnit } from './types';
 
 /** Statuses an editor does not review: removed, refused, or deliberately left untranslated. */
@@ -30,6 +31,8 @@ export type DialogUnitOptions = {
   targetLang: string;
   /** Provenances shown as `context_only`: text already reviewed elsewhere. */
   contextProvenances?: ReadonlySet<string>;
+  /** Lines to work on; the rest of a scene is context. */
+  focus?: ReviewFocus;
   onProgress?: (scope: DialogScope, done: number, total: number) => void;
 };
 
@@ -72,6 +75,7 @@ const entryLine = (
   if (entry.depth > 0) out.branch_depth = entry.depth;
   if (line.voice_variant != null) out.voice_variant = line.voice_variant;
   if (line.provenance && opts.contextProvenances?.has(line.provenance)) out.context_only = true;
+  if (!isFocusTarget(opts.focus, line)) out.context_only = true;
   return out;
 };
 
@@ -84,7 +88,8 @@ const transcriptLines = (
   const lines: ReviewLine[] = [];
   for (const entry of transcript.entries) {
     for (const line of entry.lines) {
-      if (seen.has(line.string_id) || line.translation == null) continue;
+      if (seen.has(line.string_id)) continue;
+      if (line.translation == null && !opts.focus?.untranslated) continue;
       if (line.status && UNREVIEWABLE_STATUSES.has(line.status)) continue;
       seen.add(line.string_id);
       lines.push(entryLine(entry, line, opts));
@@ -103,7 +108,9 @@ export const collectDialogUnits = async (
   const units: ReviewUnit[] = [];
   for (const { scope, kind } of SCOPES) {
     const groups = (await listDialogGroups(db, modId, scope, opts.srcLang, opts.targetLang))
-      .filter((g) => g.translated_count > 0)
+      .filter((g) =>
+        opts.focus?.untranslated ? g.translated_count < g.line_count : g.translated_count > 0,
+      )
       .sort((a, b) => a.label.localeCompare(b.label, 'en'));
     for (const [i, group] of groups.entries()) {
       opts.onProgress?.(scope, i, groups.length);
