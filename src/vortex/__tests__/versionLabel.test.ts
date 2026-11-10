@@ -21,7 +21,7 @@ describe('inferModVersionLabel', () => {
     ).toBe('2.2.1');
   });
 
-  it('picks a dotted version out of a non-Vortex folder name', () => {
+  it('parses a newer space-separated Vortex folder version', () => {
     expect(
       inferModVersionLabel({
         channel: 'mods',
@@ -29,6 +29,16 @@ describe('inferModVersionLabel', () => {
         contentHash: 'cccccccccccccccc',
       }),
     ).toBe('2.2.2a');
+  });
+
+  it('picks a dotted version out of a non-Vortex folder name', () => {
+    expect(
+      inferModVersionLabel({
+        channel: 'mods',
+        sourceFolder: 'Some Manual Install 1.4.2 (repack)',
+        contentHash: 'cccccccccccccccc',
+      }),
+    ).toBe('1.4.2');
   });
 
   it('falls back to a short content hash', () => {

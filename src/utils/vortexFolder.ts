@@ -1,12 +1,16 @@
 /**
  * Parse Vortex Mod Manager staging folder names into Nexus mod metadata.
  *
- * Typical pattern:
+ * Older Vortex pattern:
  *   `{Mod Name}-{nexusModId}-{fileId}-{version}-{unixTimestamp}`
  * Examples from Vortex FO4 staging:
  *   `FallUI - Inventory-48758-2-2-1-1666954336`
  *   `A Forest - True Grass-62073-1-1657445287`
  *   `Longer Power Lines 3x-2241-1-1`
+ *
+ * Newer Vortex pattern (space-separated, install time + random suffix):
+ *   `{Mod Name} {nexusModId} {version} {YYYY-MM-DDTHH-MMZ} {suffix}`
+ *   `Workshop Framework 35004 2.6.1 2026-10-02T07-49Z mlhIZeBse`
  */
 
 import path from 'node:path';
@@ -21,6 +25,9 @@ export interface VortexFolderInfo {
   /** File version from the Vortex suffix (`2-2-1` → `2.2.1`), if present. */
   version: string | null;
 }
+
+/** `{name} {modId} {version} {YYYY-MM-DDTHH-MMZ} {random suffix}`. */
+const SPACED_FOLDER = /^(.+) (\d{1,9}) (\S+) (\d{4}-\d{2}-\d{2}T\d{2}-\d{2}Z) ([A-Za-z0-9_-]+)$/;
 
 /** Strip optional Vortex installation timestamp suffix (`-1692860656`). */
 const stripVortexTimestamp = (folderName: string): string => {
@@ -56,6 +63,19 @@ export const parseVortexModFolder = (folderName: string): VortexFolderInfo | nul
         modName: match[1].trim(),
         nexusModId,
         version: match[3] ? formatVortexVersionTail(match[3]) : null,
+      };
+    }
+  }
+
+  const spaced = trimmed.match(SPACED_FOLDER);
+  if (spaced) {
+    const nexusModId = Number.parseInt(spaced[2], 10);
+    if (Number.isFinite(nexusModId) && nexusModId > 0) {
+      return {
+        folderName: trimmed,
+        modName: spaced[1].trim(),
+        nexusModId,
+        version: formatVortexVersionTail(spaced[3]),
       };
     }
   }
