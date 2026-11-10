@@ -46,9 +46,43 @@ describe('parseVortexModFolder', () => {
     });
   });
 
+  it('parses the newer space-separated format', () => {
+    const folder = 'Sim Settlements 2 - All Chapters Pack 73394 3.8.1a 2026-10-27T05-48Z 86DAb3Tia';
+    expect(parseVortexModFolder(folder)).toEqual({
+      folderName: folder,
+      modName: 'Sim Settlements 2 - All Chapters Pack',
+      nexusModId: 73394,
+      version: '3.8.1a',
+    });
+  });
+
+  it('parses newer-format names that end in a number', () => {
+    const folder = 'Unofficial Fallout 4 Patch 4598 2.2.2a 2026-08-18T21-17Z seiqXqqfJ';
+    expect(parseVortexModFolder(folder)).toEqual({
+      folderName: folder,
+      modName: 'Unofficial Fallout 4 Patch',
+      nexusModId: 4598,
+      version: '2.2.2a',
+    });
+  });
+
+  it('parses a plain newer-format folder', () => {
+    const folder = 'Workshop Framework 35004 2.6.1 2026-10-02T07-49Z mlhIZeBse';
+    expect(parseVortexModFolder(folder)).toEqual({
+      folderName: folder,
+      modName: 'Workshop Framework',
+      nexusModId: 35004,
+      version: '2.6.1',
+    });
+  });
+
   it('returns null for non-Vortex folders', () => {
     expect(parseVortexModFolder('Creation Club - Captain Cosmos')).toBeNull();
     expect(parseVortexModFolder('enbseries_fallout4_v0501')).toBeNull();
+    expect(parseVortexModFolder('Workshop Framework 2.6.1')).toBeNull();
+    expect(
+      parseVortexModFolder('Workshop Framework 0 2.6.1 2026-10-02T07-49Z mlhIZeBse'),
+    ).toBeNull();
   });
 });
 
