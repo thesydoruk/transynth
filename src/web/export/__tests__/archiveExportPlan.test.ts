@@ -77,4 +77,42 @@ describe('archiveExportPlan', () => {
       'MyMod - Main.ba2',
     );
   });
+
+  it("names the strings archive after the plugin's own tables, not another plugin's", () => {
+    const root = path.join(modStorageRoot(), `_extracted_plan_two_${Date.now()}`);
+    fs.mkdirSync(root, { recursive: true });
+    tempDirs.push(root);
+    const pluginFor = (name: string): string => path.join(root, name);
+    fs.writeFileSync(pluginFor('SS2.esm'), Buffer.from('TES4'));
+    fs.writeFileSync(pluginFor('SS2_XPAC_Chapter2.esm'), Buffer.from('TES4'));
+    fs.writeFileSync(pluginFor('Loose.esp'), Buffer.from('TES4'));
+    const fromBa2 = (archive: string, entryPath: string) => ({
+      sourceArchiveRelativePath: archive,
+      entryPath,
+      packing: 'ba2' as const,
+    });
+    writeModImportExtractManifest(root, {
+      version: 1,
+      extractRoot: root,
+      createdAt: new Date().toISOString(),
+      archives: [],
+      files: {
+        'Strings/SS2_XPAC_Chapter2_en.STRINGS': fromBa2(
+          'SS2_XPAC_Chapter2 - Main.ba2',
+          'Strings/SS2_XPAC_Chapter2_en.STRINGS',
+        ),
+        'Strings/ss2_en.STRINGS': fromBa2('SS2 - Main.ba2', 'Strings/ss2_en.STRINGS'),
+      },
+    });
+
+    expect(resolveStringsArchiveFileName(pluginFor('SS2.esm'), 'SS2', 'fo4')).toBe(
+      'SS2 - Main.ba2',
+    );
+    expect(
+      resolveStringsArchiveFileName(pluginFor('SS2_XPAC_Chapter2.esm'), 'SS2_XPAC_Chapter2', 'fo4'),
+    ).toBe('SS2_XPAC_Chapter2 - Main.ba2');
+    expect(resolveStringsArchiveFileName(pluginFor('Loose.esp'), 'Loose', 'fo4')).toBe(
+      'Loose - Main.ba2',
+    );
+  });
 });
