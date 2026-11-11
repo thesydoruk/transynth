@@ -25,7 +25,7 @@ export const getPexTranslationOverlays = async (
      FROM strings s
      JOIN records r ON r.id = s.record_id
      LEFT JOIN translations t
-       ON t.src_string_id = s.id AND t.target_lang = $3
+       ON t.src_string_id = s.id AND t.target_lang = $3 AND NOT s.is_ignored
      WHERE r.mod_id = $1 AND r.signature = 'PEX' AND s.lang = $2`,
     [modId, srcLang, targetLang],
   );
