@@ -123,9 +123,14 @@ export const fetchReferenceExamplesBatch = async (
       try {
         const vectors = await embedTextsForRagResilient(slice.map((row) => row.embedInput));
         await mapWithConcurrency(slice, vectorConcurrency, async (row, index) => {
+          const vector = vectors[index];
+          if (!vector) {
+            finalizePendingEmbedRow(row, cappedMaxExamples, out);
+            return;
+          }
           const embedCandidates = await fetchEmbeddingCandidates(
             db,
-            vectors[index]!,
+            vector,
             srcLang,
             targetLang,
             row.stringId,

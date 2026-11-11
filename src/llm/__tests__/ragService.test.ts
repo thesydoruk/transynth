@@ -18,6 +18,16 @@ describe('buildEmbeddingInput', () => {
   it('omits null metadata fields', () => {
     expect(buildEmbeddingInput({ sourceText: 'Only source' })).toBe('source: Only source');
   });
+
+  it('keeps only the head of a very long context, and the whole source', () => {
+    const input = buildEmbeddingInput({
+      sourceText: ': ',
+      signature: 'PEX',
+      context: `pex-json:${'x'.repeat(20_000)}`,
+    });
+    expect(input.length).toBeLessThan(8_100);
+    expect(input.endsWith('source: : ')).toBe(true);
+  });
 });
 
 describe('isStaleTranslationRagSyncError', () => {
