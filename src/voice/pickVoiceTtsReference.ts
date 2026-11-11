@@ -20,6 +20,7 @@ import { getOrDecodeEntryReferenceWav } from './speakerReference/cache';
 import { entryReferenceCacheRoot } from './speakerReference/constants';
 import { wavDurationSec } from './speakerReference/pcm';
 import type { TtsReferenceMode } from './voiceToolPaths';
+import { padShortClips, trimmedLineClip, TTS_REFERENCE_MAX_SEC } from './fitTtsReference';
 import {
   collectSiblingFallbackClips,
   isUsableSpeakerDefault,
@@ -37,7 +38,9 @@ export type SpeakerRefCacheEntry = {
 
 export type PickedVoiceTtsReference = {
   clips: VoiceTtsRefClip[];
-  strategy: 'line' | 'speaker' | 'short_with_default' | 'short_sibling_fallback';
+  strategy: 'line' | 'speaker' | 'short_with_default' | 'short_sibling_fallback' | 'line_trimmed';
+  /** False when the clips cannot carry the line's timing (an over-long take was replaced or cut). */
+  matchTiming?: false;
 };
 
 const referenceTextForPick = (
@@ -153,8 +156,7 @@ const logSiblingFallback = async (
   });
 };
 
-/** Line clip first; extra speaker clips only when the original take is short. */
-export const pickVoiceTtsReference = async (input: {
+type PickInput = {
   db: Tx;
   modId: number;
   packageDir: string;
@@ -169,7 +171,29 @@ export const pickVoiceTtsReference = async (input: {
   speakerRefCache?: Map<string, SpeakerRefCacheEntry>;
   markup?: VoiceTtsMarkupStyle;
   signal?: AbortSignal;
-}): Promise<PickedVoiceTtsReference> => {
+};
+
+/**
+ * A take longer than the TTS server accepts: the speaker's reference if there is
+ * one, else the take cut to the limit. Either way the clip no longer has the
+ * line's length, so timing is not matched to it.
+ */
+const pickForOverlongLine = async (input: PickInput): Promise<PickedVoiceTtsReference> => {
+  const speakerKey = input.speakerKey;
+  const resolved = speakerKey ? await resolveCachedSpeakerRef({ ...input, speakerKey }) : null;
+  if (resolved) {
+    const text = referenceTextForPick(input.voiceSources, resolved.pick);
+    return {
+      clips: [lineRefClip(resolved.wavPath, text, path.basename(resolved.wavPath))],
+      strategy: 'speaker',
+      matchTiming: false,
+    };
+  }
+  const lineClip = lineRefClip(input.lineEnglishWav, input.lineSource, input.entry.fileName);
+  return { clips: [trimmedLineClip(lineClip)], strategy: 'line_trimmed', matchTiming: false };
+};
+
+const pickWithinLimits = async (input: PickInput): Promise<PickedVoiceTtsReference> => {
   const lineClip = lineRefClip(input.lineEnglishWav, input.lineSource, input.entry.fileName);
   const lineTooLong = isLineReferenceTooLong(input.lineEnglishWav);
   const decision = decideVoiceReferenceSource(
@@ -252,4 +276,12 @@ export const pickVoiceTtsReference = async (input: {
     clips: [lineClip, ...extras.clips],
     strategy: 'short_sibling_fallback',
   };
+};
+
+/** Line clip first; extra speaker clips only when the original take is short. */
+export const pickVoiceTtsReference = async (input: PickInput): Promise<PickedVoiceTtsReference> => {
+  if (wavDurationSec(input.lineEnglishWav) > TTS_REFERENCE_MAX_SEC)
+    return pickForOverlongLine(input);
+  const picked = await pickWithinLimits(input);
+  return { ...picked, clips: padShortClips(picked.clips) };
 };

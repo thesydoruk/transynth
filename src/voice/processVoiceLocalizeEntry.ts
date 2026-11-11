@@ -165,7 +165,10 @@ export const processVoiceLocalizeEntry = async (
       {
         baseUrl: ttsBaseUrl,
         language: resolveTtsLanguage(tgtLang),
-        synthesis: await voiceLineSynthesisParams(db, synthesis, resynth),
+        synthesis: {
+          ...(await voiceLineSynthesisParams(db, synthesis, resynth)),
+          ...(picked.matchTiming === false ? { matchTiming: false } : {}),
+        },
         signal,
       },
     );
