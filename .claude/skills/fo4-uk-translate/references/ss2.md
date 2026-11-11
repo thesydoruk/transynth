@@ -128,6 +128,7 @@ Practitioners / Battalion / Union / Syndicate → Збирачі / Практи�
 | Memory Lounger / Disaster: X / Infestation                                                       | крісло спогадів / Катастрофа: x / Нашестя                                                                   |
 | Terraformer / Mash / Tato / Silt Bean / Hubflower                                                | тераформер / затор / татос / іловий боб / квітка хаба                                                       |
 | Tetanus / Anthrax / The Blight / Rattle Hands                                                    | правець / сибірка / мор / тремтіння рук («Дослідити ліки: x»)                                               |
+| Buzz Brain (old: Buzz Drain)                                                                     | базз-брейн (хвороба; «Дослідити ліки: базз-брейн»); старі версії з Buzz Drain лишають «базз-дрейн»          |
 
 ## UI, MCM, плейсхолдери
 
