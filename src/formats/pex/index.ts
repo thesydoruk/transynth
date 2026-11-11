@@ -17,4 +17,5 @@ export {
 } from './pexTranslatableFilter';
 export type { PscQuotedLineClass, PexTranslatabilityVerdict } from './pexTranslatableFilter';
 export { serializePexStoredContext } from './pexStoredContext';
+export { isPexDisplayOnlyString } from './pexDisplayUsage';
 export type { PexInfo, PexResult, PexStringUsage, PexUserStringDetail } from './pexParser';
