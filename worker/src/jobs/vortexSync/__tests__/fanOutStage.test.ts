@@ -143,4 +143,39 @@ describe('runFanOutStage', () => {
     expect(deps.stop).toHaveBeenCalledWith(200);
     expect(deps.isBusy).toHaveBeenCalledWith(['tm-apply', 'llm-translate'], 11);
   });
+
+  it('counts a voice job with nothing to synthesize as skipped, not failed', async () => {
+    let nextId = 300;
+    const deps = {
+      enqueue: jest.fn(async () => nextId++),
+      readSnapshot: jest.fn(
+        async (jobId: number): Promise<JobSnapshot> => ({
+          ...snapshot(jobId, 'failed'),
+          kind: 'voice-generate',
+          total: 0,
+          error:
+            jobId === 300 ? 'No missing or stale voice lines to synthesize' : 'TTS unreachable',
+        }),
+      ),
+      isBusy: jest.fn(async () => false),
+      stop: jest.fn(async () => true),
+      sleep: async () => undefined,
+      pollMs: 0,
+    };
+
+    const jobs = await runFanOutStage(
+      null as never,
+      run as never,
+      'voice',
+      mods,
+      {},
+      { isCancelled: () => false },
+      deps,
+    );
+
+    expect(jobs.map((j) => [j.modId, j.status])).toEqual([
+      [11, 'skipped'],
+      [12, 'failed'],
+    ]);
+  });
 });

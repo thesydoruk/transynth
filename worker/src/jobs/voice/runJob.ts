@@ -17,6 +17,7 @@ import {
 import { loadModImportPaths } from '../../../../src/import/mod/resolvePaths';
 import { loadVoiceProjectSettings } from '../../../../src/voice/voiceProjectSettings';
 import { resolveTtsBaseUrl } from '../../../../src/voice/voiceToolPaths';
+import { NO_MISSING_VOICE_LINES, noLowSimilarityTakes } from './noWork';
 
 export type ModVoiceGenerateJobStatus = 'running' | 'completed' | 'cancelled' | 'failed';
 
@@ -112,9 +113,7 @@ export const runModVoiceGenerateJob = async (
     speakerKey,
   });
   if (total === 0 && reused === 0) {
-    const what = resynth
-      ? `No takes scored below ${resynth.similarityBelow} to re-synthesize`
-      : 'No missing or stale voice lines to synthesize';
+    const what = resynth ? noLowSimilarityTakes(resynth.similarityBelow) : NO_MISSING_VOICE_LINES;
     throw new Error(speakerKey ? `${what} for ${speakerKey}` : what);
   }
   if (total === 0) {
