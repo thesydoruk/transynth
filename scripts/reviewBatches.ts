@@ -18,10 +18,15 @@
  *   --target-lang <lang>          Language under review (default: configured target)
  *   --context-provenance <name>   Show lines with this provenance as context only (repeatable)
  *   --prefix <name>               Batch id prefix (one mod only; default: slug of the mod name)
+ *   --untranslated                Translate run: only lines without a translation are work,
+ *                                 translated neighbours come as context
+ *   --target-provenance <name>    Review only lines with this provenance (repeatable), e.g. the
+ *                                 output of a translate run; the rest is context
  *
  * Examples:
  *   npm run review:batches -- --mod 120 --out /tmp/review-ss2
  *   npm run review:batches -- --mod 104 --mod 105 --out /tmp/review --context-provenance tm_fo4_final_review
+ *   npm run review:batches -- --mod 225 --out /tmp/translate --untranslated
  */
 import '../src/loadEnv';
 // Registers the game plugins; families, dialogue and the name canon come from them.
@@ -42,6 +47,9 @@ const argv = await yargs(hideBin(process.argv))
   .option('target-lang', { type: 'string' })
   .option('context-provenance', { type: 'string', array: true, default: [] as string[] })
   .option('prefix', { type: 'string' })
+  .option('untranslated', { type: 'boolean', default: false })
+  .option('target-provenance', { type: 'string', array: true, default: [] as string[] })
+  .check((a) => !(a.untranslated && a['target-provenance'].length) || 'Pick one focus')
   .check((a) => !(a.prefix && a.mod.length > 1) || 'Use --prefix with a single --mod')
   .help()
   .parse();
@@ -73,6 +81,10 @@ try {
       targetLang: argv['target-lang'] ?? CONFIG.defaultTgtLang,
       contextProvenances: new Set(argv['context-provenance']),
       prefix: argv.prefix,
+      focus: {
+        untranslated: argv.untranslated,
+        provenances: new Set(argv['target-provenance']),
+      },
       onProgress: (scope, done, total) => {
         if (done % 500 === 0) process.stderr.write(`mod ${modId} ${scope}: ${done}/${total}\n`);
       },

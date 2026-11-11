@@ -8,6 +8,7 @@ import type { Tx } from '../db';
 import { findGamePlugin } from '../games/registry';
 import type { LlmPromptFamily } from '../llm/promptFamily';
 import { collectDialogUnits, type DialogUnitOptions } from './dialogUnits';
+import { focusUnits, isFocused } from './focus';
 import { createNameMatcher } from './names';
 import { packUnits } from './pack';
 import { collectRecordUnits, loadModStrings } from './recordUnits';
@@ -37,7 +38,7 @@ const HINTS_PER_LINE = 3;
 
 export type BuildBatchesOptions = Pick<
   DialogUnitOptions,
-  'srcLang' | 'targetLang' | 'contextProvenances' | 'onProgress'
+  'srcLang' | 'targetLang' | 'contextProvenances' | 'focus' | 'onProgress'
 > & {
   modId: number;
   /** Batch id prefix; defaults to a slug of the mod name. */
@@ -99,8 +100,14 @@ export const buildModBatches = async (db: Tx, opts: BuildBatchesOptions): Promis
 
   const seen = new Set<number>();
   const dialogUnits = plugin?.dialog ? await collectDialogUnits(db, mod.id, seen, opts) : [];
-  const rows = await loadModStrings(db, mod.id, opts.srcLang, opts.targetLang);
-  const recordUnits = collectRecordUnits(rows, familyOf, seen, opts.contextProvenances);
+  const rows = await loadModStrings(
+    db,
+    mod.id,
+    opts.srcLang,
+    opts.targetLang,
+    opts.focus?.untranslated ?? false,
+  );
+  const recordUnits = collectRecordUnits(rows, familyOf, seen, opts.contextProvenances, opts.focus);
   const hints = await loadQaHints(db, mod.id, opts.targetLang);
   const names = createNameMatcher(
     opts.srcLang === 'en' && opts.targetLang === 'uk' ? plugin?.prompts.nameCanon : undefined,
@@ -109,7 +116,8 @@ export const buildModBatches = async (db: Tx, opts: BuildBatchesOptions): Promis
   const prefix = opts.prefix ?? slug(mod.name);
   const batches: ReviewBatch[] = [];
   for (const family of FAMILY_ORDER) {
-    const units = [...(family === 'dialog' ? dialogUnits : []), ...(recordUnits.get(family) ?? [])];
+    const all = [...(family === 'dialog' ? dialogUnits : []), ...(recordUnits.get(family) ?? [])];
+    const units = isFocused(opts.focus) ? focusUnits(all) : all;
     for (const [i, batchUnits] of packUnits(withHints(units, hints), family).entries()) {
       batches.push({
         batch_id: `${prefix}-${family}-${String(i + 1).padStart(3, '0')}`,
