@@ -34,7 +34,7 @@ export const getTranslationOverlaysByType = async (
      FROM strings s
      JOIN records r ON r.id = s.record_id
      LEFT JOIN translations t
-       ON t.src_string_id = s.id AND t.target_lang = $3
+       ON t.src_string_id = s.id AND t.target_lang = $3 AND NOT s.is_ignored
      WHERE r.mod_id = $1 AND s.lang = $2 AND s.lstring_id IS NOT NULL
      ORDER BY s.lstring_id, r.signature, r.path, s.created_at DESC`,
     [modId, srcLang, targetLang],

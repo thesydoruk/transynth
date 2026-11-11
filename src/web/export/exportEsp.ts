@@ -31,7 +31,7 @@ const getEspPatches = async (
 ): Promise<EspPatch[]> => {
   const { rows } = await db.query(
     `WITH src AS (
-       SELECT s.id AS string_id, r.formid_hex, r.path, s.text_raw,
+       SELECT s.id AS string_id, r.formid_hex, r.path, s.text_raw, s.is_ignored,
               (ROW_NUMBER() OVER (PARTITION BY r.id ORDER BY s.id) - 1)::int AS occurrence
        FROM strings s
        JOIN records r ON r.id = s.record_id
@@ -41,6 +41,7 @@ const getEspPatches = async (
      FROM src
      JOIN translations t
        ON t.src_string_id = src.string_id AND t.target_lang = $3
+     WHERE NOT src.is_ignored
      ORDER BY src.formid_hex, src.path, src.occurrence`,
     [modId, srcLang, targetLang],
   );

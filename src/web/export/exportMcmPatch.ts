@@ -52,7 +52,7 @@ const getMcmTranslationOverlay = async (
     `SELECT r.path, COALESCE(t.text, s.text_raw) AS export_text
      FROM records r
      JOIN strings s ON s.record_id = r.id AND s.lang = $2
-     LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $3
+     LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $3 AND NOT s.is_ignored
      WHERE r.mod_id = $1 AND r.signature = 'MCM'`,
     [modId, srcLang, targetLang],
   );

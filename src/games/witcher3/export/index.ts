@@ -36,7 +36,7 @@ const loadTranslations = async (
     `SELECT r.path, t.text
      FROM records r
      JOIN strings s ON s.record_id = r.id AND s.lang = $2
-     JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $3
+     JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $3 AND NOT s.is_ignored
      WHERE r.mod_id = $1 AND r.signature = ANY($4::text[]) AND t.text IS NOT NULL`,
     [modId, srcLang, targetLang, [...W3_RECORD_SIGNATURES]],
   );
