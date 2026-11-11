@@ -45,6 +45,39 @@ describe('adaptTmTranslation', () => {
     );
   });
 
+  it("swaps another line's MCM key for the target's", () => {
+    expect(
+      adaptTmTranslation(
+        'Клацни, щоб ${helpClickAction}',
+        'Click to ${helpClickAction}',
+        'Click to ${Item_sorter_help}',
+        'fo4',
+      ),
+    ).toBe('Клацни, щоб ${Item_sorter_help}');
+  });
+
+  it('keeps alias tags that differ only by digits to the number transplant', () => {
+    expect(
+      adaptTmTranslation(
+        'Іди до <Alias=Location002>',
+        'Go to <Alias=Location002>',
+        'Go to <Alias=Location003>',
+        'fo4',
+      ),
+    ).toBe('Іди до <Alias=Location003>');
+  });
+
+  it('returns null when the translation lacks the matched placeholder', () => {
+    expect(
+      adaptTmTranslation(
+        'Іди туди',
+        'Go to <Alias=myLocation>',
+        'Go to <Alias=TargetLocation>',
+        'fo4',
+      ),
+    ).toBeNull();
+  });
+
   it('applies ALL CAPS after numeric transplant', () => {
     expect(
       adaptTmTranslation('Комбінезон Сховища 88', 'Vault 88 Jumpsuit', 'VAULT 111 JUMPSUIT', 'fo4'),
