@@ -215,7 +215,7 @@ export const synthesizeModVoiceLineBuffers = async (
       {
         baseUrl: ttsBaseUrl,
         language: resolveTtsLanguage(opts.tgtLang),
-        synthesis,
+        synthesis: picked.matchTiming === false ? { ...synthesis, matchTiming: false } : synthesis,
       },
     );
 
