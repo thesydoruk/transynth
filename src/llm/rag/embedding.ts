@@ -3,6 +3,14 @@ import { embedMany } from '../embed';
 import { logRag } from '../../logging/loggers';
 import { RAG_EMBED_DIMENSIONS } from '../ragConstants';
 
+/**
+ * Longest stored context that goes into an embedding input. A PEX string used
+ * all over one script stores every use (20k chars for `": "` in an SS2 quest
+ * script), which the embed server refuses with 413; the head of the context is
+ * enough to place the line.
+ */
+export const EMBED_CONTEXT_MAX_CHARS = 8000;
+
 /** Build the text that is embedded for indexing and retrieval. */
 export const buildEmbeddingInput = (opts: {
   sourceText: string;
@@ -13,7 +21,7 @@ export const buildEmbeddingInput = (opts: {
   const parts: string[] = [];
   if (opts.signature) parts.push(`signature: ${opts.signature}`);
   if (opts.path) parts.push(`path: ${opts.path}`);
-  if (opts.context) parts.push(`context: ${opts.context}`);
+  if (opts.context) parts.push(`context: ${opts.context.slice(0, EMBED_CONTEXT_MAX_CHARS)}`);
   parts.push(`source: ${opts.sourceText}`);
   return parts.join(' | ');
 };
@@ -43,13 +51,23 @@ const isEmbedPayloadTooLarge = (err: unknown): boolean => {
   return /\b413\b/.test(msg) || msg.toLowerCase().includes('payload too large');
 };
 
-/** Split embed batches on HTTP 413 until the server accepts the payload. */
-export const embedTextsForRagResilient = async (texts: string[]): Promise<number[][]> => {
+/**
+ * Split embed batches on HTTP 413 until the server accepts the payload. A text
+ * the server refuses even on its own gets no vector (`undefined` in its slot),
+ * so one oversized line does not fail the rest of its batch.
+ */
+export const embedTextsForRagResilient = async (
+  texts: string[],
+): Promise<Array<number[] | undefined>> => {
   if (texts.length === 0) return [];
   try {
     return await embedTextsForRag(texts);
   } catch (err) {
-    if (!isEmbedPayloadTooLarge(err) || texts.length <= 1) throw err;
+    if (!isEmbedPayloadTooLarge(err)) throw err;
+    if (texts.length === 1) {
+      logRag.warn('rag_embed text too large, skipped', { chars: texts[0]!.length });
+      return [undefined];
+    }
     const mid = Math.ceil(texts.length / 2);
     logRag.debug('rag_embed split after 413', {
       from: texts.length,
