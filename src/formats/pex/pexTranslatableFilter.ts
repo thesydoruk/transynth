@@ -20,9 +20,19 @@ const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\
 /** Debug-only Papyrus calls — never player-facing. */
 const PEX_DEBUG_CALL_RE = /\bDebug\.(?:Trace(?:Stack|This)?|Message|Warning|Assert|Dump)\s*\(/i;
 
-/** Dev / wiring calls where quoted strings are IDs, events, or asset names. */
+/**
+ * Dev / wiring calls where quoted strings are IDs, events, or asset names.
+ * The second line came from production (2026-11-11): TM had translated
+ * literals used as state names, animation events, stats and plugin names.
+ */
 const PEX_TECHNICAL_CALL_RE =
-  /\b(?:RegisterFor\w+|Send(?:Custom|Animation)Event|PlaySound|Cast|GetFormFromFile|Game\.GetForm(?:FromFile)?|AddPerk|RemovePerk|EquipItem|SetOpenState|StartCannibal|Find|GetKeyword|HasKeyword|IsSpellTarget|GetLinkedRef(?:Chain)?|StartTimer|RegisterForSingleUpdate|RegisterForMenuOpenEvent|GetAnimationVariable|SetAnimationVariable|SendStoryEvent|EvaluatePackage|AddScriptPackage|PushActorAway|GetDistance|IsInInterior|GetCurrentLocation|GetFactionRank|HasMagicEffect|GetItemCount|GetValue|SetValue|FindMatchingRef|GetPropertyValue|SetPropertyValue)\s*\(/i;
+  /\b(?:GoToState|PlayAnimation(?:AndWait)?|PlayGamebryoAnimation|PlaySubgraphAnimation|IncrementStat|IsPluginInstalled|Dismember|PlaceAtNode|HasDirectLOS|PlayImpactEffect|AddTextReplacementData|ShowAsHelpMessage|GetAnimationVariable\w*|SetAnimationVariable\w*|UnregisterFor\w+|IsMenuRegistered|GetMappedKey|CallFunction|FindStruct|RegisterFor\w+|Send(?:Custom|Animation)Event|PlaySound|Cast|GetFormFromFile|Game\.GetForm(?:FromFile)?|AddPerk|RemovePerk|EquipItem|SetOpenState|StartCannibal|Find|GetKeyword|HasKeyword|IsSpellTarget|GetLinkedRef(?:Chain)?|StartTimer|RegisterForSingleUpdate|RegisterForMenuOpenEvent|GetAnimationVariable|SetAnimationVariable|SendStoryEvent|EvaluatePackage|AddScriptPackage|PushActorAway|GetDistance|IsInInterior|GetCurrentLocation|GetFactionRank|HasMagicEffect|GetItemCount|GetValue|SetValue|FindMatchingRef|GetPropertyValue|SetPropertyValue)\s*\(/i;
+
+/**
+ * Mods log through their own wrappers: `ModTraceCustom`, `HQTrace`,
+ * `UFO4P_BirdTrace`, `TraceSelf`, `DebugMsg`, `DebugLog`.
+ */
+const MOD_TRACE_CALL_RE = /\b(?:\w*Trace\w*|Debug(?:Msg|Log)\w*)\s*\(/i;
 
 const SCRIPT_META_RE = /^\s*(?:Scriptname|extends|import)\b/i;
 
@@ -113,7 +123,18 @@ export const classifyPscQuotedLine = (line: string): PscQuotedLineClass => {
   if (PEX_PLAYER_FACING_CALL_RE.test(trimmed)) return 'player-facing';
   if (PEX_TECHNICAL_CALL_RE.test(trimmed)) return 'technical';
   if (/\b(?:Trace|Log|Print|Dump|Assert)\s*\(/i.test(trimmed)) return 'debug';
+  if (MOD_TRACE_CALL_RE.test(trimmed)) return 'debug';
   return 'unknown';
+};
+
+/** `x == "Busy"`, `"Busy" != x`: the literal is compared, so it is a name. */
+const isComparedLiteral = (line: string, literal: string): boolean => {
+  const quoted = `"${literal.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  const at = line.indexOf(quoted);
+  if (at < 0) return false;
+  return (
+    /(?:==|!=)\s*$/.test(line.slice(0, at)) || /^\s*(?:==|!=)/.test(line.slice(at + quoted.length))
+  );
 };
 
 const isDebugStringPrefixConcat = (line: string, literal: string): boolean => {
@@ -137,12 +158,14 @@ export const refineUnknownPscLine = (line: string, literal: string): PscQuotedLi
     return 'technical';
   }
   if (isDebugStringPrefixConcat(line, trimmedLiteral)) return 'debug';
+  if (isComparedLiteral(line, literal)) return 'technical';
   if (PEX_TECHNICAL_CALL_RE.test(line)) return 'technical';
   if (isNaturalLanguagePexLiteral(trimmedLiteral)) return 'unknown';
   return 'technical';
 };
 
-const resolvePscLineClass = (line: string, literal: string): PscQuotedLineClass => {
+/** Class of one code line that quotes `literal`, after refining `unknown`. */
+export const resolvePscLineClass = (line: string, literal: string): PscQuotedLineClass => {
   const kind = classifyPscQuotedLine(line);
   return kind === 'unknown' ? refineUnknownPscLine(line, literal) : kind;
 };

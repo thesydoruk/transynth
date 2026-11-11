@@ -124,6 +124,37 @@ describe('isPexLiteralTranslatable', () => {
     expect(isPexLiteralTranslatable('OpenDoor', [], psc)).toBe(false);
   });
 
+  it.each([
+    ['Done', 'Self.GoToState("Done")'],
+    ['Reset', 'Alias_ControlPanel.GetRef().PlayAnimation("Reset")'],
+    ['Play01', 'Self.PlayAnimationAndWait("Play01", "Done")'],
+    ['Workshops Unlocked', 'Game.IncrementStat("Workshops Unlocked", 1)'],
+    ['HUDFramework.esm', 'If Game.IsPluginInstalled("HUDFramework.esm")'],
+    ['Busy', 'If lockLevel == "Busy"'],
+  ])('excludes the name %s used as %s', (literal, line) => {
+    const psc = `Function Run()\n  ${line}\nEndFunction`;
+    expect(isPexLiteralTranslatable(literal, [], psc)).toBe(false);
+  });
+
+  it.each([
+    [
+      'Failed to find our custom assault quest.',
+      'ModTraceCustom(sLogName, "Failed to find our custom assault quest.")',
+    ],
+    [' - group is already registered.', 'Self.HQTrace(" - group is already registered.", 0)'],
+    ['3D lost while taking off.', 'Self.UFO4P_BirdTrace("3D lost while taking off.")'],
+    ['there is no created Form', 'DebugMsg("there is no created Form")'],
+  ])('treats a mod log wrapper as debug: %s', (literal, line) => {
+    const psc = `Function Run()\n  ${line}\nEndFunction`;
+    expect(isPexLiteralTranslatable(literal, [], psc)).toBe(false);
+  });
+
+  it('keeps a message box line that also traces', () => {
+    const psc =
+      'Function Run()\n  Debug.MessageBox("Settlement exported.")\n  ModTrace("Settlement exported.")\nEndFunction';
+    expect(isPexLiteralTranslatable('Settlement exported.', [], psc)).toBe(true);
+  });
+
   it('falls back to bytecode and excludes debug-only usage', () => {
     expect(
       isPexLiteralTranslatable('trace me', [usage('Debug.Trace'), usage('Debug.TraceStack')], null),
