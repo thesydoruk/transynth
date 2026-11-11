@@ -9,6 +9,7 @@ import { log } from '../../../../src/logger';
 import { updateVortexSyncRun, type VortexSyncRunRow } from '../../../../src/vortex/db';
 import { STAGE_JOB_KIND, type VortexFanOutStage } from '../../../../src/vortex/stages';
 import type { JobData, JobKind, JobSnapshot } from '../../types';
+import { isVoiceNoWorkError } from '../voice/noWork';
 
 export type VortexModJob = {
   modId: number;
@@ -191,7 +192,12 @@ export const runFanOutStage = async (
       entry.done = snapshot.done;
       entry.total = snapshot.total;
       if (isTerminal(snapshot.status)) {
-        entry.status = snapshot.status;
+        entry.status =
+          snapshot.status === 'failed' &&
+          kind === 'voice-generate' &&
+          isVoiceNoWorkError(snapshot.error)
+            ? 'skipped'
+            : snapshot.status;
         entry.error = snapshot.error;
         break;
       }
