@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.0 — 2026-11-13
 
 Vortex, from a command somebody has to remember to a process that watches:
 
@@ -25,6 +25,42 @@ Cutscene videos, dubbed as part of the mod they belong to:
 - **Server side.** `video_assets` (keyed by mod and file) and `video_segments`; `GET /api/mods/:id/video`, `…/video/:videoId`, `…/segments`, `…/phrase/:stringId`, `…/audio/:kind[?from&to]`, `POST …/separate`, `…/dub`, `…/pack`, the agent's `PUT …/file` under the CLI token, `GET /api/video-separate/:jobId`, `/api/video-dub/:jobId` and `/api/video-pack/:jobId` with `POST …/stop`. The heartbeat reply carries `videoUploads`. A database from the first, game-keyed shape of these tables is brought over on start: the pilot's phrases move into the game's master as `VIDEO` records, its assets are dropped and re-registered by the next sync. After this change an asset whose file is not on the server yet (every one registered before it) is asked for again; a dub it already has is written into the uploaded file by itself.
 
 See [Dubbing the cutscenes](eng/18-video-dubbing.md).
+
+What the first full runs of a real load order found in the Vortex sync:
+
+- **One folder is one upload, and each plugin in it is one mod.** A staging folder with several plugins was cut into one upload per plugin, each carrying all of the folder's loose files and every BA2 whose name merely started with its stem. Sim Settlements 2 ships `SS2.esm`, two chapters and `SS2Extended.esp` together, so each plugin's mod imported its own copy of the folder's text and the langpack kept whichever came last. The agent now sends one unit per folder; the server unpacks it once and registers one import per plugin on that tree, and MCM, Interface, PEX and videos are imported with the folder's main plugin only (`mod_imports.import_extras`). A one-plugin folder hashes as before and is not uploaded again.
+- **A mod version is keyed on its plugin file, not the Nexus id.** Plugins of one folder share a Nexus id, so the plan took a sibling plugin for the previous version — FallUI VR-Patch as an update of FallUI Inventory — and carry-over copied the sibling's translations. `mods.vortex_plugin` holds the plugin a mod is anchored on, and the plan, carry-over, the current-version mark and the export order use it; a folder without a plugin keeps the old key.
+- **Only the plugin's own STRINGS tables are read.** Import and export took every table in `Strings/`, and lstring ids are numbered per plugin, so in a shared folder one plugin's ids overwrote another's. Both sides now read `Strings/<plugin stem>_<locale>.*` alone, as the engine does.
+- **An upload cannot vanish.** Two SS2 chapters (~52k rows) were lost without a word: their unit ids ran past the router's 100-character path parameter, the SPA fallback answered the missed PUT with `index.html` and 200, and the agent counted both as done. The URL carries a short unit key, an API miss is a JSON 404, the agent requires the registered job back, and the plan records each unit's job or refusal in one statement.
+- **Newer staging folder names.** Vortex now names folders `{name} {nexus id} {version} {date} {suffix}`; those mods lost their Nexus id and were named after a plugin stem. Both formats parse.
+- **MCM `config.json` and namespaced scripts.** Sim Settlements 2 arrived without its menu and without script text: the agent never sent `MCM/Config/<mod>/config.json`, and PEX import and export read only the top level of a folder spelled exactly `Scripts` — SS2's 1,872 scripts sit in namespace folders, UFO4P unpacks to `SCRIPTS/`. The agent sends the file, scripts are read at any depth in any letter case, and a script's key follows Papyrus' own naming (`A:B:Name`).
+- **A mod-root search stops at its unit folder.** A Creation Club plugin with no Interface folder of its own borrowed a neighbouring unit's — a stray tree of a VR patch — so the langpack shipped Fallout 4 VR's `Translate_en.txt` and the menus showed raw keys. A refused unit now leaves no tree behind.
+- **The agent, after its first week.** A unit the server refuses is skipped instead of stopping the cycle; a request the network dropped is retried up to three times, and a failed upload names its cause; the heartbeat and the langpack delivery go out before a sync as well as after it; a mod with nothing to voice counts as skipped in a voice stage, not failed — a run that voiced 7,464 lines had ended `failed` over 24 mods without work.
+
+See [Vortex](eng/16-vortex-sync.md). Run `npm run db:init` after pulling.
+
+Nothing wrong reaches the pack:
+
+- **Carry-over and TM never copy a sibling string's translation.** A record that repeats a subrecord has several strings on one FormID and path. Carry-over kept only the last old sibling and gave its translation to every new one, and bulk TM preferred such an anchor over an exact text match: a re-import of Fallout4 mixed 14,485 rows — INFO responses, terminal menu items, quest stages, body-part names. Siblings are now paired inside their record by identical text, and a changed source is assumed only when one string is left on each side.
+- **A script literal is patched only when the script just shows it.** A PEX string-table entry is shared by every use of the literal, so a translated state name, animation event or stat breaks the script: `GoToState("Done")` → «Готово». The export uses a translation only when the stored decompiled context shows the literal inside display calls alone (`MessageBox`, `Notification`, HUD captions); of the 382 translated script rows in production 4 qualified. The import filter classifies the same call sites — and the mods' own trace wrappers — as technical: translatable script rows went from 4,353 to 1,327 of 4,547 with all 270 display literals kept, and the 4,261 existing rows no display call uses were marked skip.
+- **A skipped string keeps its source text.** Skip is meant to carry no translation, but TM and carry-over could leave one behind; 405 skipped strings of Fallout4 had Ukrainian text, most of it another record's. Every exporter — STRINGS, ESP, PEX, MCM, Interface, Disco `.po`, Witcher 3 — now ignores it.
+- **TM swaps the placeholders that differ.** A match is made on text with every placeholder masked, and only numbers were transplanted, so a match could carry another line's keys: `${helpClickAction}` where the target has `${Item_sorter_help}`, a foreign `<Alias=…>`. Placeholders are paired by position and swapped; a match whose counts differ is dropped. All 47 such rows in production carried foreign placeholders.
+- **Translate keys are written byte for byte.** Three keys of Fallout 4's `Translate_en.txt` end in a space, the export trimmed them, and the Creations menu showed the raw key.
+- **A large langpack is not declared stalled.** The voice tree of a 26-mod group — ~130k takes on network storage — was walked synchronously past the five-minute job lock; the walk is asynchronous now.
+- **One oversized context no longer fails a RAG batch.** A script literal used everywhere stores every use as context — 20,092 characters for `": "` — and the embed server's 413 failed the whole batch of 8. The embedded context is capped at 8,000 characters, and a text the server refuses on its own leaves an empty slot.
+
+Voice:
+
+- **References inside the TTS server's limits.** Fish Speech refuses reference audio over 30 s and under about 1 s, so a few lines got the same refusal from every job. A take over 29 s is replaced by the speaker's reference (or cut, without its transcript), references under 1.2 s in total are padded with silence, and a `.fuz` that is not a FUZE container is decoded as it is.
+- **The voice editor sees the takes of a mod wrapped in `Data/`.** For such an archive the voice job's package is the extract root while the editor rooted its own at `Data/`, so every dubbed line showed as missing — Depravity 0 of 7,055, Fusion City Rising 0 of 2,526 — and translation playback and single-line synthesis used the same wrong path. The editor now resolves the package the job does: 6,895 and 2,249 on the production data, the other 24 Fallout 4 mods unchanged.
+
+Reviews:
+
+- **The Vortex load order, translated and proofread.** After the re-import of the group on 2026-11-10/11, 996 lines TM could not fill were translated and 3,096 proofread by agents in batches, with 470 fixes; the report, the decisions and an account of the import restart that cascaded reviewed translations away are in `doc/reviews/`.
+- **Batches for untranslated lines and for one pass's output.** `review:batches --untranslated` makes work of the lines without a translation, with the translated lines of the same scene as context; `--target-provenance <p>` of the lines one run wrote. Units without work are dropped and context is trimmed to four lines around each run of work lines.
+- **Skills from the Disco Elysium and Sim Settlements 2 reviews.** A `disco-uk-translate` skill with the register of every decided pair and the name canon; `fo4-uk-translate` gains a Sim Settlements 2 reference.
+
+See [Vortex · Fallout 4, 2026-11-11](reviews/fo4-vortex-uk-2026-11-11/README.md).
 
 ## 0.10.0 — 2026-11-05
 
