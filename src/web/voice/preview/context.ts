@@ -9,6 +9,7 @@ import {
   resolveModStoredPath,
 } from '../../../modStorage';
 import { resolveImportPackages } from '../../../modImport';
+import { pluginRelPath } from '../../../modImport/packages';
 import { loadModImportPaths } from '../../../import/mod/resolvePaths';
 import { ensureDir } from '../../../utils/file';
 
@@ -28,11 +29,50 @@ const resolveVoiceLocalizeDir = (pluginPath: string, targetLang: string): string
   return fs.existsSync(localizeDir) ? localizeDir : null;
 };
 
+/**
+ * The package the import and the voice job resolve for this plugin, when it
+ * holds the plugin's voice tree.
+ *
+ * The job writes each take at `<package localize dir>/<take path relative to the
+ * package>`. The editor has to name takes the same way: for an archive wrapped in
+ * `Data/` the job's package is the extract root (`Data/Sound/Voice/…`), and a
+ * context rooted at `Data/` itself looked for `Sound/Voice/…` beside it — every
+ * dubbed line showed as missing and single-line synthesis wrote outside `Data/`.
+ */
+const importPackageVoiceContext = (
+  pluginPath: string,
+  targetLang: string,
+): VoicePackageContext | null => {
+  const extractRoot = resolveModImportExtractRoot(pluginPath);
+  if (!extractRoot) return null;
+  let pkg: ReturnType<typeof resolveImportPackages>[number] | undefined;
+  try {
+    pkg = resolveImportPackages(extractRoot, targetLang, pluginPath)[0];
+  } catch {
+    return null;
+  }
+  if (!pkg) return null;
+  const pluginRel = pluginRelPath(pkg.packageDir, pluginPath);
+  // A package picked beside the plugin (a sibling content folder) is not its voice root.
+  if (pluginRel.startsWith('..') || path.isAbsolute(pluginRel)) return null;
+  const voiceRoot = path.join(pkg.packageDir, ...resolveVoiceRootRel(pluginRel).split('/'));
+  if (!fs.existsSync(voiceRoot)) return null;
+  return {
+    packageDir: pkg.packageDir,
+    pluginRel,
+    pluginPath,
+    localizeDir: fs.existsSync(pkg.localizeDir) ? pkg.localizeDir : null,
+  };
+};
+
 export const resolveVoicePackageContext = (
   pluginPath: string,
   targetLang: string,
 ): VoicePackageContext | null => {
   if (!pluginPath || !fs.existsSync(pluginPath)) return null;
+
+  const fromImport = importPackageVoiceContext(pluginPath, targetLang);
+  if (fromImport) return fromImport;
 
   const pluginDir = path.dirname(pluginPath);
   const pluginName = path.basename(pluginPath);
