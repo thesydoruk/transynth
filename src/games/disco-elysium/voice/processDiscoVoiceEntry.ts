@@ -24,7 +24,6 @@ import {
 } from '../../../voice/prepareVoiceTtsText';
 import {
   lookupVoiceSynthesisVersion,
-  upsertVoiceSynthesisState,
   voiceSynthesisStateKey,
 } from '../../../voice/voiceSynthesisState';
 import { voiceTtsPayloadVersionFromPrepared } from '../../../voice/voiceTtsPayloadVersion';
@@ -36,6 +35,7 @@ import {
   type VoiceResynthContext,
 } from '../../../voice/voiceResynth';
 import { resolveTtsLanguage, type TtsReferenceMode } from '../../../voice/voiceToolPaths';
+import { recordVoiceTake, voiceTakeSource } from '../../../voice/referenceVoiceTakeHooks';
 import { discoVoiceSpeakerKey } from './discoverDiscoVoiceFiles';
 import { outputLocalizedWavRelPath } from './voicePaths';
 
@@ -160,6 +160,8 @@ export const processDiscoVoiceEntry = async (
       },
     );
 
+    const reference = { ...voiceTakeSource(entry, row), takePath: wavDest };
+
     if (resynth && persistState) {
       const take = {
         modId,
@@ -177,6 +179,7 @@ export const processDiscoVoiceEntry = async (
           ensureDir(path.dirname(wavDest));
           fs.writeFileSync(wavDest, tts.wav);
         },
+        reference,
       );
       if (settled.kind === 'kept') {
         log.info(`Disco voice ${wavRel} kept (${settled.reason})`);
@@ -196,7 +199,7 @@ export const processDiscoVoiceEntry = async (
 
     const persist = async (): Promise<void> => {
       if (!persistState) return;
-      await upsertVoiceSynthesisState(db, {
+      await recordVoiceTake(db, reference, {
         modId,
         lineKey: entry.lineKey,
         variant: entry.variant,

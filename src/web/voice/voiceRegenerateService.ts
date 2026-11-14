@@ -8,11 +8,9 @@ import { toDiskPath, resolveImportPackages } from '../../modImport';
 import { modImportLocalizeDir, resolveModImportExtractRoot } from '../../modStorage';
 import { loadImportedMod } from '../../modImport/importedMod';
 import { gamePlugin } from '../../games/registry';
-import {
-  speakerKeyFromVoiceRelPath,
-  upsertVoiceSynthesisState,
-} from '../../voice/voiceSynthesisState';
+import { speakerKeyFromVoiceRelPath } from '../../voice/voiceSynthesisState';
 import { originFromVoiceRelPath } from '../../voice/voiceOrigin';
+import { recordVoiceTakeByLineKey } from '../../voice/referenceVoiceTakeHooks';
 import { getAllProjectSettings } from '../services/projectSettings';
 import { convertAudioToPreviewWav } from './preview/audioCache';
 import { resolveModVoiceContext } from './preview';
@@ -327,7 +325,8 @@ export const commitVoiceRegenerateSession = async (
   ensureDir(path.dirname(destPath));
   fs.writeFileSync(destPath, fs.readFileSync(artifactPath));
 
-  await upsertVoiceSynthesisState(db, {
+  const take = { pluginPath: resolved.ctx.pluginPath, srcLang: meta.srcLang, takePath: destPath };
+  await recordVoiceTakeByLineKey(db, take, {
     modId,
     lineKey: meta.lineKey,
     variant: meta.variant,

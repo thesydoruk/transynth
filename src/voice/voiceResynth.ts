@@ -22,6 +22,10 @@ import {
 import { isVoiceSynthesisCurrent } from './voiceTtsPayloadVersion';
 import { withLiveRetryPolicy } from './voiceProjectSettings';
 import {
+  saveReferenceVoiceTakeForLine,
+  type ReferenceVoiceTakeFiles,
+} from './referenceVoiceTakeHooks';
+import {
   loadVoiceSynthesisStampMap,
   lookupVoiceSynthesisEntry,
   markVoiceResynthHandled,
@@ -191,7 +195,8 @@ export type VoiceResynthTakeOutcome = { kind: 'replaced' } | { kind: 'kept'; rea
 /**
  * Judge the new take against the stored one and record the outcome: the stamp
  * of a replaced take carries the new score and this run; a kept take only gets
- * the run mark. The caller writes the file when told to.
+ * the run mark. The caller writes the file when told to; with `reference` a
+ * replaced take is also kept in the reference voice store.
  */
 export const settleVoiceResynthTake = async (
   db: Tx,
@@ -202,6 +207,7 @@ export const settleVoiceResynthTake = async (
   >,
   outcome: { payloadVersion: string; newSimilarity: number | null },
   writeFile: () => void,
+  reference?: ReferenceVoiceTakeFiles,
 ): Promise<VoiceResynthTakeOutcome> => {
   const stamp = lookupVoiceResynthStamp(
     ctx,
@@ -226,5 +232,15 @@ export const settleVoiceResynthTake = async (
     voiceSimilarity: outcome.newSimilarity,
     resynthRunId: ctx.params.runId,
   });
+  if (reference) {
+    await saveReferenceVoiceTakeForLine(db, {
+      ...reference,
+      modId: take.modId,
+      tgtLang: take.targetLang,
+      speakerKey: take.speakerKey,
+      ttsTextVersion: outcome.payloadVersion,
+      voiceSimilarity: outcome.newSimilarity,
+    });
+  }
   return { kind: 'replaced' };
 };

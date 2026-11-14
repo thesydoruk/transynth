@@ -20,6 +20,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { VoiceFileEntry } from '../../../voice/discoverVoiceFiles';
+import type { VoiceTakeSource } from '../../../voice/referenceVoiceTakeHooks';
 import { PATHS } from '../../../paths';
 import { ensureDir } from '../../../utils/file';
 import { opusWemToOgg, parseOpusWem } from '../audio/opusWem';
@@ -90,6 +91,30 @@ export const readW3SourceTake = (
   } finally {
     fs.closeSync(fd);
   }
+};
+
+/**
+ * What the reference voice store needs to key a line's take. A source take has
+ * no file of its own, so the key is the SHA-1 of the Ogg copy the editor and
+ * the reuse pass know it by; that copy is unpacked here when the container is
+ * at hand. Without it the take has no key and is simply not kept.
+ */
+export const w3ReferenceTakeSource = (
+  modId: number,
+  line: { relPath: string; source: string; translation: string },
+  extractRoot?: string | null,
+): VoiceTakeSource => {
+  const entry = w3SourceTakeEntry(line.relPath, w3SourceCacheDir(modId));
+  try {
+    if (entry && extractRoot) materializeW3SourceTake(extractRoot, entry);
+  } catch {
+    // Not kept, see above.
+  }
+  return {
+    source: { relPath: entry?.relPath ?? '', absPath: entry?.absolutePath ?? '' },
+    sourceText: line.source,
+    translation: line.translation,
+  };
 };
 
 /** Unpack a source take to its entry's Ogg path, if it is not there yet. */

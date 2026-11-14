@@ -20,7 +20,6 @@ import {
 } from '../../../voice/prepareVoiceTtsText';
 import {
   lookupVoiceSynthesisVersion,
-  upsertVoiceSynthesisState,
   voiceSynthesisStateKey,
 } from '../../../voice/voiceSynthesisState';
 import { voiceTtsPayloadVersionFromPrepared } from '../../../voice/voiceTtsPayloadVersion';
@@ -33,6 +32,7 @@ import {
   type VoiceResynthContext,
 } from '../../../voice/voiceResynth';
 import { resolveTtsLanguage } from '../../../voice/voiceToolPaths';
+import { recordVoiceTake } from '../../../voice/referenceVoiceTakeHooks';
 import { decodeOpusWemToWav } from '../audio/opusWem';
 import type { MimicModel } from '../mimic/model';
 import { parseW3SpeechAudio } from '../w3speech';
@@ -41,7 +41,12 @@ import type { W3VoiceLine } from './lines';
 import { WITCHER3_VOICE_MARKUP } from './markup';
 import { W3_UNKNOWN_SPEAKER } from './clips';
 import type { W3ReferenceContext } from './references';
-import { W3_VOICE_VARIANT, w3LocalizedTakePaths, w3SourceTakeEntry } from './takes';
+import {
+  W3_VOICE_VARIANT,
+  w3LocalizedTakePaths,
+  w3ReferenceTakeSource,
+  w3SourceTakeEntry,
+} from './takes';
 
 /** The rate every other game's reference clips are decoded to. */
 const REFERENCE_SAMPLE_RATE = 22050;
@@ -237,6 +242,11 @@ export const synthesizeW3VoiceLine = async (
       fs.writeFileSync(audioPath!, built.audio);
       fs.writeFileSync(lipPath!, built.lip);
     };
+    // The store keeps the `.wav`: the blocks are derived from it.
+    const reference = {
+      ...w3ReferenceTakeSource(ctx.modId, line, ctx.reference?.extractRoot),
+      takePath: wavPath!,
+    };
     if (ctx.resynth) {
       const take = {
         modId: ctx.modId,
@@ -251,6 +261,7 @@ export const synthesizeW3VoiceLine = async (
         take,
         { payloadVersion, newSimilarity: built.voiceSimilarity },
         writeTake,
+        reference,
       );
       if (settled.kind === 'kept') {
         log.info(`Witcher 3 voice ${paths.wav} kept (${settled.reason})`);
@@ -276,7 +287,7 @@ export const synthesizeW3VoiceLine = async (
       };
     }
     writeTake();
-    await upsertVoiceSynthesisState(ctx.db, {
+    await recordVoiceTake(ctx.db, reference, {
       modId: ctx.modId,
       lineKey,
       variant: W3_VOICE_VARIANT,
