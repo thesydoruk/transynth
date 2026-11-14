@@ -10,6 +10,8 @@ import {
   modImportStorageKey,
   modStorageRoot,
   modUploadedFilePath,
+  referenceVoiceRoot,
+  referenceVoiceTakePath,
   resolveModImportExtractRoot,
   resolveModImportLocalizeDir,
   resolveModStoredPath,
@@ -69,5 +71,54 @@ describe('modStorage paths', () => {
     expect(resolveModStoredPath(winPath)).toBe(
       path.join(PATHS.dataDir, 'uploads', 'mod', '_extracted_abc', 'plugin.esp'),
     );
+  });
+
+  describe('reference voice store', () => {
+    const key = {
+      game: 'fo4',
+      lang: 'uk',
+      sourceSha1: 'ab' + '0123456789'.repeat(4).slice(0, 38),
+      ttsTextVersion: 'f'.repeat(15) + 'e' + '9'.repeat(48),
+      fileExt: '.fuz',
+    };
+
+    it('addresses a take by game, language, source digest and payload version', () => {
+      expect(referenceVoiceRoot()).toBe(path.join(modStorageRoot(), '_reference_voice'));
+      expect(referenceVoiceTakePath(key)).toBe(
+        path.join(
+          modStorageRoot(),
+          '_reference_voice',
+          'fo4',
+          'uk',
+          'ab',
+          `${key.sourceSha1}-${'f'.repeat(15)}e.fuz`,
+        ),
+      );
+    });
+
+    it('normalizes case, so one take has one path', () => {
+      expect(
+        referenceVoiceTakePath({
+          game: 'FO4',
+          lang: ' UK ',
+          sourceSha1: key.sourceSha1.toUpperCase(),
+          ttsTextVersion: key.ttsTextVersion.toUpperCase(),
+          fileExt: '.FUZ',
+        }),
+      ).toBe(referenceVoiceTakePath(key));
+    });
+
+    it('refuses a part that could leave the store', () => {
+      expect(() => referenceVoiceTakePath({ ...key, game: '../fo4' })).toThrow(/game/);
+      expect(() => referenceVoiceTakePath({ ...key, lang: 'uk/..' })).toThrow(/language/);
+      expect(() => referenceVoiceTakePath({ ...key, sourceSha1: 'abc' })).toThrow(/SHA-1/);
+      expect(() => referenceVoiceTakePath({ ...key, ttsTextVersion: 'zz' })).toThrow(/version/);
+      expect(() => referenceVoiceTakePath({ ...key, fileExt: 'fuz' })).toThrow(/extension/);
+      expect(() => referenceVoiceTakePath({ ...key, fileExt: '.fu/z' })).toThrow(/extension/);
+    });
+
+    it('is not a mod tree: nothing under it resolves to an extract root', () => {
+      expect(resolveModImportExtractRoot(referenceVoiceTakePath(key))).toBeNull();
+    });
   });
 });

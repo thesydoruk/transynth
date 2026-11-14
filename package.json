@@ -32,6 +32,7 @@
     "voice:clear": "tsx scripts/clearGeneratedVoice.ts",
     "voice:backfill-similarity": "tsx scripts/backfillVoiceSimilarity.ts",
     "voice:reindex-takes": "tsx scripts/reindexVoiceTakes.ts",
+    "voice:reference:backfill": "tsx scripts/voiceReferenceBackfill.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --cache",

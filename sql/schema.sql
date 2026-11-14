@@ -927,6 +927,29 @@ CREATE TABLE IF NOT EXISTS voice_source_file_hashes (
 CREATE INDEX IF NOT EXISTS idx_voice_source_file_hashes_mod
   ON voice_source_file_hashes(mod_id);
 
+-- Reference voice store: synthesized takes kept past the mod they were made for,
+-- the way reference_translations keeps text. Deliberately no foreign key to mods.
+-- A take is found by what it was made from: the original voice file (source_sha1)
+-- and the TTS payload (tts_text_version, as in voice_synthesis_state). The file
+-- sits under `_reference_voice/{game}/{lang}/` in mod storage; `game` is the
+-- reference game key, shared with reference_translations.
+CREATE TABLE IF NOT EXISTS reference_voice_takes (
+  game             TEXT NOT NULL,
+  tgt_lang         TEXT NOT NULL,
+  source_sha1      TEXT NOT NULL,
+  tts_text_version TEXT NOT NULL,
+  speaker_key      TEXT NOT NULL DEFAULT '',
+  source_text      TEXT,
+  translation      TEXT,
+  file_ext         TEXT NOT NULL,
+  file_size        BIGINT NOT NULL,
+  voice_similarity DOUBLE PRECISION,
+  origin_mod_name  TEXT,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (game, tgt_lang, source_sha1, tts_text_version)
+);
+
 -- ── Narrator gender (BOOK/TERM/NOTE) ─────────────────────────────────────────
 ALTER TABLE records ADD COLUMN IF NOT EXISTS narrator_gender TEXT;
 ALTER TABLE records ADD COLUMN IF NOT EXISTS narrator_gender_source TEXT;

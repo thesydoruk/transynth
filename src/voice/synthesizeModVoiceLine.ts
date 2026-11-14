@@ -27,11 +27,8 @@ import {
 } from './prepareVoiceTtsText';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
-import {
-  loadVoiceSynthesisVersion,
-  speakerKeyFromVoiceRelPath,
-  upsertVoiceSynthesisState,
-} from './voiceSynthesisState';
+import { recordVoiceTake, voiceTakeSource, type VoiceTakeSource } from './referenceVoiceTakeHooks';
+import { loadVoiceSynthesisVersion, speakerKeyFromVoiceRelPath } from './voiceSynthesisState';
 import {
   isVoiceSynthesisCurrent,
   voiceTtsPayloadVersionFromPrepared,
@@ -79,6 +76,8 @@ export type SynthesizeModVoiceLineBuffersResult =
       fuzRel: string;
       payloadVersion: string;
       voiceSimilarity: number | null;
+      /** The original take the line was cloned from, and the text spoken over it. */
+      reference: VoiceTakeSource;
     }
   | { ok: false; reason: string; message: string };
 
@@ -239,6 +238,7 @@ export const synthesizeModVoiceLineBuffers = async (
       fuzRel,
       payloadVersion,
       voiceSimilarity: tts.voiceSimilarity,
+      reference: voiceTakeSource(entry, row),
     };
   } catch (err) {
     if (isDependencyUnavailableError(err)) throw err;
@@ -310,9 +310,10 @@ export const synthesizeModVoiceLine = async (
   const fuzDest = toDiskPath(opts.localizeDir, built.fuzRel);
   const speakerKey = opts.speakerKey?.trim() || speakerKeyFromVoiceRelPath(built.fuzRel);
   const originPlugin = originFromVoiceRelPath(built.fuzRel);
-  const baselinePath = fs.existsSync(fuzDest) ? fuzDest : null;
-  if (!opts.force && writeIfChanged(fuzDest, built.fuzData, baselinePath)) {
-    await upsertVoiceSynthesisState(db, {
+  const files = { ...built.reference, takePath: fuzDest };
+  /** Stamp the take just written and keep a copy in the reference voice store. */
+  const recordTake = (): Promise<void> =>
+    recordVoiceTake(db, files, {
       modId: opts.modId,
       lineKey: opts.lineKey,
       variant: opts.variant,
@@ -322,21 +323,15 @@ export const synthesizeModVoiceLine = async (
       ttsTextVersion: built.payloadVersion,
       voiceSimilarity: built.voiceSimilarity,
     });
+  const baselinePath = fs.existsSync(fuzDest) ? fuzDest : null;
+  if (!opts.force && writeIfChanged(fuzDest, built.fuzData, baselinePath)) {
+    await recordTake();
     return { ok: true, relPath: built.fuzRel, skipped: false };
   }
   if (opts.force) {
     ensureDir(path.dirname(fuzDest));
     fs.writeFileSync(fuzDest, built.fuzData);
-    await upsertVoiceSynthesisState(db, {
-      modId: opts.modId,
-      lineKey: opts.lineKey,
-      variant: opts.variant,
-      speakerKey,
-      originPlugin,
-      targetLang: opts.tgtLang,
-      ttsTextVersion: built.payloadVersion,
-      voiceSimilarity: built.voiceSimilarity,
-    });
+    await recordTake();
     return { ok: true, relPath: built.fuzRel, skipped: false };
   }
   return { ok: true, relPath: built.fuzRel, skipped: true };

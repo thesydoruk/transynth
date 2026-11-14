@@ -1,7 +1,8 @@
 /**
  * Where live translations flow into the per-game reference base.
  *
- * - {@link snapshotModsToReference}: before a mod purge, keep what it taught.
+ * - {@link snapshotModsToReference}: before a mod purge, keep what it taught —
+ *   its reviewed text, and its current voice takes in the reference voice store.
  * - {@link scheduleReferencePromote}: after a save or a status change that
  *   makes a translation reviewed/human, copy it when the project setting
  *   `workflow.promote_reference_on_approve` is on. Fire-and-forget, like the
@@ -13,11 +14,18 @@ import {
   promoteTranslationsToReference,
   REFERENCE_PROMOTE_STATUSES,
 } from '../data/queries/referenceTranslations';
+import { snapshotModsVoiceToReference } from '../../voice/reuseReferenceVoiceTakes';
 import { getAllProjectSettings } from './projectSettings';
 
-/** Copy every reviewed/human translation of these mods into the reference base. */
+/**
+ * Copy every reviewed/human translation of these mods into the reference base,
+ * and their current voice takes into the reference voice store. Returns the
+ * translations kept; the voice half never throws and logs its own count.
+ */
 export const snapshotModsToReference = async (db: Tx, modIds: number[]): Promise<number> => {
   if (modIds.length === 0) return 0;
+  // While the rows and the take files are both still there.
+  await snapshotModsVoiceToReference(db, modIds);
   const { rows } = await db.query<{ target_lang: string }>(
     `SELECT DISTINCT t.target_lang
        FROM translations t

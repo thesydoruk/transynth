@@ -257,6 +257,17 @@ the line text and the character's source voice file match. **Voice → Missing**
 runs the same pass first, then synthesizes only what could not be copied.
 **All** (full regenerate) does not reuse.
 
+Takes also outlive their mod. Every synthesized take is copied into the
+**reference voice store** — table `reference_voice_takes`, files under
+`_reference_voice/{game}/{lang}/` in mod storage — keyed by the SHA-1 of the
+original voice file and the TTS payload version, with no link to a mod. The
+reuse pass looks there after the live mods, so a mod deleted and imported again
+gets its voice back without TTS. Per key the store keeps the take with the
+higher similarity score. Deleting a mod with **keep reference** on copies its
+current takes first; `npm run voice:reference:backfill -- --all` (or
+`--mod <id>`, `--lang`, `--dry-run`) does the same for mods voiced before the
+store existed. A take whose line text has changed since synthesis is not kept.
+
 SHA-1 of each source `.fuz`/`.wav` is stored in `voice_source_file_hashes`
 (with size and mtime). Later Carry Over / TM / Missing passes skip the NAS
 read while the file is unchanged.

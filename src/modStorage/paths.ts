@@ -5,7 +5,10 @@
  * - uploaded archives/plugins at the root,
  * - `_extracted_{hash}/` trees with original mod files only,
  * - _localize_{hash}/{lang}/ localized deltas (STRINGS, scripts, voice, …),
- * - `_output/{extractName}/` packed .7z archives.
+ * - `_output/{extractName}/` packed .7z archives,
+ * - `_reference_voice/{game}/{lang}/` synthesized takes kept past their mod
+ *   (see `src/voice/referenceVoiceTakes.ts`); belongs to no mod, and no mod
+ *   deletion removes it.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -61,6 +64,46 @@ export const modImportLocalizeDir = (extractRoot: string, lang: string): string 
 /** Packed .7z output directory for one import extract tree. */
 export const modImportPackOutputDir = (extractRoot: string): string =>
   path.join(modStorageRoot(), '_output', path.basename(path.resolve(extractRoot)));
+
+/** Root of the reference voice store: takes that outlive the mod they were made for. */
+export const referenceVoiceRoot = (): string => path.join(modStorageRoot(), '_reference_voice');
+
+export type ReferenceVoiceTakeKey = {
+  /** Reference game key (`referenceGameKey`). */
+  game: string;
+  lang: string;
+  /** SHA-1 of the original voice file. */
+  sourceSha1: string;
+  /** TTS payload version (`voice_synthesis_state.tts_text_version`). */
+  ttsTextVersion: string;
+  /** Extension of the take with its dot, e.g. `.fuz`. */
+  fileExt: string;
+};
+
+/**
+ * Content-addressed path of one reference take:
+ * `_reference_voice/{game}/{lang}/{sha1[0:2]}/{sha1}-{version[0:16]}{ext}`.
+ * Every part ends up in a file name, so anything but the expected alphabet throws.
+ */
+export const referenceVoiceTakePath = (key: ReferenceVoiceTakeKey): string => {
+  const game = key.game.trim().toLowerCase();
+  const lang = key.lang.trim().toLowerCase();
+  const sha1 = key.sourceSha1.trim().toLowerCase();
+  const version = key.ttsTextVersion.trim().toLowerCase();
+  const ext = key.fileExt.trim().toLowerCase();
+  if (!/^[a-z0-9][a-z0-9_-]*$/.test(game)) throw new Error(`Invalid reference game key: ${game}`);
+  if (!/^[a-z0-9][a-z0-9_-]*$/.test(lang)) throw new Error(`Invalid target language: ${lang}`);
+  if (!/^[0-9a-f]{40}$/.test(sha1)) throw new Error(`Invalid source SHA-1: ${sha1}`);
+  if (!/^[0-9a-f]{16,}$/.test(version)) throw new Error(`Invalid TTS text version: ${version}`);
+  if (!/^\.[a-z0-9]{1,8}$/.test(ext)) throw new Error(`Invalid take extension: ${ext}`);
+  return path.join(
+    referenceVoiceRoot(),
+    game,
+    lang,
+    sha1.slice(0, 2),
+    `${sha1}-${version.slice(0, 16)}${ext}`,
+  );
+};
 
 /** Return localize dir when localized deltas exist for an import extract tree. */
 export const resolveModImportLocalizeDir = (extractRoot: string, lang: string): string | null => {

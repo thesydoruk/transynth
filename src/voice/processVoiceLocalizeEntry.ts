@@ -9,16 +9,13 @@ import { ensureDir } from '../utils/file';
 import type { VoiceFileEntry } from './discoverVoiceFiles';
 import type { VoiceSourceRow, VoiceTranslationRow } from './loadVoiceTranslations';
 import { voiceSpeakerKey } from './speakerReference';
-import {
-  lookupVoiceSynthesisVersion,
-  upsertVoiceSynthesisState,
-  voiceSynthesisStateKey,
-} from './voiceSynthesisState';
+import { lookupVoiceSynthesisVersion, voiceSynthesisStateKey } from './voiceSynthesisState';
 import { pickVoiceTtsReference, type SpeakerRefCacheEntry } from './pickVoiceTtsReference';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { stripVoiceNonSpeechBlocks, type PrepareVoiceTtsTextResult } from './prepareVoiceTtsText';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
+import { recordVoiceTake, voiceTakeSource } from './referenceVoiceTakeHooks';
 import { voiceTtsPayloadVersionFromPrepared } from './voiceTtsPayloadVersion';
 import {
   lookupVoiceResynthStamp,
@@ -181,6 +178,22 @@ export const processVoiceLocalizeEntry = async (
       prepared.text,
     );
 
+    const reference = { ...voiceTakeSource(entry, row), takePath: fuzDest };
+    /** Stamp the take just written and keep a copy in the reference voice store. */
+    const recordTake = async (): Promise<void> => {
+      await recordVoiceTake(db, reference, {
+        modId,
+        lineKey: entry.lineKey,
+        variant: entry.variant,
+        speakerKey,
+        originPlugin,
+        targetLang: tgtLang,
+        ttsTextVersion: payloadVersion,
+        voiceSimilarity: tts.voiceSimilarity,
+      });
+      storedVersions.set(versionKey, payloadVersion);
+    };
+
     if (resynth) {
       const take = {
         modId,
@@ -199,6 +212,7 @@ export const processVoiceLocalizeEntry = async (
           ensureDir(path.dirname(fuzDest));
           fs.writeFileSync(fuzDest, fuzData);
         },
+        reference,
       );
       if (settled.kind === 'kept') {
         log.info(`Voice ${prefix}${fuzRel} kept (${settled.reason})`);
@@ -218,34 +232,14 @@ export const processVoiceLocalizeEntry = async (
 
     const baselinePath = fs.existsSync(fuzDest) ? fuzDest : null;
     if (!force && writeIfChanged(fuzDest, fuzData, baselinePath)) {
-      await upsertVoiceSynthesisState(db, {
-        modId,
-        lineKey: entry.lineKey,
-        variant: entry.variant,
-        speakerKey,
-        originPlugin,
-        targetLang: tgtLang,
-        ttsTextVersion: payloadVersion,
-        voiceSimilarity: tts.voiceSimilarity,
-      });
-      storedVersions.set(versionKey, payloadVersion);
+      await recordTake();
       log.info(`Voice ${prefix}${fuzRel}`);
       return { kind: 'written', relPath: prefix + fuzRel, voiceSimilarity: tts.voiceSimilarity };
     }
     if (force) {
       ensureDir(path.dirname(fuzDest));
       fs.writeFileSync(fuzDest, fuzData);
-      await upsertVoiceSynthesisState(db, {
-        modId,
-        lineKey: entry.lineKey,
-        variant: entry.variant,
-        speakerKey,
-        originPlugin,
-        targetLang: tgtLang,
-        ttsTextVersion: payloadVersion,
-        voiceSimilarity: tts.voiceSimilarity,
-      });
-      storedVersions.set(versionKey, payloadVersion);
+      await recordTake();
       log.info(`Voice ${prefix}${fuzRel}`);
       return { kind: 'written', relPath: prefix + fuzRel, voiceSimilarity: tts.voiceSimilarity };
     }

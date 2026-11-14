@@ -4,37 +4,29 @@
  *
  * Used after TM apply / version carry-over, and as a first pass of Voice → Missing,
  * so a new mod version does not re-run tens of hours of Fish Speech.
+ *
+ * Live donor mods come first; what they leave uncovered is looked up in the
+ * reference voice store, which also holds the takes of mods since deleted.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Tx } from '../db';
-import { loadModImportPaths } from '../import/mod/resolvePaths';
 import { log } from '../logger';
-import { loadImportedMod } from '../modImport';
 import { ensureDir } from '../utils/file';
 import { resolveVoiceSourceFileHashes, voiceSourceHashMapKey } from './voiceSourceFileHashes';
 import {
   isReusableVoiceText,
   matchReusableVoiceLines,
-  type ReuseVoiceDestLine,
-  type ReuseVoiceLineKey,
   type ReuseVoiceMatch,
   type ReuseVoiceSourceLine,
 } from './reuseSynthesizedVoiceMatch';
-import { gamePlugin } from '../games/registry';
-import { prepareVoiceTtsText } from './prepareVoiceTtsText';
+import { reuseReferenceVoiceTakes } from './reuseReferenceVoiceTakes';
 import {
-  voiceTtsPayloadVersionFromPrepared,
-  computeVoiceTtsPayloadVersion,
-} from './voiceTtsPayloadVersion';
-import { resolveTtsLanguage } from './voiceToolPaths';
-import {
-  lookupVoiceSimilarity,
-  lookupVoiceSynthesisVersion,
-  loadVoiceSimilarityMap,
-  loadVoiceSynthesisVersionMap,
-  upsertVoiceSynthesisState,
-} from './voiceSynthesisState';
+  loadVoiceReuseSnapshot,
+  ttsVersionForLine,
+  type VoiceReuseSnapshot,
+} from './voiceReuseSnapshot';
+import { upsertVoiceSynthesisState } from './voiceSynthesisState';
 
 export type {
   ReuseVoiceDestLine,
@@ -53,105 +45,6 @@ export type ReuseSynthesizedVoiceOptions = {
   sourceModIds?: number[];
   /** Restrict copy to one NPC / Disco speaker folder. */
   speakerKey?: string;
-};
-
-const localizedAbsPath = (localizeDir: string, relPath: string): string =>
-  path.join(localizeDir, relPath);
-
-const hasLocalizedTake = (localizeDir: string, relPath: string): boolean =>
-  fs.existsSync(localizedAbsPath(localizeDir, relPath));
-
-const ttsVersionForLine = (line: ReuseVoiceLineKey, tgtLang: string): string => {
-  const prepared = prepareVoiceTtsText({
-    lineSource: line.sourceText,
-    translation: line.translation,
-    // Same speaker text as synthesis, or a reused master-backed take would look stale.
-    speakerSource: line.speakerSource ?? line.sourceText,
-  });
-  if (prepared.action === 'synthesize') {
-    return voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
-  }
-  return computeVoiceTtsPayloadVersion({
-    text: line.translation,
-    language: resolveTtsLanguage(tgtLang),
-  });
-};
-
-type VoiceReuseSnapshot = {
-  modId: number;
-  game: string;
-  localizeDir: string;
-  lines: Array<
-    ReuseVoiceDestLine & {
-      ttsTextVersion: string | null;
-      voiceSimilarity: number | null;
-    }
-  >;
-};
-
-const loadVoiceReuseSnapshot = async (
-  db: Tx,
-  modId: number,
-  targetLang: string,
-  speakerFilter?: string,
-): Promise<VoiceReuseSnapshot | null> => {
-  const lang = targetLang.trim().toLowerCase();
-  let paths;
-  try {
-    paths = await loadModImportPaths(db, { modId });
-  } catch (err) {
-    log.warn(
-      `Voice reuse: skip mod ${modId} (${err instanceof Error ? err.message : String(err)})`,
-    );
-    return null;
-  }
-
-  const mod = await loadImportedMod(db, modId);
-  const voice = gamePlugin(mod.game).voice;
-  if (!voice) return null;
-
-  const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, lang);
-  const storedSimilarities = await loadVoiceSimilarityMap(db, modId, lang);
-  const localizeDir = paths.localizeDir;
-
-  const takes = await voice.listTakes(db, {
-    modId,
-    extractDir: paths.extractDir,
-    pluginPath: paths.pluginPath,
-    srcLang: mod.srcLang,
-    targetLang: lang,
-    speakerKey: speakerFilter?.trim() || undefined,
-  });
-
-  const lines: VoiceReuseSnapshot['lines'] = takes.map((take) => ({
-    speakerKey: take.speakerKey,
-    originPlugin: take.entry.originPlugin ?? '',
-    lineKey: take.entry.lineKey,
-    variant: take.entry.variant,
-    sourceText: take.source,
-    translation: take.translation,
-    ...(take.speakerSource ? { speakerSource: take.speakerSource } : {}),
-    sourceAbsPath: take.entry.absolutePath,
-    sourceRelPath: take.entry.relPath,
-    destRelPath: take.destRelPath,
-    hasLocalized: hasLocalizedTake(localizeDir, take.destRelPath),
-    ttsTextVersion: lookupVoiceSynthesisVersion(
-      storedVersions,
-      take.speakerKey,
-      take.entry.lineKey,
-      take.entry.variant,
-      take.entry.originPlugin,
-    ),
-    voiceSimilarity: lookupVoiceSimilarity(
-      storedSimilarities,
-      take.speakerKey,
-      take.entry.lineKey,
-      take.entry.variant,
-      take.entry.originPlugin,
-    ),
-  }));
-
-  return { modId, game: mod.game, localizeDir, lines };
 };
 
 /** Other imported versions of the same mod, newest first. */
@@ -229,8 +122,9 @@ const copyOneTake = async (
 };
 
 /**
- * Copy synthesized `.fuz` / `.wav` into `destModId` from donor mods when the
- * line text and the character's source voice file both match exactly.
+ * Copy synthesized `.fuz` / `.wav` into `destModId` from donor mods, then from
+ * the reference voice store, when the line text and the character's source
+ * voice file both match exactly.
  */
 export const reuseSynthesizedVoice = async (
   db: Tx,
@@ -267,7 +161,6 @@ const reuseSynthesizedVoiceUnsafe = async (
   if (needed.length === 0) return { copied: 0, skipped: dest.lines.length };
 
   const sourceModIds = await resolveSourceModIds(db, dest, lang, options.sourceModIds);
-  if (sourceModIds.length === 0) return { copied: 0, skipped: needed.length };
 
   let copied = 0;
   let skipped = needed.length;
@@ -360,5 +253,7 @@ const reuseSynthesizedVoiceUnsafe = async (
       `Voice reuse: copied ${copied} take(s) into mod ${destModId} (${lang}) from [${sourceModIds.join(', ')}]`,
     );
   }
-  return { copied, skipped: Math.max(0, skipped) };
+  // Whatever no live donor covered: takes kept from deleted mods and earlier syntheses.
+  const fromReference = await reuseReferenceVoiceTakes(db, dest, lang);
+  return { copied: copied + fromReference, skipped: Math.max(0, skipped - fromReference) };
 };

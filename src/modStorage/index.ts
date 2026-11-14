@@ -10,6 +10,8 @@ export {
   isVortexExtractRoot,
   modUploadTempPath,
   modUploadedFilePath,
+  referenceVoiceTakePath,
+  type ReferenceVoiceTakeKey,
   resolveModImportExtractRoot,
   resolveModStoredPath,
 } from './paths';
