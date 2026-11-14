@@ -13,8 +13,6 @@
  *   `Workshop Framework 35004 2.6.1 2026-10-02T07-49Z mlhIZeBse`
  */
 
-import path from 'node:path';
-
 export interface VortexFolderInfo {
   /** Original folder segment as seen on disk. */
   folderName: string;
@@ -81,20 +79,4 @@ export const parseVortexModFolder = (folderName: string): VortexFolderInfo | nul
   }
 
   return null;
-};
-
-/**
- * Resolve Vortex metadata from the first folder segment under a scan root.
- * For `\\nas\\Vortex Mods\\fallout4\\FallUI - Inventory-48758-...\\Data\\mod.esp`
- * the segment `FallUI - Inventory-48758-...` is parsed.
- */
-export const resolveVortexFolderFromPath = (
-  filePath: string,
-  scanRoot: string,
-): VortexFolderInfo | null => {
-  const rel = path.relative(scanRoot, filePath);
-  if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return null;
-  const firstSeg = rel.split(/[/\\]/)[0];
-  if (!firstSeg) return null;
-  return parseVortexModFolder(firstSeg);
 };

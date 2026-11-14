@@ -141,7 +141,7 @@ postgresql://transynth:transynth@localhost:5433/transynth
 
 Якщо ви використовуєте **Docker Compose**, сервіси `web` і `cli` всередині контейнерної мережі отримують
 `DATABASE_URL=postgresql://transynth:transynth@db:5432/transynth`.
-У `.env` на хості залишайте URL з `localhost:5433` для локальних скриптів (`npm run db:init`, `scan:mods` тощо).
+У `.env` на хості залишайте URL з `localhost:5433` для локальних скриптів (`npm run db:init`, `import:folder` тощо).
 
 ---
 

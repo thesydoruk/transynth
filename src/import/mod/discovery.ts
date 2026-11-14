@@ -1,9 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { discoverBa2Candidate, isBa2GnrArchive } from '../../formats/ba2';
-import { resolveVortexFolderFromPath } from '../../utils/vortexFolder';
-
-import type { ModFileCandidate } from './types';
 
 const ARCHIVE_EXTS = new Set(['.zip', '.7z', '.rar']);
 const PLUGIN_EXTS = new Set(['.esp', '.esm', '.esl']);
@@ -47,49 +44,6 @@ export const discoverModFiles = (
   };
   walk(dir);
   return { plugins, ba2s, bsas };
-};
-
-/** Directory names skipped during recursive mod discovery. */
-const MOD_SCAN_SKIP_DIRS = new Set(['.transynth-extracted', '.git', 'node_modules']);
-
-/**
- * List supported mod files in a directory, optionally including subfolders.
- *
- * Used by batch scans of mod install trees where plugins and archives may sit
- * in nested folders (e.g. per-mod subdirectories under a staging directory).
- */
-export const listModFilesInDirectory = (
-  dir: string,
-  recursive = true,
-  scanRoot = dir,
-): ModFileCandidate[] => {
-  const candidates: ModFileCandidate[] = [];
-
-  const walk = (currentDir: string) => {
-    for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
-      const fullPath = path.join(currentDir, entry.name);
-      if (entry.isDirectory()) {
-        if (recursive && !MOD_SCAN_SKIP_DIRS.has(entry.name)) walk(fullPath);
-        continue;
-      }
-      if (!entry.isFile()) continue;
-
-      const fileName = entry.name;
-      const vortex = resolveVortexFolderFromPath(fullPath, scanRoot) ?? undefined;
-      if (isPlugin(fileName)) {
-        candidates.push({ fileName, filePath: fullPath, kind: 'plugin', vortex });
-      } else if (isArchive(fileName)) {
-        candidates.push({ fileName, filePath: fullPath, kind: 'archive', vortex });
-      }
-    }
-  };
-
-  walk(dir);
-
-  candidates.sort((a, b) =>
-    a.filePath.localeCompare(b.filePath, undefined, { sensitivity: 'base' }),
-  );
-  return candidates;
 };
 
 export const discoverArchiveCandidatesForPlugin = (espPath: string): string[] => {

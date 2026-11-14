@@ -30,10 +30,6 @@ export const PATHS = {
   /** Cutscene audio the Vortex agent uploads, and the tracks the dub makes of it. */
   videoUploads: resolveDir(process.env.VIDEO_UPLOAD_DIR ?? path.join(dataDir, 'uploads', 'video')),
   gamesCache: resolveDir(process.env.GAMES_CACHE_DIR ?? path.join(dataDir, 'cache', 'games')),
-  /** Local extraction target for scan:mods archives (never on network shares). */
-  scanExtract: resolveDir(
-    process.env.SCAN_EXTRACT_DIR ?? path.join(dataDir, 'cache', 'scan-extract'),
-  ),
   /** Cached Champollion PSC output keyed by mod id + PEX digest. */
   pexDecompile: resolveDir(
     process.env.PEX_DECOMPILE_CACHE_DIR ?? path.join(dataDir, 'cache', 'pex-decompile'),
@@ -64,7 +60,6 @@ export const ensureDataDirs = (): void => {
     PATHS.vortexUploads,
     PATHS.videoUploads,
     PATHS.gamesCache,
-    PATHS.scanExtract,
     PATHS.pexDecompile,
     PATHS.voicePreview,
     PATHS.audioIntel,

@@ -1,6 +1,5 @@
 import type { ModImportExtractManifest } from '../../modImport';
 import type { GameId } from '../../types';
-import type { VortexFolderInfo } from '../../utils/vortexFolder';
 
 export interface ModImportJob {
   id: number;
@@ -36,14 +35,6 @@ export interface ModScanContext {
   nexusModName?: string;
   sourceFolder?: string;
   vortexGroupId?: number;
-}
-
-/** A mod artifact discovered in a directory listing. */
-export interface ModFileCandidate {
-  fileName: string;
-  filePath: string;
-  kind: 'plugin' | 'archive';
-  vortex?: VortexFolderInfo;
 }
 
 /**

@@ -99,7 +99,7 @@ export const findExtractRootsInUse = async (
 
 /**
  * Remove upload/extract/PEX cache files for deleted mods. Plugin paths outside
- * mod storage belong to the user (scan:mods registers them in place) and are
+ * mod storage belong to the user (registered in place, not copied) and are
  * left alone, and so is a tree in `keptRoots` (other mods still use it).
  */
 export const removeModDeleteFiles = async (

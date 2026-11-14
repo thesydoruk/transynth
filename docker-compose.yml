@@ -160,7 +160,7 @@ services:
       redis:
         condition: service_healthy
 
-  # One-shot jobs (translate, scan:mods, …). Not started by `docker compose up`.
+  # One-shot jobs (translate, import:folder, …). Not started by `docker compose up`.
   cli:
     profiles: [tools]
     build:
