@@ -239,7 +239,10 @@ export const promoteTranslationsToReference = async (
     byMod ? { modIds: scopeIds } : { stringIds: scopeIds },
   );
   if (origins.length === 0) return 0;
-  await adoptLegacyReferenceRows(db, origins);
+  // Only a whole-mod promotion adopts: a save that promotes one string must not
+  // move a hundred thousand legacy rows in its background hook. Its row lands in
+  // the layer beside the legacy one, which the next whole-mod promotion drops.
+  if (byMod) await adoptLegacyReferenceRows(db, origins);
 
   const gameSql = referenceGameSql('m.game');
   const keySql = `${gameSql}, s.lang, t.target_lang, COALESCE(r.formid_hex, ''), COALESCE(r.path, ''), s.text_raw, layer.origin_key`;
