@@ -10,6 +10,7 @@ import type {
   DeleteModsBatchResult,
   DiffResult,
   Mod,
+  ModContentKind,
   PexSourceSnippetResponse,
   PreviousVersionRow,
   VoiceAvailabilityResponse,
@@ -25,13 +26,18 @@ export const modsEndpoints = {
     game?: string,
     srcLang = getSrcLang(),
     targetLang = getTgtLang(),
-    vortexGroupId?: number,
+    source?: 'all' | 'manual' | number,
   ) => {
     const params = new URLSearchParams({ srcLang, targetLang });
     if (game) params.set('game', game);
-    if (vortexGroupId) params.set('vortexGroupId', String(vortexGroupId));
+    if (source && source !== 'manual') params.set('source', String(source));
     return req<Mod[]>(`/api/mods?${params}`);
   },
+  setContentKind: (modId: number, kind: ModContentKind | null) =>
+    req<{ id: number; content_kind: ModContentKind; content_kind_manual: boolean }>(
+      `/api/mods/${modId}/content-kind`,
+      { method: 'PATCH', body: JSON.stringify({ kind }) },
+    ),
   get: (id: number) => req<Mod>(`/api/mods/${id}`),
   pexSource: async (modId: number, stringId: number): Promise<PexSourceSnippetResponse> => {
     const res = await fetch(`${BASE}/api/mods/${modId}/pex-source/${stringId}`, {

@@ -75,6 +75,8 @@ const mod = (id: number, name: string, strings: number, translated: number) => (
   origin: 'upload',
   vortex_group_id: null,
   channel: null,
+  content_kind: 'mod',
+  content_kind_manual: false,
   game_release_id: null,
   version_label: '1.2.3',
   is_current: true,
