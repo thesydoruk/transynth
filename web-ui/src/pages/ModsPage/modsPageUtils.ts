@@ -14,11 +14,16 @@ export const isActiveModImportJob = (
   importedModIds: ReadonlySet<number>,
 ): boolean => job.status !== 'completed' || job.mod_id == null || !importedModIds.has(job.mod_id);
 
-/** Local imports stay on the default list; Vortex jobs only inside their group. */
-export const matchesVortexGroupView = (
-  vortexGroupId: number | null | undefined,
-  jobGroupId: number | null | undefined,
-): boolean => {
-  if (vortexGroupId == null) return jobGroupId == null;
-  return jobGroupId === vortexGroupId;
-};
+/** How many things the Activity section would list. */
+export const countActivity = (activity: {
+  pendingUploads: unknown[];
+  nexusDownloads: unknown[];
+  appJobs: unknown[];
+  llmJobs: unknown[];
+  importJobs: unknown[];
+}): number =>
+  activity.pendingUploads.length +
+  activity.nexusDownloads.length +
+  activity.appJobs.length +
+  activity.llmJobs.length +
+  activity.importJobs.length;

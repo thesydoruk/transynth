@@ -67,3 +67,38 @@
     height: 20px;
   }
 }
+
+.kindBadge {
+  text-transform: uppercase;
+}
+
+/* Where the mod came from; the group's own label is the tooltip. */
+.vortexChip {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: help;
+}
+
+.kindField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 12px 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+
+  select {
+    min-height: 32px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-input);
+    color: var(--text);
+    font-size: 13px;
+  }
+}

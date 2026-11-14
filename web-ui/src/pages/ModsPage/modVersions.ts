@@ -15,11 +15,14 @@ export const formatModDisplayName = (mod: {
 
 // A plugin is one load-order slot, so it names the family even when the plugins
 // of one Vortex folder share a Nexus id; a plugin-less mod keeps Nexus id / name.
+// The Vortex group is part of the key: the same plugin uploaded by hand and synced
+// from Vortex (or from two groups) is two separate mods, never two versions of one.
 const familyKey = (mod: Mod): string => {
   const channel = mod.channel ?? '';
-  if (mod.vortex_plugin) return `${channel}:plugin:${mod.vortex_plugin.toLowerCase()}`;
-  if (mod.nexus_mod_id) return `${channel}:nexus:${mod.nexus_mod_id}`;
-  return `${channel}:name:${mod.name.toLowerCase()}`;
+  const base = `${channel}:${mod.vortex_group_id ?? 'manual'}`;
+  if (mod.vortex_plugin) return `${base}:plugin:${mod.vortex_plugin.toLowerCase()}`;
+  if (mod.nexus_mod_id) return `${base}:nexus:${mod.nexus_mod_id}`;
+  return `${base}:name:${mod.name.toLowerCase()}`;
 };
 
 const createdAt = (mod: Mod): number => {
@@ -27,7 +30,11 @@ const createdAt = (mod: Mod): number => {
   return Number.isFinite(ts) ? ts : 0;
 };
 
-/** Current version first; older siblings of the same plugin / Nexus id / name go under it. */
+/**
+ * Current version first; older siblings of the same source / plugin / Nexus id / name go
+ * under it. Families keep the order their current version has in `mods`, so the caller
+ * decides how the list is sorted.
+ */
 export const groupModVersions = (mods: Mod[]): ModVersionGroup[] => {
   const buckets = new Map<string, Mod[]>();
   for (const mod of mods) {
@@ -37,6 +44,7 @@ export const groupModVersions = (mods: Mod[]): ModVersionGroup[] => {
     else buckets.set(key, [mod]);
   }
 
+  const position = new Map(mods.map((mod, index) => [mod.id, index]));
   const groups: ModVersionGroup[] = [];
   for (const family of buckets.values()) {
     const sorted = [...family].sort((a, b) => createdAt(b) - createdAt(a));
@@ -47,10 +55,5 @@ export const groupModVersions = (mods: Mod[]): ModVersionGroup[] => {
     groups.push({ current, previous });
   }
 
-  groups.sort((a, b) => {
-    if (a.current.channel === 'game' && b.current.channel !== 'game') return -1;
-    if (b.current.channel === 'game' && a.current.channel !== 'game') return 1;
-    return a.current.name.localeCompare(b.current.name);
-  });
-  return groups;
+  return groups.sort((a, b) => position.get(a.current.id)! - position.get(b.current.id)!);
 };

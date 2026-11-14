@@ -63,7 +63,13 @@ const games = [
   },
 ];
 
-const mod = (id: number, name: string, strings: number, translated: number) => ({
+const mod = (
+  id: number,
+  name: string,
+  strings: number,
+  translated: number,
+  extra: { content_kind?: string; vortex_group_id?: number | null; version_label?: string } = {},
+) => ({
   id,
   name,
   abs_path: `C:/Games/Fallout 4/Data/${name.replace(/\s+/g, '')}.esp`,
@@ -86,12 +92,18 @@ const mod = (id: number, name: string, strings: number, translated: number) => (
   translated_count: translated,
   approved_count: Math.floor(translated / 2),
   fuzzy_count: 3,
+  ...extra,
 });
 
+// One of every kind and source, so the Mods page sections all render.
 const mods = [
   mod(1, 'Sim Settlements 2 — Chapter 3: Unfinished Business and Everything After', 48210, 31002),
   mod(2, 'Unofficial Fallout 4 Patch', 15022, 15022),
   mod(3, 'Nuka World Expanded Raider Settlements', 812, 0),
+  mod(4, 'Fallout4', 120000, 120000, { content_kind: 'base', version_label: '1.10.163' }),
+  mod(5, 'DLCRobot', 9000, 4500, { content_kind: 'dlc' }),
+  mod(6, 'ccBGSFO4001-PipBoy(Black)', 40, 10, { content_kind: 'addon' }),
+  mod(7, 'Workshop Framework', 2300, 2300, { vortex_group_id: 1 }),
 ];
 
 const stats = {

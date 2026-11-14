@@ -1,78 +1,54 @@
 import { useTranslation } from 'react-i18next';
 import { ModDataMenuItems } from './ModDataMenuItems';
+import { useModsWorkspace } from './ModsWorkspaceContext';
 import rowS from './UnifiedJobRow/UnifiedJobRow.module.scss';
 import s from './ModsPage.module.scss';
 
-type ModListHeaderProps = {
-  selectAllRef: React.RefObject<HTMLInputElement | null>;
-  allModsSelected: boolean;
-  selectedModCount: number;
-  multiSelectActive: boolean;
-  deletingAll: boolean;
-  batchMenuOpen: boolean;
-  batchMenuRef: React.RefObject<HTMLDivElement | null>;
-  onToggleSelectAll: () => void;
-  onClearSelection: () => void;
-  onToggleBatchMenu: (e: React.MouseEvent) => void;
-  onBatchDeleteAll: () => void;
-  onBatchExportLangpack: () => void;
-  onCloseBatchMenu: () => void;
-  exportingLangpack: boolean;
-};
-
-export const ModListHeader = ({
-  selectAllRef,
-  allModsSelected,
-  selectedModCount,
-  multiSelectActive,
-  deletingAll,
-  batchMenuOpen,
-  batchMenuRef,
-  onToggleSelectAll,
-  onClearSelection,
-  onToggleBatchMenu,
-  onBatchDeleteAll,
-  onBatchExportLangpack,
-  onCloseBatchMenu,
-  exportingLangpack,
-}: ModListHeaderProps) => {
+/** Select all / batch actions for the mods currently visible on the page. */
+export const ModListHeader = () => {
   const { t } = useTranslation();
+  const { selection, deleteActions, exportSelected, exportingLangpack } = useModsWorkspace();
+  const { deletingAll } = deleteActions;
+  const busy = deletingAll || exportingLangpack;
 
   return (
     <div className={s.modListHeader}>
       <label className={s.selectAllLabel}>
         <input
-          ref={selectAllRef}
+          ref={selection.selectAllRef}
           type="checkbox"
-          checked={allModsSelected}
-          onChange={onToggleSelectAll}
-          disabled={deletingAll || exportingLangpack}
+          checked={selection.allModsSelected}
+          onChange={selection.toggleSelectAllMods}
+          disabled={busy}
         />
-        {selectedModCount > 0
-          ? t('mods.selectedCount', { count: selectedModCount })
+        {selection.selectedModCount > 0
+          ? t('mods.selectedCount', { count: selection.selectedModCount })
           : t('mods.selectAll')}
       </label>
-      {selectedModCount > 0 && (
+      {selection.selectedModCount > 0 && (
         <>
           <button
             type="button"
             className={s.selectionBtn}
-            onClick={onClearSelection}
-            disabled={deletingAll || exportingLangpack}
+            onClick={selection.clearModSelection}
+            disabled={busy}
           >
             {t('mods.clearSelection')}
           </button>
-          {multiSelectActive && (
-            <div className={rowS.menuWrap} ref={batchMenuRef}>
+          {selection.multiSelectActive && (
+            <div className={rowS.menuWrap} ref={selection.batchMenuRef}>
               <button
                 type="button"
                 className={s.selectionBtn}
-                disabled={deletingAll || exportingLangpack}
-                onClick={onToggleBatchMenu}
+                disabled={busy}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  selection.setBatchMenuOpen((open) => !open);
+                }}
               >
                 {t('mods.batchActions')} ⋯
               </button>
-              {batchMenuOpen && (
+              {selection.batchMenuOpen && (
                 <div className={rowS.menuList}>
                   <ModDataMenuItems
                     deletingAll={deletingAll}
@@ -80,11 +56,11 @@ export const ModListHeader = ({
                     batchOnly
                     onClearRows={() => {}}
                     onDeleteAll={() => {
-                      onBatchDeleteAll();
-                      onCloseBatchMenu();
+                      deleteActions.requestDeleteMods(selection.selectedModsForDelete());
+                      selection.setBatchMenuOpen(false);
                     }}
-                    onExportLangpack={onBatchExportLangpack}
-                    onAfterAction={onCloseBatchMenu}
+                    onExportLangpack={exportSelected}
+                    onAfterAction={() => selection.setBatchMenuOpen(false)}
                   />
                 </div>
               )}

@@ -144,8 +144,9 @@ downloads folder.
 Group key: game + staging path. A repeated sync updates the same group. Every mod and every
 game master is its own row; a new version (another content hash) does not overwrite the old
 one, the group has `is_current`. Carry-over and the langpack stay inside the group; TM
-reads the whole base and the reference base, writes only into the group. On the Mods page
-the **Local imports** source does not show Vortex mods; they live only in the
+reads the whole base and the reference base, writes only into the group. The Mods page
+lists them together with hand-uploaded mods, marked with a **Vortex** chip; the **Source**
+filter (shown once a group exists) narrows the list to **Local imports** or to one
 `Vortex · …` group. The editor is the same.
 
 The langpack follows the load order and the file winners from the deployment manifest: it

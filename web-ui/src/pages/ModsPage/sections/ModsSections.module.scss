@@ -1,0 +1,139 @@
+/* Mods page sections: toolbar filters, section chrome, group headings. */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.search,
+.select {
+  min-height: 34px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 13px;
+  min-width: 0;
+}
+
+.search {
+  flex: 2 1 200px;
+}
+
+.select {
+  flex: 1 1 140px;
+  cursor: pointer;
+}
+
+.section {
+  margin: 0 0 24px;
+}
+
+.sectionTitle {
+  margin: 0 0 8px;
+  color: var(--text-bright);
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* <details> sections: the summary is the heading, the bar sits beside it. */
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  min-height: 32px;
+  margin: 0 0 8px;
+  color: var(--text-bright);
+  font-size: 15px;
+  font-weight: 650;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  /* A flex summary loses the native marker, so the fold state is drawn here. */
+  &::before {
+    content: '▸';
+    flex: 0 0 14px;
+    color: var(--text-muted);
+    font-size: 16px;
+    line-height: 1;
+  }
+}
+
+details[open] > .summary::before {
+  content: '▾';
+}
+
+.summaryBar {
+  flex: 1 1 160px;
+  max-width: 280px;
+  min-width: 120px;
+  font-weight: 400;
+}
+
+.nested {
+  margin-top: 12px;
+
+  > .summary {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+}
+
+.group + .group {
+  margin-top: 16px;
+}
+
+.groupTitle {
+  margin: 0 0 6px 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.noMatch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0 0 24px;
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.resetBtn {
+  min-height: 32px;
+  padding: 4px 12px;
+  background: none;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+
+  &:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-heavy);
+  }
+}

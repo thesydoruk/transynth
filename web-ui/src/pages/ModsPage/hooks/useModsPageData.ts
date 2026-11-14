@@ -2,21 +2,17 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, type ModImportJob } from '../../../api';
 import { modListQueryKey } from '../../../langDefaults';
-import { isActiveModImportJob, matchesVortexGroupView } from '../modsPageUtils';
+import { isActiveModImportJob } from '../modsPageUtils';
 
-export const useModsPageData = (
-  gameId: string,
-  srcLang: string,
-  targetLang: string,
-  vortexGroupId?: number,
-) => {
+/** Every mod of the game, whatever its source: manual uploads and all Vortex groups. */
+export const useModsPageData = (gameId: string, srcLang: string, targetLang: string) => {
   const {
     data: mods,
     isLoading: isModsLoading,
     error: modsError,
   } = useQuery({
-    queryKey: [...modListQueryKey(gameId, srcLang, targetLang), vortexGroupId ?? 'manual'],
-    queryFn: () => api.mods.list(gameId, srcLang, targetLang, vortexGroupId),
+    queryKey: [...modListQueryKey(gameId, srcLang, targetLang), 'all'],
+    queryFn: () => api.mods.list(gameId, srcLang, targetLang, 'all'),
   });
 
   const { data: modJobs } = useQuery({
@@ -31,11 +27,8 @@ export const useModsPageData = (
   });
 
   const gameModJobs = useMemo(
-    () =>
-      (modJobs ?? []).filter(
-        (job) => job.game === gameId && matchesVortexGroupView(vortexGroupId, job.vortex_group_id),
-      ),
-    [modJobs, gameId, vortexGroupId],
+    () => (modJobs ?? []).filter((job) => job.game === gameId),
+    [modJobs, gameId],
   );
 
   const importJobByModId = useMemo(() => {
@@ -60,16 +53,6 @@ export const useModsPageData = (
     [gameModJobs, importedModIds],
   );
 
-  const sortedMods = useMemo(
-    () =>
-      [...(mods ?? [])].sort((a, b) => {
-        if (a.channel === 'game' && b.channel !== 'game') return -1;
-        if (b.channel === 'game' && a.channel !== 'game') return 1;
-        return a.name.localeCompare(b.name);
-      }),
-    [mods],
-  );
-
   return {
     mods,
     isModsLoading,
@@ -80,6 +63,5 @@ export const useModsPageData = (
     importJobByModId,
     importedModIds,
     activeImportJobs,
-    sortedMods,
   };
 };

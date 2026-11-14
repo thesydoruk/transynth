@@ -16,6 +16,8 @@ const mod = (partial: Partial<Mod> & Pick<Mod, 'id' | 'name'>): Mod => ({
   approved_count: 0,
   fuzzy_count: 0,
   is_current: true,
+  content_kind: 'mod',
+  content_kind_manual: false,
   ...partial,
 });
 
@@ -70,6 +72,33 @@ describe('groupModVersions', () => {
       { current: inventory, previous: [] },
       { current: vrPatch, previous: [] },
     ]);
+  });
+
+  it('never folds the same plugin from different sources into one family', () => {
+    const manual = mod({ id: 1, name: 'Workshop Plus', vortex_plugin: 'workshopplus.esp' });
+    const vortex = mod({
+      id: 2,
+      name: 'Workshop Plus',
+      vortex_plugin: 'workshopplus.esp',
+      vortex_group_id: 1,
+    });
+    const otherGroup = mod({
+      id: 3,
+      name: 'Workshop Plus',
+      vortex_plugin: 'workshopplus.esp',
+      vortex_group_id: 2,
+    });
+    expect(groupModVersions([manual, vortex, otherGroup])).toEqual([
+      { current: manual, previous: [] },
+      { current: vortex, previous: [] },
+      { current: otherGroup, previous: [] },
+    ]);
+  });
+
+  it('keeps the order of the input list', () => {
+    const b = mod({ id: 1, name: 'B' });
+    const a = mod({ id: 2, name: 'A' });
+    expect(groupModVersions([b, a]).map((g) => g.current.id)).toEqual([1, 2]);
   });
 
   it('nests versions of one plugin even when the Nexus id changed', () => {
