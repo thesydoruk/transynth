@@ -1,51 +1,22 @@
 import { useTranslation } from 'react-i18next';
-import {
-  type ModImportDeleteDataMode,
-  type ModImportJob,
-  type PreviousVersionRow,
-} from '../../api';
 import { ReimportModal } from '../../components/ReimportModal';
 import { ConfirmModal } from '../../components/ConfirmModal';
+import { useModsWorkspace } from './ModsWorkspaceContext';
 import { DeleteModConfirmModal } from './DeleteModConfirmModal/DeleteModConfirmModal';
 
-type ModsPageModalsProps = {
-  reimport: { newModId: number; prevVersions: PreviousVersionRow[] } | null;
-  deleteModalJob: ModImportJob | null;
-  deletingModJobId: number | null;
-  pendingClear: { id: number; name: string } | null;
-  clearingModId: number | null;
-  pendingDeleteAll: { mods: Array<{ id: number; name: string }> } | null;
-  deletingAll: boolean;
-  keepReference: boolean;
-  onKeepReferenceChange: (value: boolean) => void;
-  onCloseReimport: () => void;
-  onCloseDeleteModal: () => void;
-  onConfirmDeleteMod: (deleteData: ModImportDeleteDataMode, keepReference: boolean) => void;
-  onClosePendingClear: () => void;
-  onConfirmClearRows: () => void;
-  onClosePendingDeleteAll: () => void;
-  onConfirmDeleteAll: () => void;
-};
-
-export const ModsPageModals = ({
-  reimport,
-  deleteModalJob,
-  deletingModJobId,
-  pendingClear,
-  clearingModId,
-  pendingDeleteAll,
-  deletingAll,
-  keepReference,
-  onKeepReferenceChange,
-  onCloseReimport,
-  onCloseDeleteModal,
-  onConfirmDeleteMod,
-  onClosePendingClear,
-  onConfirmClearRows,
-  onClosePendingDeleteAll,
-  onConfirmDeleteAll,
-}: ModsPageModalsProps) => {
+/** Re-import and delete confirmations; their state lives in the workspace context. */
+export const ModsPageModals = () => {
   const { t } = useTranslation();
+  const { reimport, closeReimport, deleteActions } = useModsWorkspace();
+  const {
+    deleteModalJob,
+    deletingModJobId,
+    pendingClear,
+    clearingModId,
+    pendingDeleteAll,
+    deletingAll,
+    keepReference,
+  } = deleteActions;
 
   return (
     <>
@@ -53,7 +24,7 @@ export const ModsPageModals = ({
         <ReimportModal
           newModId={reimport.newModId}
           prevVersions={reimport.prevVersions}
-          onClose={onCloseReimport}
+          onClose={closeReimport}
         />
       )}
 
@@ -61,9 +32,9 @@ export const ModsPageModals = ({
         <DeleteModConfirmModal
           fileName={deleteModalJob.file_name}
           deleting={deletingModJobId === deleteModalJob.id}
-          onClose={onCloseDeleteModal}
+          onClose={() => deleteActions.setDeleteModalJob(null)}
           onConfirm={(deleteData, keep) => {
-            void onConfirmDeleteMod(deleteData, keep);
+            void deleteActions.confirmDeleteMod(deleteData, keep);
           }}
         />
       )}
@@ -74,9 +45,9 @@ export const ModsPageModals = ({
           message={t('mods.clearRowsMessage', { name: pendingClear.name })}
           confirmLabel={t('mods.clearRows')}
           pending={clearingModId === pendingClear.id}
-          onClose={onClosePendingClear}
+          onClose={() => deleteActions.setPendingClear(null)}
           onConfirm={() => {
-            void onConfirmClearRows();
+            void deleteActions.confirmClearRows();
           }}
         />
       )}
@@ -95,9 +66,9 @@ export const ModsPageModals = ({
           }
           confirmLabel={t('mods.deleteAll')}
           pending={deletingAll}
-          onClose={onClosePendingDeleteAll}
+          onClose={() => deleteActions.setPendingDeleteAll(null)}
           onConfirm={() => {
-            void onConfirmDeleteAll();
+            void deleteActions.confirmDeleteAll();
           }}
         >
           <label>
@@ -105,7 +76,7 @@ export const ModsPageModals = ({
               type="checkbox"
               checked={keepReference}
               disabled={deletingAll}
-              onChange={(e) => onKeepReferenceChange(e.target.checked)}
+              onChange={(e) => deleteActions.setKeepReference(e.target.checked)}
             />
             <span>{t('mods.deleteAllKeepReference')}</span>
           </label>

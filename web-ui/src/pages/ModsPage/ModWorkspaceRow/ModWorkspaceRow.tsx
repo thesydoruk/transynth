@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Mod, ModImportJob } from '../../../api';
+import type { Mod, ModContentKind, ModImportJob } from '../../../api';
 import { ProgressBar, StatusBadge } from '../../../components/StatusBadge';
 import { modProgress } from '../../../utils/modProgress';
 import parentS from '../ModsPageRow.module.scss';
@@ -12,8 +12,21 @@ import type { ModExportAction } from '../modsShared';
 import { formatModDisplayName } from '../modVersions';
 import s from './ModWorkspaceRow.module.scss';
 
+/** Badge colour per non-mod content kind; plain mods get no badge. */
+const KIND_BADGE_COLOR: Partial<Record<ModContentKind, string>> = {
+  base: '#2e7d32',
+  dlc: '#1565c0',
+  addon: '#6a1b9a',
+};
+
+const KIND_OPTIONS: ModContentKind[] = ['base', 'dlc', 'addon', 'mod'];
+
 export interface ModWorkspaceRowProps {
   mod: Mod;
+  /** Label of the Vortex group the mod came from; shown as the chip's tooltip. */
+  vortexLabel?: string;
+  /** Sets the content kind by hand; null goes back to the detected one. */
+  onContentKindChange?: (kind: ModContentKind | null) => void;
   importJob?: ModImportJob | null;
   exportActions: ModExportAction[];
   clearingRows?: boolean;
@@ -46,6 +59,8 @@ export interface ModWorkspaceRowProps {
 /** Imported mod row — translation progress plus import/export workspace actions. */
 export const ModWorkspaceRow = ({
   mod,
+  vortexLabel,
+  onContentKindChange,
   importJob,
   exportActions,
   clearingRows,
@@ -115,15 +130,25 @@ export const ModWorkspaceRow = ({
             aria-label={t('mods.selectMod', { name: formatModDisplayName(mod) })}
           />
         )}
-        <span className={parentS.typeBadge} style={{ background: '#2e7d32' }}>
-          MOD
-        </span>
+        {KIND_BADGE_COLOR[mod.content_kind] && (
+          <span
+            className={`${parentS.typeBadge} ${s.kindBadge}`}
+            style={{ background: KIND_BADGE_COLOR[mod.content_kind] }}
+          >
+            {t(`mods.kind.${mod.content_kind}`)}
+          </span>
+        )}
         <div className={s.main}>
           <span className={parentS.fileName}>
             {mod.name}
             {mod.version_label?.trim() ? (
               <span className={s.versionBadge} title={t('mods.version')}>
                 {mod.version_label.trim()}
+              </span>
+            ) : null}
+            {mod.vortex_group_id != null ? (
+              <span className={s.vortexChip} title={vortexLabel}>
+                {t('mods.vortexChip')}
               </span>
             ) : null}
             {importJob?.is_localized ? (
@@ -216,6 +241,30 @@ export const ModWorkspaceRow = ({
                       <span>{action.title}</span>
                     </button>
                   ))}
+                {!multiSelectActive && onContentKindChange && (
+                  <label className={s.kindField}>
+                    <span>{t('mods.contentType')}</span>
+                    <select
+                      value={mod.content_kind_manual ? mod.content_kind : 'auto'}
+                      onChange={(e) =>
+                        onContentKindChange(
+                          e.target.value === 'auto' ? null : (e.target.value as ModContentKind),
+                        )
+                      }
+                    >
+                      <option value="auto">
+                        {mod.content_kind_manual
+                          ? t('mods.contentAuto')
+                          : t('mods.contentAutoKind', { kind: t(`mods.kind.${mod.content_kind}`) })}
+                      </option>
+                      {KIND_OPTIONS.map((kind) => (
+                        <option key={kind} value={kind}>
+                          {t(`mods.kind.${kind}`)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 <ModDataMenuItems
                   clearingRows={clearingRows}
                   deletingAll={deletingAll}

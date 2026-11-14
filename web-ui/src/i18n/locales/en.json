@@ -107,8 +107,6 @@
   "mods": {
     "title": "Mods",
     "pageDescription": "Import mod files, track import jobs, and manage translation progress — all in one place.",
-    "vortexGroup": "Source",
-    "vortexManual": "Local imports",
     "version": "Version",
     "previousVersions": "{{count}} previous versions",
     "previousVersions_one": "1 previous version",
@@ -146,12 +144,57 @@
     "exportLangpack": "Export translation",
     "exportingLangpack": "Exporting…",
     "exportStarted": "Export started in the background. The archive will appear in the list when it is ready.",
+    "exportMixedSources": "Select mods from one source: local imports and a Vortex group cannot go into the same archive.",
     "exportDownload": "Download",
     "exportDelete": "Delete",
     "exportDeleting": "Deleting…",
     "exportFullMod": "Full localized mod",
-    "vortexExperimental": "experimental",
-    "vortexExperimentalTitle": "Vortex sync is at a very early stage. Back up your staging folder and check the result before relying on it."
+    "kind": {
+      "base": "Game",
+      "dlc": "DLC",
+      "addon": "Add-on",
+      "mod": "Mod"
+    },
+    "vortexChip": "Vortex",
+    "contentType": "Content type",
+    "contentAuto": "Auto",
+    "contentAutoKind": "Auto ({{kind}})",
+    "sections": {
+      "activityTitle": "Activity · {{count}}",
+      "gameTitle": "Game and DLC · {{count}}",
+      "addonsTitle": "Official add-ons · {{count}}",
+      "modsTitle": "Mods · {{count}}",
+      "exportsTitle": "Exports · {{count}}"
+    },
+    "view": {
+      "search": "Search by name…",
+      "sourceLabel": "Source",
+      "source": {
+        "all": "All sources",
+        "manual": "Local imports"
+      },
+      "contentLabel": "Content",
+      "content": {
+        "all": "All content",
+        "game": "Game and DLC",
+        "mods": "Mods"
+      },
+      "statusLabel": "Translation status",
+      "status": {
+        "all": "Any status",
+        "todo": "To translate",
+        "review": "To review",
+        "done": "Done"
+      },
+      "groupLabel": "Grouping",
+      "group": {
+        "none": "No grouping",
+        "source": "By source",
+        "status": "By status"
+      },
+      "noMatch": "No mods match these filters.",
+      "reset": "Reset filters"
+    }
   },
   "modAi": {
     "progressShort": "{{done}} / {{total}}",

@@ -107,8 +107,6 @@
   "mods": {
     "title": "Моди",
     "pageDescription": "Імпорт файлів модів, відстеження завдань імпорту та керування прогресом перекладу — все в одному місці.",
-    "vortexGroup": "Джерело",
-    "vortexManual": "Локальні імпорти",
     "version": "Версія",
     "previousVersions": "{{count}} попередні версії",
     "previousVersions_one": "1 попередня версія",
@@ -148,12 +146,57 @@
     "exportLangpack": "Експорт перекладу",
     "exportingLangpack": "Експорт…",
     "exportStarted": "Експорт запущено у фоні. Архів з’явиться в списку, коли буде готовий.",
+    "exportMixedSources": "Виберіть моди з одного джерела: локальні імпорти й група Vortex не можуть потрапити в один архів.",
     "exportDownload": "Завантажити",
     "exportDelete": "Видалити",
     "exportDeleting": "Видалення…",
     "exportFullMod": "Повний локалізований мод",
-    "vortexExperimental": "експериментально",
-    "vortexExperimentalTitle": "Синхронізація з Vortex на дуже ранній стадії. Зробіть резервну копію стейджа й перевіряйте результат, перш ніж на нього покладатись."
+    "kind": {
+      "base": "Гра",
+      "dlc": "DLC",
+      "addon": "Додаток",
+      "mod": "Мод"
+    },
+    "vortexChip": "Vortex",
+    "contentType": "Тип вмісту",
+    "contentAuto": "Авто",
+    "contentAutoKind": "Авто ({{kind}})",
+    "sections": {
+      "activityTitle": "Активність · {{count}}",
+      "gameTitle": "Гра та DLC · {{count}}",
+      "addonsTitle": "Офіційні додатки · {{count}}",
+      "modsTitle": "Моди · {{count}}",
+      "exportsTitle": "Експорти · {{count}}"
+    },
+    "view": {
+      "search": "Пошук за назвою…",
+      "sourceLabel": "Джерело",
+      "source": {
+        "all": "Усі джерела",
+        "manual": "Локальні імпорти"
+      },
+      "contentLabel": "Вміст",
+      "content": {
+        "all": "Увесь вміст",
+        "game": "Гра та DLC",
+        "mods": "Моди"
+      },
+      "statusLabel": "Стан перекладу",
+      "status": {
+        "all": "Будь-який стан",
+        "todo": "Перекласти",
+        "review": "Вичитати",
+        "done": "Готово"
+      },
+      "groupLabel": "Групування",
+      "group": {
+        "none": "Без групування",
+        "source": "За джерелом",
+        "status": "За станом"
+      },
+      "noMatch": "Жоден мод не відповідає фільтрам.",
+      "reset": "Скинути фільтри"
+    }
   },
   "modAi": {
     "progressShort": "{{done}} / {{total}}",

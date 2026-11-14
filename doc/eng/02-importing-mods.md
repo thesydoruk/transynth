@@ -40,9 +40,23 @@ Open the **Mods** page for the current game (`/games/:gameId/mods`).
 The main upload bar accepts plugin and archive files
 (`.esp` / `.esm` / `.esl` / `.zip` / `.7z` / `.rar`).
 
-All jobs appear in one list, each with a type badge:
+The page is one list of every mod of the game, whatever its source: files uploaded by hand
+and mods synced from a Vortex group sit side by side. It is split into sections:
 
-- `MOD` for plugin or archive imports
+- **Activity** — uploads, Nexus downloads, running jobs and imports in progress (hidden when there are none).
+- **Game and DLC** — the game itself and its official DLC, with one progress bar for the whole section. Official add-ons (Creation Club and the like) are folded into "Official add-ons" at the bottom.
+- **Mods** — everything else.
+- **Exports** — finished and running langpack archives (collapsed).
+
+A row carries a badge for its kind (GAME, DLC, ADD-ON; plain mods have none) and a **Vortex**
+chip when it came from a Vortex group. The kind is detected from the plugin; the row's **⋯**
+menu → **Content type** overrides it, and **Auto** goes back to the detected one.
+
+Under the upload bar: search by name, and filters for source (shown when the game has a Vortex
+group), content (all / game and DLC / mods) and translation status (to translate / to review /
+done), plus grouping of the Mods section by source or status. The choice is kept in the URL
+(`?source=…&content=…&status=…&q=…&group=…`), so a filtered view can be bookmarked. "Select all"
+and the batch menu act on the mods that are currently visible.
 
 To import a plugin or archive:
 

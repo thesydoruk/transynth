@@ -1,28 +1,13 @@
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api';
+import { useModsWorkspace } from './ModsWorkspaceContext';
 import { acceptedModExtensions } from './modsPageUtils';
 import s from './ModsPage.module.scss';
 
-type ModsPageUploadBarProps = {
-  /** Game whose accepted upload types the file picker offers. */
-  gameId: string | undefined;
-  fileRef: React.RefObject<HTMLInputElement | null>;
-  uploading: boolean;
-  pendingCount: number;
-  onUpload: () => void;
-  onStartAll: () => void;
-};
-
-export const ModsPageUploadBar = ({
-  gameId,
-  fileRef,
-  uploading,
-  pendingCount,
-  onUpload,
-  onStartAll,
-}: ModsPageUploadBarProps) => {
+export const ModsPageUploadBar = () => {
   const { t } = useTranslation();
+  const { gameId, upload } = useModsWorkspace();
   const { data: games } = useQuery({
     queryKey: ['games'],
     queryFn: api.games.list,
@@ -35,13 +20,19 @@ export const ModsPageUploadBar = ({
   return (
     <div className={s.uploadBlock}>
       <div className={s.uploadBar}>
-        <input ref={fileRef} type="file" accept={accepted} multiple className={s.fileInput} />
-        <button onClick={onUpload} disabled={uploading} className={s.btn}>
-          {uploading ? t('common.uploading') : t('common.upload')}
+        <input
+          ref={upload.fileRef}
+          type="file"
+          accept={accepted}
+          multiple
+          className={s.fileInput}
+        />
+        <button onClick={upload.onUpload} disabled={upload.uploading} className={s.btn}>
+          {upload.uploading ? t('common.uploading') : t('common.upload')}
         </button>
-        {pendingCount > 0 && (
-          <button onClick={onStartAll} className={s.btnImportAll}>
-            {t('imports.importAll', { count: pendingCount })}
+        {upload.pendingImportCount > 0 && (
+          <button onClick={upload.onStartAll} className={s.btnImportAll}>
+            {t('imports.importAll', { count: upload.pendingImportCount })}
           </button>
         )}
       </div>
