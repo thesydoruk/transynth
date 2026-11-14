@@ -34,7 +34,7 @@ Inconsistencies confuse players and signal a low-quality translation.
 
 ## Opening the Coherence Checker
 
-Open **Consistency** from the game hub (route: `/games/:gameId/coherence`).
+Open **Consistency** from the **Coherence** link on the game page (route: `/games/:gameId/coherence`).
 
 If no inconsistency groups are found, the page provides direct actions instead of only passive text:
 

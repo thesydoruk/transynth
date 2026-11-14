@@ -35,7 +35,7 @@ langpack into the tool so its strings are ready to translate.
 
 ## Starting an Import
 
-Open the **Mods** page for the current game (`/games/:gameId/mods`).
+Open the game page (`/games/:gameId`); the mods workspace is the page itself.
 
 The main upload bar accepts plugin and archive files
 (`.esp` / `.esm` / `.esl` / `.zip` / `.7z` / `.rar`).
@@ -368,9 +368,9 @@ Important limitation: if you upload an archive with multiple plugins, the curren
 
 ## Nexus Mod Relations on Mod Page
 
-Discover is the game hub **Discover** card, route `/games/:gameId/nexus`.
+Discover is the **Nexus** link on the game page, route `/games/:gameId/nexus`.
 An empty search lists Nexus mods for that game (paginated). It is not the
-imported-mods workspace (`/games/:gameId/mods`).
+imported-mods workspace (`/games/:gameId`).
 
 Nexus details are `/games/:gameId/nexus/:modId`. The bottom block uses three
 relation tabs:

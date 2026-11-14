@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **One page per game.** The game hub is gone: `/games/:gameId` is the Mods workspace, under a compact header with the cover, name, totals for the game and DLC and for mods, and a row of links (Nexus, Coherence, Diff, Reference, Vortex, Glossary, Voice); `/games/:gameId/mods` redirects there and keeps its query string.
 - **Mods know what they hold.** Every mod has a content kind (base game, DLC, add-on such as Creation Club, or mod), classified by the game plugin from its anchor file and overridable with `PATCH /api/mods/:id/content-kind`; `GET /api/mods?source=all` lists manual and Vortex mods together.
 - **One Mods page, sections instead of a mode.** The Vortex mode switch (and its "experimental" tag) is gone: every mod of the game is in one list, with a Vortex chip and a kind badge. The page is split into Activity, Game and DLC (official add-ons folded), Mods and Exports; search, source, content and status filters and grouping live in the URL, a row's menu sets the content type by hand, and a plugin uploaded by hand is never folded into the same plugin from Vortex as a "previous version".
 - **EET and CSV import are removed.** The legacy `.eet` and `.csv` translation-file imports (the **Advanced import** block of the Mods page, `/api/eet` and `/api/csv`, their worker jobs and the `EET_UPLOAD_DIR` / `CSV_UPLOAD_DIR` settings) are gone; plugins and archives are imported as before. The empty `eet_imports` and `csv_imports` tables are dropped on the next `npm run db:init`.

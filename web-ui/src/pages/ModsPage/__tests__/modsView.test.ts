@@ -8,6 +8,7 @@ import {
   modStatus,
   parseModsView,
   sortGameContent,
+  summarizeContent,
   splitAddons,
   splitByContent,
   writeModsView,
@@ -191,5 +192,30 @@ describe('aggregateProgress', () => {
     expect(stats.total).toBe(200);
     expect(stats.translated).toBe(150);
     expect(stats.approved).toBe(120);
+  });
+});
+
+describe('summarizeContent', () => {
+  const game = mod({
+    id: 1,
+    name: 'Fallout4',
+    content_kind: 'base',
+    translated_count: 100,
+    approved_count: 50,
+  });
+  const oldGame = mod({ id: 2, name: 'Fallout4', content_kind: 'base', is_current: false });
+  const a = mod({ id: 3, name: 'A', translated_count: 50 });
+  const b = mod({ id: 4, name: 'B', translated_count: 100, approved_count: 100 });
+
+  it('totals game content and mods apart, counting current versions only', () => {
+    const summary = summarizeContent([game, oldGame, a, b]);
+    expect(summary.game).toEqual({ count: 1, strings: 100, translatedPct: 100, approvedPct: 50 });
+    expect(summary.mods).toEqual({ count: 2, strings: 200, translatedPct: 75, approvedPct: 50 });
+  });
+
+  it('leaves out a side without mods', () => {
+    expect(summarizeContent([a]).game).toBeNull();
+    expect(summarizeContent([game]).mods).toBeNull();
+    expect(summarizeContent([])).toEqual({ game: null, mods: null });
   });
 });

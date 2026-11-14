@@ -4,13 +4,12 @@
  * Sections: toolbar (upload, search, filters), activity, game and DLC, mods, exports.
  * The view (source, content, status, search, grouping) lives in the URL.
  *
- * URL: /games/:gameId/mods
+ * URL: /games/:gameId
  */
 import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { Mod } from '../../api';
-import { PageHeader } from '../../components/PageHeader';
 import { useContentLangs } from '../../hooks/useContentLangs';
 import { useModAiJobsPoll } from '../../hooks/useModAiJobsPoll';
 import { DEFAULT_GAME_ID } from '../../langDefaults';
@@ -18,11 +17,14 @@ import { ModListHeader } from './ModListHeader';
 import { ModsPageEmptyState } from './ModsPageEmptyState';
 import { ModsPageModals } from './ModsPageModals';
 import { ModsWorkspaceContext } from './ModsWorkspaceContext';
-import { useModsPageData, useModsView, useModsWorkspaceState } from './hooks';
+import { useGameInfo, useModsPageData, useModsView, useModsWorkspaceState } from './hooks';
 import { countActivity } from './modsPageUtils';
 import { filterMods, splitByContent } from './modsView';
 import { ActivitySection } from './sections/ActivitySection';
 import { ExportsSection } from './sections/ExportsSection';
+import { GameHeader } from './sections/GameHeader';
+import { GameLinks } from './sections/GameLinks';
+import { GameUnavailable } from './sections/GameUnavailable';
 import { GameContentSection } from './sections/GameContentSection';
 import { ModsSection } from './sections/ModsSection';
 import { ModsToolbar } from './sections/ModsToolbar';
@@ -37,12 +39,17 @@ export const ModsPage = () => {
   const { srcLang, targetLang } = useContentLangs();
   useModAiJobsPoll(true);
 
+  const gameInfo = useGameInfo(gameId);
   const { view, setView, resetFilters } = useModsView();
   const pageData = useModsPageData(gameId, srcLang, targetLang);
   const allMods = pageData.mods ?? NO_MODS;
   const visibleMods = useMemo(() => filterMods(allMods, view), [allMods, view]);
   const { game, mods } = useMemo(() => splitByContent(visibleMods), [visibleMods]);
   const workspace = useModsWorkspaceState({ gameId, srcLang, targetLang, pageData, visibleMods });
+
+  if (gameInfo.isLoading) return <GameUnavailable state="loading" />;
+  if (gameInfo.error) return <GameUnavailable state="error" error={gameInfo.error} />;
+  if (!gameInfo.game) return <GameUnavailable state="missing" />;
 
   if (pageData.modsError) {
     return (
@@ -65,7 +72,8 @@ export const ModsPage = () => {
   return (
     <ModsWorkspaceContext.Provider value={workspace}>
       <div className={s.page}>
-        <PageHeader title={t('mods.title')} description={t('mods.pageDescription')} />
+        <GameHeader game={gameInfo.game} mods={allMods} />
+        <GameLinks gameId={gameId} srcLang={srcLang} targetLang={targetLang} />
         <ModsToolbar view={view} onChange={setView} showFilters={allMods.length > 0} />
 
         {loading ? (

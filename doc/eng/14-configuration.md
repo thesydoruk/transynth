@@ -24,7 +24,7 @@ The **Settings** page (`/settings`) provides a centralised view of all project c
 Open it from the gear icon on the right of the top bar.
 
 Tabs: **General**, **LLM**, **Voice**, **Workflow**, **QA Rules**, **Activity**.
-Glossary is on the game hub, not a Settings tab.
+Glossary is a link on the game page, not a Settings tab.
 
 ### General tab
 
