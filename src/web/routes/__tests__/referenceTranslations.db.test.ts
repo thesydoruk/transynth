@@ -286,10 +286,22 @@ describe('reference API', () => {
         await insertLegacy('UFO4P', 'Стьорджес (старе)');
         const patch = await patchWithOwnLine();
 
-        await promote({ stringIds: [patch.stringId], targetLang: 'uk' });
+        await promote({ modIds: [patch.modId], targetLang: 'uk' });
 
         expect(await layers()).toEqual([
           { origin_key: PATCH_KEY, origin: 'promote', translation: 'Стьорджес (старе)' },
+          { origin_key: PATCH_KEY, origin: 'promote', translation: 'Престон' },
+        ]);
+      });
+
+      it('leaves legacy rows alone when single strings are promoted', async () => {
+        await insertLegacy('UFO4P', 'Стьорджес (старе)');
+        const patch = await patchWithOwnLine();
+
+        await promote({ stringIds: [patch.stringId], targetLang: 'uk' });
+
+        expect(await layers()).toEqual([
+          { origin_key: '', origin: 'promote', translation: 'Стьорджес (старе)' },
           { origin_key: PATCH_KEY, origin: 'promote', translation: 'Престон' },
         ]);
       });
