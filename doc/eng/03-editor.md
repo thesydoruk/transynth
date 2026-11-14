@@ -29,7 +29,7 @@ The editor is the main workspace for reviewing, correcting, and completing trans
 
 ## Opening the Editor
 
-From a game’s mods list (`/games/:gameId/mods`), click the name of a mod to open its editor.
+From a game’s mods list (`/games/:gameId`), click the name of a mod to open its editor.
 The editor URL is `/games/:gameId/mods/:id`. Home `/` is the games catalogue, not the mods list.
 
 If you are updating an existing mod version, the editor also exposes an **Update** button.

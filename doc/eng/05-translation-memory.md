@@ -230,7 +230,7 @@ from a live donor mod.
 
 ### The Reference page
 
-Game hub → **Reference base** card (`/games/<game>/reference`). The page offers:
+Game page → **Reference** link (`/games/<game>/reference`). The page offers:
 
 - a language-pair filter and a search across source, translation and EDID;
 - adding a pair by hand (no anchors — such a row matches by normalized text only);

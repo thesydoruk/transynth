@@ -46,12 +46,12 @@ Pipeline виявляє, що в базі вже існує старіша ве�
 
 ## Сторінка Diff
 
-Відкрийте **Release & Diff** з хаба гри (`/games/:gameId/diff`).
+Відкрийте **Release & Diff** з посилання **Diff** на сторінці гри (`/games/:gameId/diff`).
 
 Якщо поточний фільтр не дає жодного рядка, сторінка показує action-first empty state з прямими next steps:
 
 - **Show all changes** — скидає фільтр до `all`
-- **Open current game hub** або каталог ігор, якщо game context ще не збережено
+- **Open current game** або каталог ігор, якщо game context ще не збережено
 
 ### Вибір двох версій
 

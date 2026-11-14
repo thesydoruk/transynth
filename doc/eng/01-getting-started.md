@@ -284,14 +284,14 @@ Use the URL that matches your runtime mode:
 
 There is **no login**. Anyone who can reach the HTTP port can use the app — see [SECURITY.md](../../SECURITY.md).
 
-The first screen is the **Games** catalogue (`/`). Until setup is done it shows a short checklist: configure the LLM, import a mod, run auto-translate. Pick a title to open that game’s hub (`/games/:gameId`). Imported mods live at `/games/:gameId/mods`; the editor is `/games/:gameId/mods/:id`.
+The first screen is the **Games** catalogue (`/`). Until setup is done it shows a short checklist: configure the LLM, import a mod, run auto-translate. Pick a title to open the game page (`/games/:gameId`): a compact header with the game and its totals, links to the game’s other pages, and the mods workspace. The old `/games/:gameId/mods` address redirects there; the editor is `/games/:gameId/mods/:id`.
 
-The top bar is thin: the brand (games catalogue), a badge for the last game you opened, the content language pair (`SRC → TGT`), Settings (gear), and **System log** (`/system-log` — LLM / TTS / job / system lines). Glossary, Diff, and Coherence live on the game hub, not in the first row.
+The top bar is thin: the brand (games catalogue), a badge for the last game you opened, the content language pair (`SRC → TGT`), Settings (gear), and **System log** (`/system-log` — LLM / TTS / job / system lines). Glossary, Diff, and Coherence are links on the game page, not in the first row.
 
-The game hub cards are Translate, Discover, **Quality** (that is the
-[Coherence](13-coherence.md) page, not QA rules), and Terms. QA rules live under
-**Settings → QA**. Voice settings are a link to Settings → Voice. When the game
-already has imported mods, one Release panel is the Diff → export path.
+The row of links under the game header is Nexus, Coherence (that is the
+[Coherence](13-coherence.md) page, not QA rules), Diff, Reference, Vortex, Glossary
+and Voice. QA rules live under **Settings → QA**. Voice is a link to Settings → Voice.
+Export is in a mod’s ⋯ menu in the list below.
 
 ---
 

@@ -1,0 +1,124 @@
+/* Game header: back link, identity, totals and links — one quiet block above the toolbar. */
+
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 20px;
+}
+
+.notice {
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.noticeError {
+  color: var(--danger);
+}
+
+.header {
+  margin: 0 0 12px;
+}
+
+.backLink {
+  display: inline-block;
+  margin: 0 0 8px;
+  color: var(--link);
+  font-size: 13px;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.cover {
+  flex: none;
+  width: 84px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--bg-card);
+}
+
+.identityText {
+  min-width: 0;
+}
+
+.name {
+  margin: 0;
+  color: var(--text-bright);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.meta {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.statGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 10px;
+
+  > span + span::before {
+    content: '·';
+    margin-right: 10px;
+  }
+}
+
+.statLabel {
+  color: var(--text-bright);
+  font-weight: 650;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 16px;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  text-decoration: none;
+
+  &:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-heavy);
+  }
+}
+
+.linkCount {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}

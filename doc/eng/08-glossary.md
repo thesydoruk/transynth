@@ -78,7 +78,7 @@ the full word, so pairs such as `faggot` / `Pissfaggot` can match. Italic
 
 ## Opening the Glossary Page
 
-Open **Glossary** from the game hub **Terms** card (route: `/glossary`). There is no Settings → Data tab. The term list is shared across games for the selected language pair; the enforce dropdown lists mods from the current game.
+Open **Glossary** from the **Glossary** link on the game page (route: `/glossary`). There is no Settings → Data tab. The term list is shared across games for the selected language pair; the enforce dropdown lists mods from the current game.
 
 The page opens showing terms for the selected language pair
 (default: EN → UK).

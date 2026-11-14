@@ -108,7 +108,7 @@ every tick: the Vortex page shows the state, the last sync, what is pending, the
 
 ## The Vortex page
 
-Game hub → the **Vortex** card (`/games/<game>/vortex`): the agent panel, stage buttons
+Game page → the **Vortex** link (`/games/<game>/vortex`): the agent panel, stage buttons
 (Re-run TM, LLM translate, Verify, Skip-detect, Gender-detect, Voice, Export langpack), the
 current run with per-mod progress and a Stop button, run history, the newest langpack to
 download. Each button creates its own run; while one is in progress the others are

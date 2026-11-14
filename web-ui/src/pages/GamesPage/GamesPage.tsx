@@ -54,7 +54,7 @@ export const GamesPage = () => {
 
   const currentGameId = getCurrentGame();
   const workspaceId = data?.find((game) => game.id === currentGameId)?.id ?? data?.[0]?.id ?? null;
-  const workspaceTo = workspaceId ? `/games/${workspaceId}/mods` : undefined;
+  const workspaceTo = workspaceId ? `/games/${workspaceId}` : undefined;
   const checklist = <SetupChecklist dash={dash} settings={settings} workspaceTo={workspaceTo} />;
 
   if (isLoading) {

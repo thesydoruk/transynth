@@ -21,8 +21,12 @@ const heading = (page: Page) => page.locator('main').getByRole('heading').first(
 
 const PAGES: PageCase[] = [
   { name: 'games', path: '/', ready: text('Fallout 4') },
-  { name: 'game hub', path: '/games/fo4', ready: text('Fallout 4') },
-  { name: 'mods', path: '/games/fo4/mods', ready: text('Unofficial Fallout 4 Patch') },
+  { name: 'game', path: '/games/fo4', ready: text('Unofficial Fallout 4 Patch') },
+  {
+    name: 'game via the old mods address',
+    path: '/games/fo4/mods',
+    ready: text('Unofficial Fallout 4 Patch'),
+  },
   { name: 'mod editor', path: `/games/fo4/mods/${FIXTURE_MOD_ID}`, ready: text('Settler 1') },
   {
     name: 'mod editor: dialogs',
@@ -154,8 +158,6 @@ test('a user can get from the game list to a mod and into settings', async ({ pa
   await open(page, '/');
   await page.getByText('Fallout 4').first().click();
   await expect(page).toHaveURL(/\/games\/fo4$/);
-
-  await page.goto('/games/fo4/mods');
   await page.getByText('Unofficial Fallout 4 Patch').first().click();
   await expect(page).toHaveURL(/\/games\/fo4\/mods\/2$/);
   await expect(page.getByText('Settler 1').first()).toBeVisible();

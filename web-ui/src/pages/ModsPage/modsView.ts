@@ -173,3 +173,25 @@ export const aggregateProgress = (mods: Mod[]) => {
   }
   return modProgress(sum);
 };
+
+export type ContentSummary = {
+  /** Version families, one per mod. */
+  count: number;
+  strings: number;
+  translatedPct: number;
+  approvedPct: number;
+};
+
+const summarize = (mods: Mod[]): ContentSummary | null => {
+  if (mods.length === 0) return null;
+  const { stats, translatedPct, approvedPct } = aggregateProgress(mods);
+  return { count: groupModVersions(mods).length, strings: stats.total, translatedPct, approvedPct };
+};
+
+/** Totals for the game and its DLC and for mods; a side without mods is null. */
+export const summarizeContent = (
+  mods: Mod[],
+): { game: ContentSummary | null; mods: ContentSummary | null } => {
+  const split = splitByContent(mods);
+  return { game: summarize(split.game), mods: summarize(split.mods) };
+};

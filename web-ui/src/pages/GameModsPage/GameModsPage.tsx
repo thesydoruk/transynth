@@ -184,7 +184,7 @@ export const GameModsPage = () => {
                       {t('games.clearSearchAction')}
                     </button>
                     <Link to={`/games/${gameId}`} className={s.emptyLinkBtn}>
-                      {t('games.backToGameHubAction')}
+                      {t('games.backToGameAction')}
                     </Link>
                   </div>
                 </div>

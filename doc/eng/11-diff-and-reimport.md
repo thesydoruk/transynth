@@ -51,12 +51,12 @@ If found, it compares the source text:
 
 ## The Diff Page
 
-Open **Release & Diff** from the game hub (route: `/games/:gameId/diff`).
+Open **Release & Diff** from the **Diff** link on the game page (route: `/games/:gameId/diff`).
 
 When the current filter yields no rows, the page shows an action-first empty state with immediate next steps:
 
 - **Show all changes** — resets the filter to `all`
-- **Open current game hub** (or games catalogue if no game context is persisted)
+- **Open current game** (or games catalogue if no game context is persisted)
 
 ### Selecting Two Versions
 

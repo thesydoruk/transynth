@@ -51,7 +51,7 @@ export const DiffPage = () => {
   const editorBaseTo = selectedNewMod
     ? `/games/${selectedNewMod.game}/mods/${selectedNewMod.id}`
     : null;
-  const modsTo = selectedNewMod ? `/games/${selectedNewMod.game}/mods` : null;
+  const modsTo = selectedNewMod ? `/games/${selectedNewMod.game}` : null;
   const activityTo = selectedNewMod
     ? `/settings?tab=activity&entityType=mod&entityId=${selectedNewMod.id}`
     : null;

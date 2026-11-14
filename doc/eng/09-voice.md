@@ -250,7 +250,7 @@ install, not for redistribution.
 | Line reference          | `project_settings` `voice.line_reference` | Clone from the original line clip when it is short enough; otherwise fall back to a speaker clip |
 | Per-game timing match   | `project_settings`                        | Stretch/pad synthesized audio toward the original line length                                    |
 
-Game hub **Voice** is a link to this tab, not a separate page.
+The game page’s **Voice** link goes to this tab, not a separate page.
 
 Carry Over and **Apply TM** copy an existing take into the new mod when both
 the line text and the character's source voice file match. **Voice → Missing**
