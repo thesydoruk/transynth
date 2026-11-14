@@ -20,7 +20,7 @@ describe('deleteModsCompletely', () => {
   const referenceRows = async () =>
     (
       await db().query(
-        `SELECT source_text, translation, origin, origin_status, origin_mod_name
+        `SELECT source_text, translation, origin, origin_status, origin_mod_name, origin_key
            FROM reference_translations ORDER BY source_text`,
       )
     ).rows;
@@ -71,6 +71,7 @@ describe('deleteModsCompletely', () => {
         origin: 'delete_snapshot',
         origin_status: 'human',
         origin_mod_name: 'Sim Settlements 2',
+        origin_key: 'sim settlements 2',
       },
       {
         source_text: 'Line reviewed',
@@ -78,6 +79,7 @@ describe('deleteModsCompletely', () => {
         origin: 'delete_snapshot',
         origin_status: 'reviewed',
         origin_mod_name: 'Sim Settlements 2',
+        origin_key: 'sim settlements 2',
       },
     ]);
   });
@@ -90,21 +92,45 @@ describe('deleteModsCompletely', () => {
     expect(await count('reference_translations')).toBe(0);
   });
 
+  const insertManualRow = (originKey: string) =>
+    db().query(
+      `INSERT INTO reference_translations(
+         game, src_lang, tgt_lang, formid_hex, path, source_text, text_norm, translation, origin,
+         origin_key
+       ) VALUES ('fo4', 'en', 'uk', '00000000', 'NPC_\\FULL', 'Line reviewed', 'line reviewed',
+                 'Виправлено вручну', 'manual', $1)`,
+      [originKey],
+    );
+
+  const reviewedLineRows = async () =>
+    (
+      await db().query(
+        `SELECT translation, origin, origin_key FROM reference_translations
+          WHERE source_text = 'Line reviewed' ORDER BY origin_key`,
+      )
+    ).rows;
+
   it('never overwrites a reference row someone edited by hand', async () => {
     const { modId } = await modWithStatuses();
-    await db().query(
-      `INSERT INTO reference_translations(
-         game, src_lang, tgt_lang, formid_hex, path, source_text, text_norm, translation, origin
-       ) VALUES ('fo4', 'en', 'uk', '00000000', 'NPC_\\FULL', 'Line reviewed', 'line reviewed',
-                 'Виправлено вручну', 'manual')`,
-    );
+    await insertManualRow('sim settlements 2');
 
     await deleteModsCompletely(db(), [modId]);
 
-    const { rows } = await db().query(
-      `SELECT translation, origin FROM reference_translations WHERE source_text = 'Line reviewed'`,
-    );
-    expect(rows).toEqual([{ translation: 'Виправлено вручну', origin: 'manual' }]);
+    expect(await reviewedLineRows()).toEqual([
+      { translation: 'Виправлено вручну', origin: 'manual', origin_key: 'sim settlements 2' },
+    ]);
+  });
+
+  it('writes beside a hand-edited row that has no layer, leaving it as it is', async () => {
+    const { modId } = await modWithStatuses();
+    await insertManualRow('');
+
+    await deleteModsCompletely(db(), [modId]);
+
+    expect(await reviewedLineRows()).toEqual([
+      { translation: 'Виправлено вручну', origin: 'manual', origin_key: '' },
+      { translation: 'Рядок reviewed', origin: 'delete_snapshot', origin_key: 'sim settlements 2' },
+    ]);
   });
 
   it('ignores ids that do not exist', async () => {

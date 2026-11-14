@@ -573,10 +573,10 @@ DELETE FROM project_settings WHERE key IN ('voice.match_loudness', 'voice.match_
 -- ── Reference translations ──────────────────────────────────────────────────
 -- The translation memory is a query over other mods' `translations`, so deleting
 -- a mod forgets everything it taught. This table is the part of the memory that
--- must survive: one row per (game, language pair, anchor, source text), with no
--- foreign key to `mods` or `strings`. Rows get here by promotion (an editor
--- action, the delete-mod snapshot, the auto-promote setting) or by hand on the
--- per-game Reference page. TM auto-apply reads it ahead of live mods.
+-- must survive: one row per (game, language pair, anchor, source text, origin
+-- layer), with no foreign key to `mods` or `strings`. Rows get here by promotion
+-- (an editor action, the delete-mod snapshot, the auto-promote setting) or by
+-- hand on the per-game Reference page. TM auto-apply reads it ahead of live mods.
 CREATE TABLE IF NOT EXISTS reference_translations (
   id SERIAL PRIMARY KEY,
   game TEXT NOT NULL,
@@ -593,6 +593,10 @@ CREATE TABLE IF NOT EXISTS reference_translations (
   -- manual | promote | delete_snapshot | auto_approve. A `manual` row was
   -- edited on the Reference page and is never overwritten by a promotion.
   origin TEXT NOT NULL DEFAULT 'manual',
+  -- The plugin layer the row was promoted from, lower-cased (`fallout4.esm`);
+  -- the mod's name where the game has no plugin files. '' is no layer: a row
+  -- added by hand, or one promoted before layers existed.
+  origin_key TEXT NOT NULL DEFAULT '',
   origin_mod_name TEXT,
   origin_mod_version TEXT,
   origin_status TEXT,
@@ -601,11 +605,24 @@ CREATE TABLE IF NOT EXISTS reference_translations (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- A patch overrides base-game records without changing their text; with one row
+-- per anchor and text its promotion replaced the base game's translation. Each
+-- plugin now keeps its own row. Existing rows stay at '' and move into a layer
+-- when their mod is promoted again (adoptLegacyReferenceRows).
+ALTER TABLE reference_translations ADD COLUMN IF NOT EXISTS origin_key TEXT NOT NULL DEFAULT '';
+
 -- The anchor key hashes the source text: a book or terminal entry runs past the
 -- 2704-byte btree row limit, and one such row failed the whole mod's promotion.
 DROP INDEX IF EXISTS reference_translations_anchor_key;
-CREATE UNIQUE INDEX IF NOT EXISTS reference_translations_anchor_md5_key
-  ON reference_translations(game, src_lang, tgt_lang, formid_hex, path, md5(source_text));
+DROP INDEX IF EXISTS reference_translations_anchor_md5_key;
+CREATE UNIQUE INDEX IF NOT EXISTS reference_translations_anchor_origin_key
+  ON reference_translations(game, src_lang, tgt_lang, formid_hex, path, md5(source_text), origin_key);
+
+-- Rows still waiting for a layer, found by mod name on every promotion; the
+-- index empties as they are adopted.
+CREATE INDEX IF NOT EXISTS idx_reference_translations_legacy_origin
+  ON reference_translations(origin_mod_name)
+  WHERE origin_key = '' AND origin <> 'manual';
 
 -- Equality on text_norm goes through a HASH index for the same reason (see
 -- idx_strings_text_norm); game and languages are filtered separately.
