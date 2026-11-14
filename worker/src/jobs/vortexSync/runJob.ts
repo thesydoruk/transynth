@@ -105,8 +105,15 @@ const runImportStage = async (db: Tx, run: VortexSyncRunRow): Promise<number[]> 
   return importedModIds;
 };
 
-const runCarryStage = async (db: Tx, run: VortexSyncRunRow, modIds: number[]): Promise<void> => {
+/** Carry runs for minutes per large mod, so a stop request is honoured between mods and rows. */
+const runCarryStage = async (
+  db: Tx,
+  run: VortexSyncRunRow,
+  modIds: number[],
+  opts: RunOpts,
+): Promise<void> => {
   for (const modId of modIds) {
+    if (opts.isCancelled()) return;
     const { rows } = await db.query<{ id: number }>(`SELECT id FROM mods WHERE id = $1`, [modId]);
     if (!rows[0]) continue;
     await updateVortexSyncRun(db, run.id, { current_stage: 'carry', current_mod_id: modId });
@@ -114,7 +121,8 @@ const runCarryStage = async (db: Tx, run: VortexSyncRunRow, modIds: number[]): P
       groupId: run.vortex_group_id,
       newModId: modId,
     });
-    if (prev) await carryOverTranslations(db, modId, prev, run.tgt_lang, run.src_lang);
+    if (prev) await carryOverTranslations(db, modId, prev, run.tgt_lang, run.src_lang, opts);
+    if (opts.isCancelled()) return;
     const voice = await reuseSynthesizedVoice(db, modId, run.tgt_lang);
     if (voice.copied > 0) {
       invalidateVoiceListContext(modId);
@@ -222,9 +230,14 @@ export const runVortexSyncJob = async (
                 run.vortex_group_id,
                 run.channel as 'all' | 'mods' | 'game',
               );
-        await runCarryStage(db, run, targets);
+        await runCarryStage(db, run, targets, opts);
       }
       if (stage === 'export') await runExportStage(db, run, opts);
+      // A stage that was stopped half-way is not a completed one.
+      if (opts.isCancelled()) {
+        await updateVortexSyncRun(db, run.id, { status: 'cancelled' });
+        return { status: 'cancelled', error: null, done: 0, total: stages.length };
+      }
       await updateVortexSyncRun(db, run.id, { last_completed_stage: stage });
     }
     await updateVortexSyncRun(db, run.id, { status: 'completed', current_stage: null });

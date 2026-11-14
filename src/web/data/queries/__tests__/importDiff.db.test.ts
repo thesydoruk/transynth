@@ -53,6 +53,19 @@ describe('carryOverTranslations', () => {
     });
   });
 
+  it('stops between rows on a stop request and keeps what it copied', async () => {
+    const { oldMod, newMod, newNo, newYes } = await infoWithSwappedResponses();
+    let asked = 0;
+
+    const result = await carryOverTranslations(db(), newMod, oldMod, 'uk', 'en', {
+      isCancelled: () => asked++ > 0,
+    });
+
+    expect(result).toEqual({ carried: 1, needsReview: 0, skipped: 0 });
+    const copied = [await translationOf(db(), newNo), await translationOf(db(), newYes)];
+    expect(copied.filter(Boolean)).toHaveLength(1);
+  });
+
   it('carries a changed sibling as draft only when it is the one left in its record', async () => {
     const oldMod = await insertMod(db(), { name: 'Mod', versionHash: 'v1' });
     const oldA = await insertString(db(), {

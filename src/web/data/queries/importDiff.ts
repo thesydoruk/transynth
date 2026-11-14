@@ -105,6 +105,8 @@ export const carryOverTranslations = async (
   oldModId: number,
   targetLang = CONFIG.defaultTgtLang,
   srcLang = CONFIG.defaultSrcLang,
+  /** A stop request ends the copy between rows; what was copied stays, a rerun skips it. */
+  opts: { isCancelled?: () => boolean } = {},
 ): Promise<{ carried: number; needsReview: number; skipped: number }> => {
   type NewRow = { string_id: number; formid_hex: string; path: string; text_norm: string };
   type OldRow = {
@@ -161,6 +163,7 @@ export const carryOverTranslations = async (
   const provenance = `carry_over_from_mod_${oldModId}`;
 
   for (const { next, old, sourceChanged } of pairing.pairs) {
+    if (opts.isCancelled?.()) break;
     if (old.translation === null || old.status === null) continue;
     if (alreadyTranslated.has(next.string_id)) {
       skipped++;
