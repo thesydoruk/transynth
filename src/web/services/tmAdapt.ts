@@ -52,18 +52,20 @@ const transplantPlaceholders = (
  *
  * A match is a stored translation, most often a reviewed one, so it is copied
  * the way a save would store it: guillemets fold to ASCII quotes (the editor
- * rule), and nothing else changes. The post-process for LLM drafts must not run
- * here: it folds an em dash a reviewer put there on purpose and upper-cases a
- * line the reviewer chose not to — re-imported mods lost both that way while
- * still reading `reviewed`. Only a match whose source differs gets the ALL
- * CAPS rule, because its translation was written for another casing.
+ * rule) and an ALL CAPS source keeps its translation in capitals. The markup
+ * step for LLM drafts must not run here: for a Creation Engine game it folds an
+ * em dash to a hyphen, and a reviewer put that dash there on purpose —
+ * re-imported mods lost theirs that way while still reading `reviewed`.
  */
+const storeAsSaved = (targetSource: string, translation: string): string =>
+  matchSourceCapitalization(targetSource, normalizeAutoTranslationQuotes(translation));
+
 export const adaptTmTranslation = (
   translation: string,
   matchSource: string,
   targetSource: string,
 ): string | null => {
-  if (matchSource === targetSource) return normalizeAutoTranslationQuotes(translation);
+  if (matchSource === targetSource) return storeAsSaved(targetSource, translation);
   const numbered = transplantNumbers(
     translation,
     extractNumbers(matchSource),
@@ -72,5 +74,5 @@ export const adaptTmTranslation = (
   if (numbered === null) return null;
   const adapted = transplantPlaceholders(numbered, matchSource, targetSource);
   if (adapted === null) return null;
-  return matchSourceCapitalization(targetSource, normalizeAutoTranslationQuotes(adapted));
+  return storeAsSaved(targetSource, adapted);
 };

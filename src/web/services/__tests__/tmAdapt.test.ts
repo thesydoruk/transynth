@@ -31,11 +31,11 @@ describe('adaptTmTranslation', () => {
 
   it('uppercases translation when target source is ALL CAPS', () => {
     expect(adaptTmTranslation('Вибране', 'Favorites', 'FAVORITES')).toBe('ВИБРАНЕ');
+    expect(adaptTmTranslation('Вибране', 'FAVORITES', 'FAVORITES')).toBe('ВИБРАНЕ');
   });
 
-  it('copies an exact match as reviewed: the dash and the casing stay', () => {
+  it('copies an exact match as reviewed: the dash stays', () => {
     expect(adaptTmTranslation('Броня — легка', 'Light armor', 'Light armor')).toBe('Броня — легка');
-    expect(adaptTmTranslation('Не цікаво', 'NOT INTERESTED', 'NOT INTERESTED')).toBe('Не цікаво');
   });
 
   it('keeps the dash of an adapted match too', () => {
