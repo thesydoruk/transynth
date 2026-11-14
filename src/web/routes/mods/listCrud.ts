@@ -11,26 +11,42 @@ import {
 import { getPexSourceSnippetForString } from '../../export/pexDecompileService';
 import { deleteModsCompletely } from '../../../import/mod/deleteMods';
 import { snapshotModsToReference } from '../../services/referenceHooks';
+import { resolveModContentKind } from '../../services/modContentKind';
 import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
 
 export const registerListCrudRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/mods — list all mods with aggregate stats.
-  // Optional query params: ?game=fo4&srcLang=en&targetLang=uk
+  // Optional query params: ?game=fo4&srcLang=en&targetLang=uk&source=all|manual|<vortex group id>
+  // (`vortexGroupId=<n>` is the old spelling of `source=<n>`).
   app.get<{
-    Querystring: { game?: string; srcLang?: string; targetLang?: string; vortexGroupId?: string };
+    Querystring: {
+      game?: string;
+      srcLang?: string;
+      targetLang?: string;
+      source?: string;
+      vortexGroupId?: string;
+    };
   }>('/api/mods', async (req, reply) => {
     const { game, srcLang, targetLang, vortexGroupId } = req.query;
-    const groupId = vortexGroupId ? Number(vortexGroupId) : null;
-    log.debug(`GET /api/mods game=${game ?? 'all'} vortexGroupId=${groupId ?? 'manual'}`);
-    const mods = await listMods(db, {
-      game,
-      srcLang,
-      targetLang,
-      vortexGroupId: groupId && Number.isInteger(groupId) ? groupId : null,
-    });
+    const raw = req.query.source ?? vortexGroupId ?? 'manual';
+    let source: 'manual' | 'all' | number;
+    if (raw === 'manual' || raw === 'all') {
+      source = raw;
+    } else if (/^[1-9]\d*$/.test(raw)) {
+      source = Number(raw);
+    } else {
+      return reply.code(400).send({ error: 'source must be all, manual or a Vortex group id' });
+    }
+    log.debug(`GET /api/mods game=${game ?? 'all'} source=${source}`);
+    const mods = await listMods(db, { game, srcLang, targetLang, source });
     log.trace(`GET /api/mods → ${mods.length} mods`);
-    return reply.send(mods);
+    return reply.send(
+      mods.map(({ content_kind, ...mod }) => {
+        const resolved = resolveModContentKind({ ...mod, content_kind });
+        return { ...mod, content_kind: resolved.kind, content_kind_manual: resolved.manual };
+      }),
+    );
   });
 
   // GET /api/mods/:id — mod metadata (progress breakdown: GET /api/stats?modId=)

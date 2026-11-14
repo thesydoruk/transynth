@@ -1018,6 +1018,8 @@ CREATE TABLE IF NOT EXISTS vortex_agents (
 ALTER TABLE mods ADD COLUMN IF NOT EXISTS origin TEXT NOT NULL DEFAULT 'manual';
 ALTER TABLE mods ADD COLUMN IF NOT EXISTS vortex_group_id INTEGER REFERENCES vortex_groups(id) ON DELETE SET NULL;
 ALTER TABLE mods ADD COLUMN IF NOT EXISTS channel TEXT;
+-- Manual override of the content kind (base|dlc|addon|mod); NULL = classify by the game plugin on read.
+ALTER TABLE mods ADD COLUMN IF NOT EXISTS content_kind TEXT;
 ALTER TABLE mods ADD COLUMN IF NOT EXISTS game_release_id INTEGER REFERENCES vortex_game_releases(id) ON DELETE SET NULL;
 ALTER TABLE mods ADD COLUMN IF NOT EXISTS version_label TEXT;
 ALTER TABLE mods ADD COLUMN IF NOT EXISTS is_current BOOLEAN NOT NULL DEFAULT TRUE;

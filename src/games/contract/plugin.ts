@@ -9,6 +9,7 @@ import type { GameVoiceAdapter } from './voice';
 import type { GameDialogAdapter } from './dialog';
 import type { GameDeploymentAdapter } from './deployment';
 import type { GameMediaAdapter } from './media';
+import type { GameContentAdapter } from './content';
 
 /**
  * Everything Transynth knows about one game.
@@ -56,4 +57,9 @@ export type GamePlugin = {
   readonly deployment?: GameDeploymentAdapter;
   /** Cutscene videos to dub; unset for a game without pre-rendered video. */
   readonly media?: GameMediaAdapter;
+  /**
+   * Tells official content (the game, DLC, add-ons) from mods by file name.
+   * Unset = the game cannot; everything is a mod until marked by hand.
+   */
+  readonly content?: GameContentAdapter;
 };

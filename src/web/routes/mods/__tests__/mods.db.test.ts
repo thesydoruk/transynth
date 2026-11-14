@@ -26,6 +26,65 @@ describe('mods API', () => {
     return modId;
   };
 
+  describe('GET /api/mods source and content kind', () => {
+    const vortexMod = async (name: string) => {
+      const { rows } = await db().query<{ id: number }>(
+        `INSERT INTO vortex_groups(game, group_key, label) VALUES ('fo4', $1, $1) RETURNING id`,
+        [name],
+      );
+      await db().query(
+        `INSERT INTO mods(name, game, version_hash, abs_path, vortex_group_id)
+         VALUES ($1, 'fo4', 'v1', '/s/x.esp', $2)`,
+        [name, rows[0]!.id],
+      );
+      return rows[0]!.id;
+    };
+    const names = async (url: string) =>
+      ((await app().inject({ url })).json() as { name: string }[]).map((m) => m.name).sort();
+
+    it('lists manual mods by default and every source with source=all', async () => {
+      await insertMod(db(), { name: 'Manual' });
+      const group = await vortexMod('FromVortex');
+
+      expect(await names('/api/mods')).toEqual(['Manual']);
+      expect(await names('/api/mods?source=manual')).toEqual(['Manual']);
+      expect(await names('/api/mods?source=all')).toEqual(['FromVortex', 'Manual']);
+      expect(await names(`/api/mods?source=${group}`)).toEqual(['FromVortex']);
+      expect(await names(`/api/mods?vortexGroupId=${group}`)).toEqual(['FromVortex']);
+      expect((await app().inject({ url: '/api/mods?source=nope' })).statusCode).toBe(400);
+      expect((await app().inject({ url: '/api/mods?source=0' })).statusCode).toBe(400);
+    });
+
+    it('resolves the content kind from the anchor file and honours an override', async () => {
+      const id = await insertMod(db(), { name: 'Base', absPath: '/data/Fallout4.esm' });
+      const kindOf = async () =>
+        (
+          (await app().inject({ url: '/api/mods?source=all' })).json() as Record<string, unknown>[]
+        )[0]!;
+
+      expect(await kindOf()).toMatchObject({ content_kind: 'base', content_kind_manual: false });
+
+      const patch = (payload: object, modId = id) =>
+        app().inject({ method: 'PATCH', url: `/api/mods/${modId}/content-kind`, payload });
+      const set = await patch({ kind: 'mod' });
+      expect(set.json()).toEqual({ id, content_kind: 'mod', content_kind_manual: true });
+      expect(await kindOf()).toMatchObject({ content_kind: 'mod', content_kind_manual: true });
+
+      const cleared = await patch({ kind: null });
+      expect(cleared.json()).toEqual({ id, content_kind: 'base', content_kind_manual: false });
+
+      expect((await patch({ kind: 'nope' })).statusCode).toBe(400);
+      expect((await patch({})).statusCode).toBe(400);
+      expect((await patch({ kind: 'dlc' }, 999)).statusCode).toBe(404);
+      const bad = await app().inject({
+        method: 'PATCH',
+        url: '/api/mods/abc/content-kind',
+        payload: { kind: 'dlc' },
+      });
+      expect(bad.statusCode).toBe(400);
+    });
+  });
+
   describe('GET /api/mods/:id', () => {
     it('answers 404 for a missing mod and 400 for a bad id', async () => {
       expect((await app().inject({ url: '/api/mods/999' })).statusCode).toBe(404);

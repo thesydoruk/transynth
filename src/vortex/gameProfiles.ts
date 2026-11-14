@@ -23,20 +23,6 @@ export const vortexGameId = (game: GameId): string | undefined =>
 export const exeNameForGame = (game: GameId): string | undefined =>
   gamePlugin(game).deployment?.exeName;
 
-/**
- * Creation Club plugins ship with the game and are updated by it, so they are
- * never treated as mod content — the `cc` prefix is the store's convention.
- */
-const isCreationClubPlugin = (fileName: string): boolean => {
-  const lower = fileName.toLowerCase();
-  return (
-    lower.startsWith('cc') &&
-    (lower.endsWith('.esm') || lower.endsWith('.esl') || lower.endsWith('.esp'))
-  );
-};
-
-export const isOfficialGamePlugin = (game: GameId, fileName: string): boolean => {
-  const lower = fileName.toLowerCase();
-  if (officialMasterNames(game).some((name) => name.toLowerCase() === lower)) return true;
-  return isCreationClubPlugin(fileName);
-};
+/** Whether a file ships with the game (base, DLC, add-on) rather than with a mod. */
+export const isOfficialGamePlugin = (game: GameId, fileName: string): boolean =>
+  (gamePlugin(game).content?.classify(fileName) ?? 'mod') !== 'mod';

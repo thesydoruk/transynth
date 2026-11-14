@@ -17,7 +17,8 @@ export const listMods = async (
     game?: string;
     srcLang?: string;
     targetLang?: string;
-    vortexGroupId?: number | null;
+    /** `manual` = not from Vortex (default), `all` = every source, a number = that Vortex group. */
+    source?: 'manual' | 'all' | number;
   } = {},
 ) => {
   const srcLang = opts.srcLang ?? CONFIG.defaultSrcLang;
@@ -30,11 +31,12 @@ export const listMods = async (
     conds.push(`m.game = $${next++}`);
     params.push(opts.game);
   }
-  if (opts.vortexGroupId == null) {
+  const source = opts.source ?? 'manual';
+  if (source === 'manual') {
     conds.push('m.vortex_group_id IS NULL');
-  } else {
+  } else if (source !== 'all') {
     conds.push(`m.vortex_group_id = $${next++}`);
-    params.push(opts.vortexGroupId);
+    params.push(source);
   }
   const whereClause = conds.length > 0 ? `WHERE ${conds.join(' AND ')}` : '';
 
@@ -51,6 +53,7 @@ export const listMods = async (
       origin: string;
       vortex_group_id: number | null;
       channel: string | null;
+      content_kind: string | null;
       game_release_id: number | null;
       version_label: string | null;
       vortex_plugin: string | null;
@@ -74,6 +77,7 @@ export const listMods = async (
         m.origin,
         m.vortex_group_id,
         m.channel,
+        m.content_kind,
         m.game_release_id,
         m.version_label,
         m.vortex_plugin,
@@ -105,6 +109,21 @@ export const listMods = async (
 
   const { rows } = await queryMods();
   return rows;
+};
+
+/** Set (or, with null, clear) the manual content kind. Returns the row, or undefined when absent. */
+export const setModContentKind = async (db: Tx, id: number, kind: string | null) => {
+  const { rows } = await db.query<{
+    id: number;
+    game: string | null;
+    abs_path: string | null;
+    content_kind: string | null;
+  }>(
+    `UPDATE mods SET content_kind = $2 WHERE id = $1
+     RETURNING id, game, abs_path, content_kind`,
+    [id, kind],
+  );
+  return rows[0];
 };
 
 export const getMod = async (db: Tx, id: number) => {

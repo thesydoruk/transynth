@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Mods know what they hold.** Every mod has a content kind (base game, DLC, add-on such as Creation Club, or mod), classified by the game plugin from its anchor file and overridable with `PATCH /api/mods/:id/content-kind`; `GET /api/mods?source=all` lists manual and Vortex mods together.
 - **EET and CSV import are removed.** The legacy `.eet` and `.csv` translation-file imports (the **Advanced import** block of the Mods page, `/api/eet` and `/api/csv`, their worker jobs and the `EET_UPLOAD_DIR` / `CSV_UPLOAD_DIR` settings) are gone; plugins and archives are imported as before. The empty `eet_imports` and `csv_imports` tables are dropped on the next `npm run db:init`.
 
 ## 0.11.0 — 2026-11-13

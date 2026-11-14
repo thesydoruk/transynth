@@ -47,4 +47,6 @@ export type {
 export type { DialogAdapterGroup, DialogParticipantsSqlContext, GameDialogAdapter } from './dialog';
 export type { GameDeploymentAdapter } from './deployment';
 export type { GameMediaAdapter } from './media';
+export type { GameContentAdapter, ModContentKind } from './content';
+export { MOD_CONTENT_KINDS } from './content';
 export type { GamePlugin } from './plugin';

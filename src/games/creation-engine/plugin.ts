@@ -13,6 +13,7 @@ import { createCreationEngineImportAdapter } from './import';
 import { createCreationEngineTextAdapter } from './text';
 import { creationEngineDialogAdapter } from './dialog';
 import { creationEngineVoiceAdapter } from './voice';
+import { createCreationEngineContentAdapter } from './content';
 import { registerCreationEngineTitle } from './registry';
 import type { CreationEngineTitle } from './title';
 
@@ -34,6 +35,7 @@ export const createCreationEnginePlugin = (title: CreationEngineTitle): GamePlug
     dialog: creationEngineDialogAdapter,
     voice: creationEngineVoiceAdapter,
     deployment: title.deployment,
+    content: createCreationEngineContentAdapter(title),
     ...(title.media ? { media: title.media } : {}),
   };
 };

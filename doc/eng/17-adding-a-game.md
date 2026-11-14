@@ -58,6 +58,7 @@ localization is a folder of gettext `.po` catalogues and loose `.wav` takes.
 | `dialog`     | Who speaks a line, who they speak to, and whether the protagonist's gender is fixed                  | no       |
 | `voice`      | How takes are named, found, and synthesized                                                          | no       |
 | `deployment` | Masters, load order, Vortex id — for mod-manager deployment                                          | no       |
+| `content`    | Tells the game, DLC and add-ons from mods by anchor file name                                        | no       |
 
 Leave an optional adapter out and the feature disappears cleanly: a silent game
 gets no Voice tab and no voice jobs, a game no mod manager deploys is skipped by
