@@ -1,5 +1,4 @@
-import type { CsvImportJob, EetImportJob, ModImportJob } from '../../api';
-import { getContentLanguageOptions } from '../../langDefaults';
+import type { ModImportJob } from '../../api';
 
 /** Live SSE progress for a running import. */
 export type LiveProgress = { imported: number; total: number };
@@ -12,7 +11,7 @@ export type ModExportAction = {
   onClick: () => void;
 };
 
-/** Minimal import job fields shared by EET / CSV / mod list rows. */
+/** Minimal import job fields shared by mod import list rows. */
 export type ImportJobLike = {
   status: string;
   imported_records: number;
@@ -35,40 +34,19 @@ export const importStatusI18nKey = (job: ImportJobLike, isRunning: boolean): str
 export const importStatusKey = (status: string): string =>
   status === 'running' ? 'running' : status;
 
-/** Colored type badge label for EET / CSV / mod import rows. */
-export const importKindBadgeLabel = (
-  kind: 'eet' | 'csv' | 'mod',
-  t: (key: string) => string,
-): string => {
-  switch (kind) {
-    case 'eet':
-      return t('imports.tabEet');
-    case 'csv':
-      return t('imports.tabCsv');
-    case 'mod':
-      return t('imports.tabMod');
-  }
-};
-
 /** Whether the user can start, resume, or retry this import from the UI. */
-export const canStartImportJob = (
-  job: ImportJobLike,
-  isRunning: boolean,
-  kind: 'eet' | 'csv' | 'mod',
-): boolean => {
+export const canStartImportJob = (job: ImportJobLike, isRunning: boolean): boolean => {
   if (isRunning || job.status === 'extracting') return false;
-  if (job.status === 'completed') return kind === 'mod';
-  return ['pending', 'paused', 'failed', 'in_progress'].includes(job.status);
+  return ['pending', 'paused', 'failed', 'in_progress', 'completed'].includes(job.status);
 };
 
 export const importStartTooltip = (
   job: ImportJobLike,
   isRunning: boolean,
-  kind: 'eet' | 'csv' | 'mod',
   t: (key: string) => string,
 ): string => {
   if (job.status === 'failed') return t('imports.retryLabel');
-  if (kind === 'mod' && job.status === 'completed') return t('imports.reimportTooltip');
+  if (job.status === 'completed') return t('imports.reimportTooltip');
   if (job.status === 'paused' || isStaleImportInProgress(job, isRunning)) {
     return t('imports.resumeLabel');
   }
@@ -86,9 +64,6 @@ export const importStartButtonLabel = (
   }
   return t('imports.startLabel');
 };
-
-/** Language options shared by EET/CSV import preview modals. */
-export const LANGUAGES = getContentLanguageOptions();
 
 /** Background color for a job status badge. */
 export const statusColorBase = (status: string): string => {
@@ -111,17 +86,8 @@ export const statusColorBase = (status: string): string => {
   }
 };
 
-/** Color for the type badge in the unified list. */
-export const kindColor = (kind: 'eet' | 'csv' | 'mod'): string => {
-  switch (kind) {
-    case 'eet':
-      return '#6a1b9a';
-    case 'csv':
-      return '#1565c0';
-    case 'mod':
-      return '#e65100';
-  }
-};
+/** Color for the mod type badge in the import list. */
+export const MOD_BADGE_COLOR = '#e65100';
 
 /** Translated status label for a job. */
 export const statusLabel = (
@@ -135,8 +101,7 @@ export const statusLabel = (
 };
 
 export interface UnifiedJobRowProps {
-  kind: 'eet' | 'csv' | 'mod';
-  job: EetImportJob | CsvImportJob | ModImportJob;
+  job: ModImportJob;
   live?: LiveProgress;
   isRunning: boolean;
   exportActions?: ModExportAction[];

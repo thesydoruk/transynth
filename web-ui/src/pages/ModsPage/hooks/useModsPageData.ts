@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { api, type ModImportJob } from '../../../api';
 import { modListQueryKey } from '../../../langDefaults';
 import { isActiveModImportJob, matchesVortexGroupView } from '../modsPageUtils';
-import type { UnifiedJob } from '../modsPageTypes';
 
 export const useModsPageData = (
   gameId: string,
@@ -20,16 +19,6 @@ export const useModsPageData = (
     queryFn: () => api.mods.list(gameId, srcLang, targetLang, vortexGroupId),
   });
 
-  const { data: eetJobs } = useQuery({
-    queryKey: ['eet-imports'],
-    queryFn: api.eet.list,
-    refetchInterval: 3000,
-  });
-  const { data: csvJobs } = useQuery({
-    queryKey: ['csv-imports'],
-    queryFn: api.csv.list,
-    refetchInterval: 3000,
-  });
   const { data: modJobs } = useQuery({
     queryKey: ['mod-imports'],
     queryFn: api.modImport.list,
@@ -63,21 +52,13 @@ export const useModsPageData = (
 
   const importedModIds = useMemo(() => new Set((mods ?? []).map((mod) => mod.id)), [mods]);
 
-  const activeImportJobs: UnifiedJob[] = useMemo(() => {
-    const localJobs: UnifiedJob[] =
-      vortexGroupId == null
-        ? [
-            ...(eetJobs ?? []).map((job): UnifiedJob => ({ kind: 'eet', job })),
-            ...(csvJobs ?? []).map((job): UnifiedJob => ({ kind: 'csv', job })),
-          ]
-        : [];
-    return [
-      ...localJobs,
-      ...gameModJobs
+  const activeImportJobs = useMemo(
+    () =>
+      gameModJobs
         .filter((job) => isActiveModImportJob(job, importedModIds))
-        .map((job): UnifiedJob => ({ kind: 'mod', job })),
-    ].sort((a, b) => new Date(b.job.created_at).getTime() - new Date(a.job.created_at).getTime());
-  }, [eetJobs, csvJobs, gameModJobs, importedModIds, vortexGroupId]);
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    [gameModJobs, importedModIds],
+  );
 
   const sortedMods = useMemo(
     () =>
@@ -93,8 +74,6 @@ export const useModsPageData = (
     mods,
     isModsLoading,
     modsError,
-    eetJobs,
-    csvJobs,
     modJobs,
     opsData,
     gameModJobs,

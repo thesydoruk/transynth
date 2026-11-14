@@ -163,7 +163,7 @@ point the status you have selected in the Detail Panel is saved
 Every time you save a translation (any status: Draft, Reviewed, Human, TM,
 Fuzzy, or Auto), it is added to the TM automatically.
 
-Imported translations — from EET files or CSV — also populate the TM.
+Translations that arrive with an imported mod also populate the TM.
 
 **Deduplication policy:**
 
@@ -177,9 +177,6 @@ translation can automatically propagate to all other strings with the same
 normalized source text that do not yet have a `draft`, `reviewed`, or `human`
 translation. Numeric-only differences transplant numbers into the propagated
 text; unsafe candidates are skipped. This propagation assigns status **`tm`**.
-
-**CSV imports** use the same `upsertTranslation` path, so they respect the
-same one-per-string rule and also trigger propagation.
 
 ---
 

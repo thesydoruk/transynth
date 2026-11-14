@@ -1,7 +1,7 @@
 /**
- * Queue helpers for the mod / CSV / EET import routes.
+ * Queue helpers for the mod import routes.
  *
- * Import *rows* live in their own tables (`mod_imports`, `csv_imports`, …)
+ * Import *rows* live in their own tables (`mod_imports`)
  * keyed by their own ids. A BullMQ job just wraps `params.importJobId`.
  * These helpers map that row id onto the queue entry so the UI can show
  * `running`, pause, and cancel without knowing the BullMQ id.
@@ -11,7 +11,7 @@ import { publishJobControl } from '../core/controlChannel';
 import { fromBullJobId, listUnfinishedJobs, requestJobStop } from '../core/queue';
 import type { JobData, JobKind } from '../types';
 
-export type ImportJobKind = Extract<JobKind, 'mod-import' | 'csv-import' | 'eet-import'>;
+export type ImportJobKind = Extract<JobKind, 'mod-import'>;
 
 const importJobIdOf = (job: Job<JobData>): number | null => {
   const value = (job.data.params as { importJobId?: unknown }).importJobId;

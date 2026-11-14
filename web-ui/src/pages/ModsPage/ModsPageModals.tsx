@@ -1,39 +1,26 @@
 import { useTranslation } from 'react-i18next';
 import {
-  api,
-  type CsvImportJob,
-  type EetImportJob,
   type ModImportDeleteDataMode,
   type ModImportJob,
   type PreviousVersionRow,
 } from '../../api';
 import { ReimportModal } from '../../components/ReimportModal';
 import { ConfirmModal } from '../../components/ConfirmModal';
-import { CsvPreviewModal } from './CsvPreviewModal';
 import { DeleteModConfirmModal } from './DeleteModConfirmModal/DeleteModConfirmModal';
-import { EetPreviewModal } from './EetPreviewModal';
 
 type ModsPageModalsProps = {
-  eetPreviewJob: EetImportJob | null | undefined;
-  csvPreviewJob: CsvImportJob | null | undefined;
   reimport: { newModId: number; prevVersions: PreviousVersionRow[] } | null;
   deleteModalJob: ModImportJob | null;
   deletingModJobId: number | null;
-  deleteSimpleJob: { kind: 'eet' | 'csv'; name: string; id: number } | null;
   pendingClear: { id: number; name: string } | null;
   clearingModId: number | null;
   pendingDeleteAll: { mods: Array<{ id: number; name: string }> } | null;
   deletingAll: boolean;
   keepReference: boolean;
   onKeepReferenceChange: (value: boolean) => void;
-  refreshAll: () => void;
-  doStart: (kind: 'eet' | 'csv' | 'mod', jobId: number) => Promise<boolean>;
-  onCloseEetPreview: () => void;
-  onCloseCsvPreview: () => void;
   onCloseReimport: () => void;
   onCloseDeleteModal: () => void;
   onConfirmDeleteMod: (deleteData: ModImportDeleteDataMode, keepReference: boolean) => void;
-  onCloseDeleteSimple: () => void;
   onClosePendingClear: () => void;
   onConfirmClearRows: () => void;
   onClosePendingDeleteAll: () => void;
@@ -41,26 +28,18 @@ type ModsPageModalsProps = {
 };
 
 export const ModsPageModals = ({
-  eetPreviewJob,
-  csvPreviewJob,
   reimport,
   deleteModalJob,
   deletingModJobId,
-  deleteSimpleJob,
   pendingClear,
   clearingModId,
   pendingDeleteAll,
   deletingAll,
   keepReference,
   onKeepReferenceChange,
-  refreshAll,
-  doStart,
-  onCloseEetPreview,
-  onCloseCsvPreview,
   onCloseReimport,
   onCloseDeleteModal,
   onConfirmDeleteMod,
-  onCloseDeleteSimple,
   onClosePendingClear,
   onConfirmClearRows,
   onClosePendingDeleteAll,
@@ -70,31 +49,6 @@ export const ModsPageModals = ({
 
   return (
     <>
-      {eetPreviewJob && (
-        <EetPreviewModal
-          job={eetPreviewJob}
-          onClose={onCloseEetPreview}
-          onConfirm={async (previewSrcLang, previewTgtLang) => {
-            await api.eet.updateLanguages(eetPreviewJob.id, previewSrcLang, previewTgtLang);
-            refreshAll();
-            onCloseEetPreview();
-            setTimeout(() => doStart('eet', eetPreviewJob.id), 100);
-          }}
-        />
-      )}
-      {csvPreviewJob && (
-        <CsvPreviewModal
-          job={csvPreviewJob}
-          onClose={onCloseCsvPreview}
-          onConfirm={async (previewSrcLang, previewTgtLang) => {
-            await api.csv.updateLanguages(csvPreviewJob.id, previewSrcLang, previewTgtLang);
-            refreshAll();
-            onCloseCsvPreview();
-            setTimeout(() => doStart('csv', csvPreviewJob.id), 100);
-          }}
-        />
-      )}
-
       {reimport && (
         <ReimportModal
           newModId={reimport.newModId}
@@ -110,21 +64,6 @@ export const ModsPageModals = ({
           onClose={onCloseDeleteModal}
           onConfirm={(deleteData, keep) => {
             void onConfirmDeleteMod(deleteData, keep);
-          }}
-        />
-      )}
-
-      {deleteSimpleJob && (
-        <ConfirmModal
-          title={t('imports.deleteJobTitle')}
-          message={t('imports.deleteJobMessage', { name: deleteSimpleJob.name })}
-          confirmLabel={t('common.delete')}
-          onClose={onCloseDeleteSimple}
-          onConfirm={() => {
-            const { kind, id } = deleteSimpleJob;
-            const p = kind === 'eet' ? api.eet.remove(id) : api.csv.remove(id);
-            p.then(refreshAll);
-            onCloseDeleteSimple();
           }}
         />
       )}

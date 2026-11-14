@@ -1,6 +1,6 @@
 /**
  * Bulk database writes for imports (records, strings, translations, dialog
- * graph). `recordImport.ts` covers tabular CSV/EET rows and is imported
+ * graph). `recordImport.ts` covers tabular record rows and is imported
  * directly; this barrel serves the native mod import writers.
  */
 export type {

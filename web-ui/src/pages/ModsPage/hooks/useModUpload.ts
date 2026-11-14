@@ -1,21 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  api,
-  EetGameMismatchError,
-  type UploadProgressEvent,
-  type ModImportJob,
-} from '../../../api';
+import { api, type UploadProgressEvent, type ModImportJob } from '../../../api';
 import { useToast } from '../../../components/Toast';
-import { kindFromExt } from '../modsPageUtils';
 import type { PendingModUpload } from '../modsPageTypes';
 
 type UseModUploadOptions = {
-  /** Every upload — mod, EET or CSV — is filed under this game and language pair. */
+  /** Every upload is filed under this game and language pair. */
   gameId: string;
   srcLang: string;
   tgtLang: string;
-  doStart: (kind: 'eet' | 'csv' | 'mod', jobId: number) => Promise<boolean>;
   startModImportJob: (job: ModImportJob) => Promise<void>;
   refreshAll: () => void;
 };
@@ -24,7 +17,6 @@ export const useModUpload = ({
   gameId,
   srcLang,
   tgtLang,
-  doStart,
   startModImportJob,
   refreshAll,
 }: UseModUploadOptions) => {
@@ -33,7 +25,6 @@ export const useModUpload = ({
   const [uploading, setUploading] = useState(false);
   const [pendingModUploads, setPendingModUploads] = useState<PendingModUpload[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
-  const advancedFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const hasExtracting = pendingModUploads.some(
@@ -106,27 +97,15 @@ export const useModUpload = ({
     const uploadOptions = { game: gameId || undefined, srcLang, tgtLang };
     try {
       for (const f of Array.from(files)) {
-        const kind = kindFromExt(f.name);
-        if (!kind) continue;
         try {
-          if (kind === 'eet') {
-            const job = await api.eet.upload(f, uploadOptions);
-            if (job) doStart('eet', job.id);
-          } else if (kind === 'csv') {
-            const job = await api.csv.upload(f, uploadOptions);
-            if (job) doStart('csv', job.id);
-          } else {
-            await uploadModFile(f, uploadOptions);
-          }
+          await uploadModFile(f, uploadOptions);
         } catch (err) {
           // One refused file must not stop the rest of the selection.
           showToast(
-            err instanceof EetGameMismatchError
-              ? t('imports.eetGameMismatch', { file: f.name, fileGame: err.fileGame })
-              : t('imports.uploadFailed', {
-                  file: f.name,
-                  message: err instanceof Error ? err.message : String(err),
-                }),
+            t('imports.uploadFailed', {
+              file: f.name,
+              message: err instanceof Error ? err.message : String(err),
+            }),
             'error',
           );
         }
@@ -139,7 +118,6 @@ export const useModUpload = ({
   };
 
   const handleUpload = () => processFiles(fileRef.current);
-  const handleAdvancedUpload = () => processFiles(advancedFileRef.current);
 
   const openFilePicker = useCallback(() => {
     fileRef.current?.click();
@@ -149,9 +127,7 @@ export const useModUpload = ({
     uploading,
     pendingModUploads,
     fileRef,
-    advancedFileRef,
     handleUpload,
-    handleAdvancedUpload,
     openFilePicker,
   };
 };

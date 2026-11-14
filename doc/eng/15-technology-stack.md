@@ -83,7 +83,7 @@ At a high level, the system supports these flows:
 ## File and Game-Format Processing
 
 - Custom TypeScript readers and writers under `src/formats/` (`ba2/`, `bsa/`,
-  `esp/`, `po/`, …) process ESP, EET, PEX, MCM, BA2, BSA, STRINGS, and Disco
+  `esp/`, `po/`, …) process ESP, PEX, MCM, BA2, BSA, STRINGS, and Disco
   gettext lockit (`discoLockitMarkup`, `¤Q¤` / `¤IT¤` / `¤TS¤` / `¤EM¤` masks).
 - `archiver` and `node-7z` handle archives. Keep both `7zip-bin` (`7za`, zip/7z)
   and `7z-bin` (full `7z`, RAR) — `7za` cannot unpack RAR.

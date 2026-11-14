@@ -2,7 +2,7 @@
  * ModsPage — unified mod workspace for a game.
  *
  * Combines imported mod translation progress with import job management:
- * upload bar, active EET/CSV/mod imports, and imported mod rows with editor access.
+ * upload bar, active mod imports, and imported mod rows with editor access.
  *
  * URL: /games/:gameId/mods
  */
@@ -38,8 +38,6 @@ export const ModsPage = () => {
   const { srcLang, targetLang } = useContentLangs();
   useModAiJobsPoll(true);
 
-  const [eetPreviewId, setEetPreviewId] = useState<number | null>(null);
-  const [csvPreviewId, setCsvPreviewId] = useState<number | null>(null);
   const [reimport, setReimport] = useState<{
     newModId: number;
     prevVersions: PreviousVersionRow[];
@@ -56,8 +54,6 @@ export const ModsPage = () => {
   const {
     isModsLoading,
     modsError,
-    eetJobs,
-    csvJobs,
     opsData,
     importJobByModId,
     importedModIds,
@@ -72,13 +68,10 @@ export const ModsPage = () => {
     srcLang,
     targetLang,
     onReimportDetected: setReimport,
-    onEetPreview: setEetPreviewId,
-    onCsvPreview: setCsvPreviewId,
   });
   const {
     liveProgress,
     refreshAll,
-    doStart,
     handleImportStart,
     startAll,
     pendingCount: countPendingImports,
@@ -100,7 +93,6 @@ export const ModsPage = () => {
     gameId,
     srcLang,
     tgtLang: targetLang,
-    doStart,
     startModImportJob: importRunner.startModImportJob,
     refreshAll,
   });
@@ -112,10 +104,6 @@ export const ModsPage = () => {
     [gameId, nav],
   );
 
-  const eetPreviewJob =
-    eetPreviewId != null ? (eetJobs ?? []).find((j) => j.id === eetPreviewId) : null;
-  const csvPreviewJob =
-    csvPreviewId != null ? (csvJobs ?? []).find((j) => j.id === csvPreviewId) : null;
   const visibleNexusDownloads = nexusDownloads.filter((d) => d.gameId === gameId);
   const visibleAppJobs = appJobs.filter((j) => j.status === 'running' || j.status === 'failed');
   const backendLlmJobs = opsData?.llmJobs ?? [];
@@ -180,11 +168,9 @@ export const ModsPage = () => {
         <ModsPageUploadBar
           gameId={gameId}
           fileRef={upload.fileRef}
-          advancedFileRef={upload.advancedFileRef}
           uploading={upload.uploading}
           pendingCount={importPendingCount}
           onUpload={() => void upload.handleUpload()}
-          onAdvancedUpload={() => void upload.handleAdvancedUpload()}
           onStartAll={() => startAll(activeImportJobs)}
         />
       )}
@@ -237,9 +223,6 @@ export const ModsPage = () => {
           exportingLangpack={exportingBatchLangpack}
           onImportStart={handleImportStart}
           onDeleteModJob={deleteActions.setDeleteModalJob}
-          onDeleteSimpleJob={(kind, name, id) =>
-            deleteActions.setDeleteSimpleJob({ kind, name, id })
-          }
           onClearRows={(modId, name) => deleteActions.setPendingClear({ id: modId, name })}
           onDeleteAll={deleteActions.requestDeleteMods}
           onOpenMod={(modId) => nav(`/games/${gameId}/mods/${modId}`)}
@@ -250,26 +233,18 @@ export const ModsPage = () => {
       )}
 
       <ModsPageModals
-        eetPreviewJob={eetPreviewJob}
-        csvPreviewJob={csvPreviewJob}
         reimport={reimport}
         deleteModalJob={deleteActions.deleteModalJob}
         deletingModJobId={deleteActions.deletingModJobId}
-        deleteSimpleJob={deleteActions.deleteSimpleJob}
         pendingClear={deleteActions.pendingClear}
         clearingModId={deleteActions.clearingModId}
         pendingDeleteAll={deleteActions.pendingDeleteAll}
         deletingAll={deleteActions.deletingAll}
         keepReference={deleteActions.keepReference}
         onKeepReferenceChange={deleteActions.setKeepReference}
-        refreshAll={refreshAll}
-        doStart={doStart}
-        onCloseEetPreview={() => setEetPreviewId(null)}
-        onCloseCsvPreview={() => setCsvPreviewId(null)}
         onCloseReimport={() => setReimport(null)}
         onCloseDeleteModal={() => deleteActions.setDeleteModalJob(null)}
         onConfirmDeleteMod={deleteActions.confirmDeleteMod}
-        onCloseDeleteSimple={() => deleteActions.setDeleteSimpleJob(null)}
         onClosePendingClear={() => deleteActions.setPendingClear(null)}
         onConfirmClearRows={() => void deleteActions.confirmClearRows()}
         onClosePendingDeleteAll={() => deleteActions.setPendingDeleteAll(null)}

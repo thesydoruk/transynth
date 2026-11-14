@@ -9,7 +9,7 @@ import { LlmJobRow } from './LlmJobRow';
 import { ModListHeader } from './ModListHeader';
 import { ActiveImportJobsList } from './ActiveImportJobsList';
 import { ModWorkspaceList } from './ModWorkspaceList';
-import type { PendingModUpload, UnifiedJob } from './modsPageTypes';
+import type { PendingModUpload } from './modsPageTypes';
 import type { LiveProgress, ModExportAction } from './modsShared';
 import s from './ModsPage.module.scss';
 
@@ -21,9 +21,9 @@ type ModsPageJobListProps = {
   deletingExportId: number | null;
   onDeleteExport: (archive: ExportArchive) => void;
   llmJobs: OpsLlmJob[];
-  activeImportJobs: UnifiedJob[];
+  activeImportJobs: ModImportJob[];
   sortedMods: Mod[];
-  liveProgress: Record<string, LiveProgress>;
+  liveProgress: Record<number, LiveProgress>;
   importJobByModId: Map<number, ModImportJob>;
   importedModIds: Set<number>;
   srcLang: string;
@@ -52,9 +52,8 @@ type ModsPageJobListProps = {
   onBatchDeleteAll: () => void;
   onBatchExportLangpack: () => void;
   exportingLangpack: boolean;
-  onImportStart: (job: UnifiedJob) => void;
+  onImportStart: (job: ModImportJob) => void;
   onDeleteModJob: (job: ModImportJob) => void;
-  onDeleteSimpleJob: (kind: 'eet' | 'csv', name: string, id: number) => void;
   onClearRows: (modId: number, name: string) => void;
   onDeleteAll: (mods: Array<{ id: number; name: string }>) => void;
   onOpenMod: (modId: number) => void;
@@ -98,7 +97,6 @@ export const ModsPageJobList = ({
   exportingLangpack,
   onImportStart,
   onDeleteModJob,
-  onDeleteSimpleJob,
   onClearRows,
   onDeleteAll,
   onOpenMod,
@@ -143,7 +141,6 @@ export const ModsPageJobList = ({
       buildExportActions={buildExportActions}
       onStart={onImportStart}
       onDeleteModJob={onDeleteModJob}
-      onDeleteSimpleJob={onDeleteSimpleJob}
       onClearRows={onClearRows}
       onDeleteAll={onDeleteAll}
     />

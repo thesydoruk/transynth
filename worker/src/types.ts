@@ -15,7 +15,7 @@
  * Progress travels as `JobEvent`s via `updateProgress`, which `api/` replays
  * to browsers over SSE — the frontend keeps its existing event shapes.
  *
- * `jobs/import/{mod,csv,eet}` own the ingestion loops themselves. What stays in
+ * `jobs/import/mod` owns the ingestion loops themselves. What stays in
  * `src/import` is the part the API also needs: file discovery, registration and
  * the `*_imports` job rows.
  */
@@ -31,8 +31,6 @@ export const JOB_KINDS = [
   'batch-translate',
   'apply-imported',
   'mod-import',
-  'csv-import',
-  'eet-import',
   'langpack-export',
   'vortex-sync',
   'video-separate',
@@ -90,7 +88,7 @@ export type JobContext = {
   emit: (event: JobEvent) => void;
   /** Merge handler-specific state into the snapshot for late status reads. */
   mergeSnapshot: (data: Record<string, unknown>) => void;
-  /** Register a pause reaction (mod/CSV/EET imports); ignored by other kinds. */
+  /** Register a pause reaction (mod imports); ignored by other kinds. */
   onPause: (handler: () => void) => void;
 };
 

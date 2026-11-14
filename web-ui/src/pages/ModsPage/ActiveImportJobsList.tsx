@@ -1,11 +1,10 @@
 import { api, type ModImportJob } from '../../api';
 import { UnifiedJobRow } from './UnifiedJobRow';
 import type { LiveProgress, ModExportAction } from './modsShared';
-import type { UnifiedJob } from './modsPageTypes';
 
 type ActiveImportJobsListProps = {
-  jobs: UnifiedJob[];
-  liveProgress: Record<string, LiveProgress>;
+  jobs: ModImportJob[];
+  liveProgress: Record<number, LiveProgress>;
   importedModIds: Set<number>;
   srcLang: string;
   targetLang: string;
@@ -18,9 +17,8 @@ type ActiveImportJobsListProps = {
     exportTgtLang: string,
     busyPrefix: string,
   ) => ModExportAction[];
-  onStart: (job: UnifiedJob) => void;
+  onStart: (job: ModImportJob) => void;
   onDeleteModJob: (job: ModImportJob) => void;
-  onDeleteSimpleJob: (kind: 'eet' | 'csv', name: string, id: number) => void;
   onClearRows: (modId: number, name: string) => void;
   onDeleteAll: (mods: Array<{ id: number; name: string }>) => void;
 };
@@ -36,64 +34,39 @@ export const ActiveImportJobsList = ({
   buildExportActions,
   onStart,
   onDeleteModJob,
-  onDeleteSimpleJob,
   onClearRows,
   onDeleteAll,
 }: ActiveImportJobsListProps) =>
-  jobs.map((u) => {
-    const key = `${u.kind}:${u.job.id}`;
-    const live = liveProgress[key];
-    const isRunning = u.job.running || !!live;
-    const modJob = u.kind === 'mod' ? u.job : null;
+  jobs.map((job) => {
+    const live = liveProgress[job.id];
+    const isRunning = job.running || !!live;
     const orphanedCompletedMod =
-      !!modJob?.mod_id && modJob.status === 'completed' && !importedModIds.has(modJob.mod_id);
-    const exportActions =
-      orphanedCompletedMod && modJob?.mod_id
-        ? buildExportActions(
-            modJob.mod_id,
-            modJob.file_name,
-            srcLang,
-            targetLang,
-            String(modJob.id),
-          )
-        : [];
+      !!job.mod_id && job.status === 'completed' && !importedModIds.has(job.mod_id);
+    const exportActions = orphanedCompletedMod
+      ? buildExportActions(job.mod_id!, job.file_name, srcLang, targetLang, String(job.id))
+      : [];
 
     return (
       <UnifiedJobRow
-        key={key}
-        kind={u.kind}
-        job={u.job}
+        key={job.id}
+        job={job}
         live={live}
         isRunning={isRunning}
         exportActions={exportActions}
         modDataMenu={
-          modJob?.mod_id != null
+          job.mod_id != null
             ? {
-                onClearRows: () => onClearRows(modJob.mod_id!, modJob.file_name),
-                onDeleteAll: () => onDeleteAll([{ id: modJob.mod_id!, name: modJob.file_name }]),
-                clearingRows: clearingModId === modJob.mod_id,
+                onClearRows: () => onClearRows(job.mod_id!, job.file_name),
+                onDeleteAll: () => onDeleteAll([{ id: job.mod_id!, name: job.file_name }]),
+                clearingRows: clearingModId === job.mod_id,
                 deletingAll,
               }
             : undefined
         }
-        onStart={() => onStart(u)}
-        onPause={() => {
-          if (u.kind === 'eet') api.eet.pause(u.job.id);
-          else if (u.kind === 'csv') api.csv.pause(u.job.id);
-          else api.modImport.pause(u.job.id);
-        }}
-        onCancel={() => {
-          if (u.kind === 'eet') api.eet.cancel(u.job.id);
-          else if (u.kind === 'csv') api.csv.cancel(u.job.id);
-          else api.modImport.cancel(u.job.id);
-        }}
-        onDelete={() => {
-          if (u.kind === 'mod') {
-            onDeleteModJob(u.job as ModImportJob);
-            return;
-          }
-          onDeleteSimpleJob(u.kind, u.job.file_name, u.job.id);
-        }}
+        onStart={() => onStart(job)}
+        onPause={() => api.modImport.pause(job.id)}
+        onCancel={() => api.modImport.cancel(job.id)}
+        onDelete={() => onDeleteModJob(job)}
       />
     );
   });

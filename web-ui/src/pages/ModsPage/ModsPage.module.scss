@@ -127,25 +127,6 @@
   border-radius: 8px;
 }
 
-.advancedImport {
-  margin-top: 8px;
-}
-
-.advancedImport summary {
-  cursor: pointer;
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 600;
-  user-select: none;
-}
-
-.advancedHint {
-  margin: 8px 0 10px;
-  color: var(--text-faint);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
 .gameSelect {
   padding: 5px 10px;
   background: var(--bg-input);

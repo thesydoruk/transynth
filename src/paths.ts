@@ -27,10 +27,8 @@ export const PATHS = {
   vortexUploads: resolveDir(
     process.env.VORTEX_UPLOAD_DIR ?? path.join(dataDir, 'uploads', 'vortex'),
   ),
-  eetUploads: resolveDir(process.env.EET_UPLOAD_DIR ?? path.join(dataDir, 'uploads', 'eet')),
   /** Cutscene audio the Vortex agent uploads, and the tracks the dub makes of it. */
   videoUploads: resolveDir(process.env.VIDEO_UPLOAD_DIR ?? path.join(dataDir, 'uploads', 'video')),
-  csvUploads: resolveDir(process.env.CSV_UPLOAD_DIR ?? path.join(dataDir, 'uploads', 'csv')),
   gamesCache: resolveDir(process.env.GAMES_CACHE_DIR ?? path.join(dataDir, 'cache', 'games')),
   /** Local extraction target for scan:mods archives (never on network shares). */
   scanExtract: resolveDir(
@@ -64,9 +62,7 @@ export const ensureDataDirs = (): void => {
     PATHS.logs,
     PATHS.modUploads,
     PATHS.vortexUploads,
-    PATHS.eetUploads,
     PATHS.videoUploads,
-    PATHS.csvUploads,
     PATHS.gamesCache,
     PATHS.scanExtract,
     PATHS.pexDecompile,

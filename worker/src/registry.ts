@@ -6,8 +6,6 @@
  */
 import { applyImportedHandler } from './jobs/applyImported/handler';
 import { batchTranslateHandler } from './jobs/batchTranslate';
-import { csvImportHandler } from './jobs/import/csv/handler';
-import { eetImportHandler } from './jobs/import/eet/handler';
 import { genderDetectHandler } from './jobs/genderDetect/handler';
 import { llmTranslateHandler } from './jobs/translate/handler';
 import { llmVerifyHandler } from './jobs/verify/handler';
@@ -32,8 +30,6 @@ const handlers: Record<JobKind, JobHandler> = {
   'batch-translate': batchTranslateHandler,
   'apply-imported': applyImportedHandler,
   'mod-import': modImportHandler,
-  'csv-import': csvImportHandler,
-  'eet-import': eetImportHandler,
   'langpack-export': langpackExportHandler,
   'vortex-sync': vortexSyncHandler,
   'video-separate': videoSeparateHandler,

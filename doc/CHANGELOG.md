@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **EET and CSV import are removed.** The legacy `.eet` and `.csv` translation-file imports (the **Advanced import** block of the Mods page, `/api/eet` and `/api/csv`, their worker jobs and the `EET_UPLOAD_DIR` / `CSV_UPLOAD_DIR` settings) are gone; plugins and archives are imported as before. The empty `eet_imports` and `csv_imports` tables are dropped on the next `npm run db:init`.
+
 ## 0.11.0 — 2026-11-13
 
 Vortex, from a command somebody has to remember to a process that watches:

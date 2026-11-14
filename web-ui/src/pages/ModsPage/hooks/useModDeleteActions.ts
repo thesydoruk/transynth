@@ -17,11 +17,6 @@ export const useModDeleteActions = ({
 
   const [deleteModalJob, setDeleteModalJob] = useState<ModImportJob | null>(null);
   const [deletingModJobId, setDeletingModJobId] = useState<number | null>(null);
-  const [deleteSimpleJob, setDeleteSimpleJob] = useState<{
-    kind: 'eet' | 'csv';
-    name: string;
-    id: number;
-  } | null>(null);
   const [pendingClear, setPendingClear] = useState<{ id: number; name: string } | null>(null);
   const [pendingDeleteAll, setPendingDeleteAll] = useState<{
     mods: Array<{ id: number; name: string }>;
@@ -99,8 +94,6 @@ export const useModDeleteActions = ({
     deleteModalJob,
     setDeleteModalJob,
     deletingModJobId,
-    deleteSimpleJob,
-    setDeleteSimpleJob,
     pendingClear,
     setPendingClear,
     pendingDeleteAll,

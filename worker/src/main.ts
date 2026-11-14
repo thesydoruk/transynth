@@ -13,7 +13,7 @@
  *   5. Cancel/pause arrive on the control pub/sub channel.
  *
  * Job bodies and handlers live under `./jobs` (feature folders), including the
- * mod/CSV/EET ingestion loops. Their parsing and job-row helpers stay in
+ * mod ingestion loop. Their parsing and job-row helpers stay in
  * `../src/import`, which the upload/list routes also use.
  */
 // Registers the game plugins; every registry lookup below depends on it.

@@ -51,7 +51,7 @@ export const DEFAULT_GAME_ID = 'fo4';
  * Full list of content locales supported by the translation workflow.
  *
  * Keep this list as the single source of truth for source/target selectors
- * across pages that work with mod/EET/CSV content.
+ * across pages that work with mod content.
  */
 export const SUPPORTED_CONTENT_LANGUAGES = [
   'en',

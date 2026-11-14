@@ -15,12 +15,12 @@ import { getRagStats, reindexAllTranslationExamples } from '../../llm/rag';
 
 /* ── Response types ──────────────────────────────────────────────────────── */
 
-/** A single import job row (EET / CSV / Mod — unified shape). */
+/** A single import job row. */
 export interface ImportJobRow {
   /** Numeric primary key of the import job. */
   id: number;
-  /** Source table the job comes from: 'eet' | 'csv' | 'mod'. */
-  kind: 'eet' | 'csv' | 'mod';
+  /** Source table the job comes from. */
+  kind: 'mod';
   /** Original file name uploaded by the user. */
   file_name: string;
   /** Current lifecycle status: pending → extracting → in_progress → completed | failed. */
@@ -144,8 +144,6 @@ export const opsRoutes = async (app: FastifyInstance, db: Tx) => {
     /* ── 2. Fire all independent SQL queries in parallel ───────────────── */
     const [
       dbTimeResult,
-      eetJobs,
-      csvJobs,
       modJobs,
       llmJobsResult,
       autoCount,
@@ -156,20 +154,6 @@ export const opsRoutes = async (app: FastifyInstance, db: Tx) => {
     ] = await Promise.all([
       /* DB connectivity + server time */
       db.query('SELECT NOW() AS now').catch(() => ({ rows: [] as { now: string }[] })),
-
-      /* Recent EET import jobs (last 20) */
-      db.query(
-        `SELECT id, file_name, status, total_records, imported_records,
-                last_error, updated_at
-         FROM eet_imports ORDER BY updated_at DESC LIMIT 20`,
-      ),
-
-      /* Recent CSV import jobs (last 20) */
-      db.query(
-        `SELECT id, file_name, status, total_records, imported_records,
-                NULL AS last_error, updated_at
-         FROM csv_imports ORDER BY updated_at DESC LIMIT 20`,
-      ),
 
       /* Recent Mod import jobs (last 20) */
       db.query(
@@ -217,7 +201,6 @@ export const opsRoutes = async (app: FastifyInstance, db: Tx) => {
            AND c.relname IN (
              'mods','records','strings','translations',
              'translation_revisions','qa_issues','glossary',
-             'eet_imports','csv_imports',
              'mod_imports','users','activity_log','system_log','translation_examples'
            )
          ORDER BY c.reltuples DESC`,
@@ -232,19 +215,8 @@ export const opsRoutes = async (app: FastifyInstance, db: Tx) => {
       })),
     ]);
 
-    /* ── 3. Merge import jobs into a single sorted list ────────────────── */
-    const tagKind = <K extends 'eet' | 'csv' | 'mod'>(
-      rows: Record<string, unknown>[],
-      kind: K,
-    ): ImportJobRow[] => rows.map((r) => ({ ...r, kind }) as unknown as ImportJobRow);
-
-    const importJobs = [
-      ...tagKind(eetJobs.rows, 'eet'),
-      ...tagKind(csvJobs.rows, 'csv'),
-      ...tagKind(modJobs.rows, 'mod'),
-    ]
-      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-      .slice(0, 30);
+    /* ── 3. Tag import jobs with their kind ────────────────────────────── */
+    const importJobs = modJobs.rows.map((r) => ({ ...r, kind: 'mod' }) as unknown as ImportJobRow);
 
     /* ── 4. Assemble response ──────────────────────────────────────────── */
     const dbTimeRow = dbTimeResult.rows[0] as { now: string } | undefined;

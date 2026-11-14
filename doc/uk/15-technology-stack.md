@@ -81,7 +81,7 @@
 ## Обробка файлів і форматів гри
 
 - Власні TypeScript readers і writers у `src/formats/` (`ba2/`, `bsa/`, `esp/`,
-  `po/`, …) обробляють формати ESP, EET, PEX, MCM, BA2, BSA, STRINGS і Disco
+  `po/`, …) обробляють формати ESP, PEX, MCM, BA2, BSA, STRINGS і Disco
   gettext lockit (`discoLockitMarkup`, маски `¤Q¤` / `¤IT¤` / `¤TS¤` / `¤EM¤`).
 - `archiver` і `node-7z` обробляють архіви. Обидва пакети лишаються: `7zip-bin`
   (`7za`, zip/7z) і `7z-bin` (повний `7z`, RAR) — `7za` не розпаковує RAR.
