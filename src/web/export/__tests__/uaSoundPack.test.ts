@@ -6,6 +6,7 @@ import { Ba2Reader } from '../../../formats/ba2';
 import {
   UA_SOUND_PACK_BA2,
   UA_SOUND_PACK_ESP,
+  isUaSoundPackEsp,
   splitLangpackVoiceEntries,
   writeUaSoundPackIntoDir,
 } from '../uaSoundPack';
@@ -45,6 +46,25 @@ describe('writeUaSoundPackIntoDir', () => {
     } finally {
       reader.close();
     }
+  });
+
+  it('names the plugin and its archive after the mod', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ua-sound-named-'));
+    tempDirs.push(dir);
+
+    await writeUaSoundPackIntoDir(
+      dir,
+      [{ name: 'Sound/Voice/CoolMod.esp/NPC/00123456_1.fuz', data: Buffer.from('fuz') }],
+      'CoolMod',
+    );
+
+    expect(fs.readdirSync(dir).sort()).toEqual([
+      'UASoundPack - CoolMod - Main.ba2',
+      'UASoundPack - CoolMod.esp',
+    ]);
+    expect(isUaSoundPackEsp('UASoundPack - CoolMod.esp')).toBe(true);
+    expect(isUaSoundPackEsp(UA_SOUND_PACK_ESP)).toBe(true);
+    expect(isUaSoundPackEsp('UASoundPackage.esp')).toBe(false);
   });
 
   it('does nothing when there is no voice to pack', async () => {

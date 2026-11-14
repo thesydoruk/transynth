@@ -13,9 +13,8 @@ import { exportPatchedEsp } from '../../../web/export/exportEsp';
 import type { ZipPackEntry } from '../../../web/export/exportTypes';
 import { stageFullLocalizedMod } from '../../../web/export/fullModStaging';
 import {
-  UA_SOUND_PACK_BA2,
-  UA_SOUND_PACK_ESP,
   splitLangpackVoiceEntries,
+  uaSoundPackNames,
   writeUaSoundPackIntoDir,
 } from '../../../web/export/uaSoundPack';
 import { packFilesToZip } from '../../../web/export/zipPack';
@@ -32,15 +31,17 @@ import { collectCreationEngineLangpackEntries } from './langpack';
 const packVoiceIntoSoundPack = async (
   entries: ZipPackEntry[],
   stagingDir: string,
+  modName?: string,
 ): Promise<ZipPackEntry[]> => {
   const { rest, voice } = splitLangpackVoiceEntries(entries);
   if (voice.length === 0) return rest;
 
-  await writeUaSoundPackIntoDir(stagingDir, voice);
+  await writeUaSoundPackIntoDir(stagingDir, voice, modName);
+  const names = uaSoundPackNames(modName);
   return [
     ...rest,
-    { name: UA_SOUND_PACK_ESP, absPath: path.join(stagingDir, UA_SOUND_PACK_ESP) },
-    { name: UA_SOUND_PACK_BA2, absPath: path.join(stagingDir, UA_SOUND_PACK_BA2) },
+    { name: names.esp, absPath: path.join(stagingDir, names.esp) },
+    { name: names.ba2, absPath: path.join(stagingDir, names.ba2) },
   ];
 };
 
@@ -94,7 +95,7 @@ export const createCreationEngineExportAdapter = (
   logLabel: 'Langpack export',
 
   finalizeLangpackEntries: title.voice.packLangpackVoiceIntoBa2
-    ? (entries, stagingDir) => packVoiceIntoSoundPack(entries, stagingDir)
+    ? (entries, stagingDir, modName) => packVoiceIntoSoundPack(entries, stagingDir, modName)
     : undefined,
 
   exportFullModZip: async (ctx) => {

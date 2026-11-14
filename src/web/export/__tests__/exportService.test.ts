@@ -221,8 +221,10 @@ describe('localized export golden corpus', () => {
     );
 
     const zipText = zipBuffer.toString('latin1');
-    expect(zipText).toContain('UASoundPack.esp');
-    expect(zipText).toContain('UASoundPack - Main.ba2');
+    const stem = path.parse(LOCALIZED_EXPORT_GOLDEN_CORPUS.pluginFileName).name;
+    expect(zipText).toContain(`UASoundPack - ${stem}.esp`);
+    expect(zipText).toContain(`UASoundPack - ${stem} - Main.ba2`);
+    expect(zipText).not.toContain('UASoundPack.esp');
     expect(zipText).toContain('00123456_1.fuz');
     expect(zipText).not.toContain(voiceRel);
     expect(zipText).not.toContain('000219CF_1.fuz');

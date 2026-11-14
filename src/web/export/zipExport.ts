@@ -37,7 +37,7 @@ export const exportLangpackZip = async (
 
   const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), 'langpack-'));
   try {
-    const packed = (await exporter.finalizeLangpackEntries?.(files, stagingDir)) ?? files;
+    const packed = (await exporter.finalizeLangpackEntries?.(files, stagingDir, stem)) ?? files;
     if (packed.length === 0) throw new Error(exporter.emptyLangpackMessage);
 
     const zipBuffer = await packFilesToZip(packed);

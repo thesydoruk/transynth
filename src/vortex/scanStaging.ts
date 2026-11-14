@@ -10,7 +10,7 @@ import { merkleContentHash, type FileHasher } from './hashSubset';
 import { hasVortexImportAnchor, type VortexSyncFileOptions } from './syncWorthy';
 import type { VortexInventoryUnit } from './types';
 import { isTransynthVideopackFolder } from './videoFiles';
-import { UA_SOUND_PACK_ESP } from '../web/export/uaSoundPack';
+import { isUaSoundPackEsp } from '../web/export/uaSoundPack';
 
 const SKIP_TOP_NAMES = new Set(['.git', 'node_modules', '.transynth-extracted']);
 
@@ -22,6 +22,14 @@ const SKIP_TOP_NAMES = new Set(['.git', 'node_modules', '.transynth-extracted'])
 export const isTransynthPackFolderName = (folderName: string): boolean =>
   /^transynth_.+_langpack_r\d+/i.test(folderName) || isTransynthVideopackFolder(folderName);
 
+const hasUaSoundPackEsp = (folderPath: string): boolean => {
+  try {
+    return fs.readdirSync(folderPath).some(isUaSoundPackEsp);
+  } catch {
+    return false;
+  }
+};
+
 /**
  * Transynth's own output, installed through Vortex, is not a mod to translate:
  * syncing it would upload gigabytes of our voice archive or our dubbed videos
@@ -29,7 +37,7 @@ export const isTransynthPackFolderName = (folderName: string): boolean =>
  * known by the dummy voice plugin.
  */
 export const isTransynthOutputFolder = (folderPath: string, folderName: string): boolean =>
-  isTransynthPackFolderName(folderName) || fs.existsSync(path.join(folderPath, UA_SOUND_PACK_ESP));
+  isTransynthPackFolderName(folderName) || hasUaSoundPackEsp(folderPath);
 
 /** One unit per staging folder, whatever number of plugins it ships. */
 const unitIdFor = (folderName: string): string => `mods:${folderName}`.toLowerCase();

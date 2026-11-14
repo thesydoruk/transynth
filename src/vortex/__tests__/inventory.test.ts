@@ -67,6 +67,8 @@ describe('vortex inventory', () => {
     writeFile(path.join(staging, 'Transynth_fo4_uk_langpack_r19', 'UASoundPack.esp'), 'dummy');
     writeFile(path.join(staging, 'Renamed Pack', 'UASoundPack.esp'), 'dummy');
     writeFile(path.join(staging, 'Renamed Pack', 'Strings', 'Fallout4_en.STRINGS'));
+    writeFile(path.join(staging, 'One Mod Pack', 'UASoundPack - CoolMod.esp'), 'dummy');
+    writeFile(path.join(staging, 'One Mod Pack', 'Strings', 'CoolMod_en.STRINGS'));
     writeFile(path.join(staging, 'Cool Mod-1-1', 'CoolMod.esp'), 'plugin');
 
     const units = await scanStagingUnits(staging);

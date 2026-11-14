@@ -44,11 +44,14 @@ export type GameExportAdapter = {
    * voice in an uncompressed BA2 so the engine will play it).
    *
    * `stagingDir` is a scratch directory that the caller deletes afterwards.
-   * Return the entries to pack, in order.
+   * `modName` is set when the langpack holds a single mod: files the pass
+   * creates should carry it, so packs of different mods can be installed
+   * together. Return the entries to pack, in order.
    */
   finalizeLangpackEntries?(
     entries: ZipPackEntry[],
     stagingDir: string,
+    modName?: string,
   ): ZipPackEntry[] | Promise<ZipPackEntry[]>;
 
   /** Build the full-mod ZIP: every mod asset, with translations applied. */
