@@ -1,5 +1,5 @@
 /**
- * Session-level advisory locking for bulk mod writes (import, CSV/EET import, mod delete).
+ * Session-level advisory locking for bulk mod writes (import, mod delete).
  *
  * Concurrent bulk writers touching records/strings/translations deadlock in PostgreSQL,
  * so they serialize on one advisory lock instead.
@@ -21,7 +21,7 @@ export const isPgDeadlockError = (err: unknown): boolean => {
 
 /**
  * Hold an exclusive session lock for the duration of a bulk import.
- * Concurrent mod/EET/CSV imports block here instead of deadlocking in PostgreSQL.
+ * Concurrent mod imports block here instead of deadlocking in PostgreSQL.
  */
 export const withModImportWriteLock = async <T>(db: Tx, fn: () => Promise<T>): Promise<T> => {
   await db.query(`SELECT pg_advisory_lock($1)`, [MOD_IMPORT_WRITE_ADVISORY_LOCK_KEY]);

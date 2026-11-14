@@ -1,9 +1,9 @@
 /* ── Ops / Health dashboard types ──────────────────────────────────────── */
 
-/** A single import job row (EET / CSV / Mod — unified). */
+/** A single import job row (mod import). */
 export type OpsImportJob = {
   id: number;
-  kind: 'eet' | 'csv' | 'mod';
+  kind: 'mod';
   file_name: string;
   status: string;
   total_records: number;

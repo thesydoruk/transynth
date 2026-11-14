@@ -1,15 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ModImportJob } from '../../../api';
 import {
-  kindColor,
+  MOD_BADGE_COLOR,
   statusColorBase,
   statusLabel,
   canStartImportJob,
   importStartTooltip,
   importStartButtonLabel,
   importStatusI18nKey,
-  importKindBadgeLabel,
   type UnifiedJobRowProps,
 } from '../modsShared';
 import { ModDataMenuItems } from '../ModDataMenuItems';
@@ -18,7 +16,6 @@ import s from './UnifiedJobRow.module.scss';
 
 /** Single row in the unified import list, with a colored type badge. */
 export const UnifiedJobRow = ({
-  kind,
   job,
   live,
   isRunning,
@@ -35,17 +32,10 @@ export const UnifiedJobRow = ({
   const imported = live?.imported ?? job.imported_records;
   const total = live?.total ?? job.total_records;
   const pct = total > 0 ? Math.round((imported / total) * 100) : 0;
-  const isMod = kind === 'mod';
-  const modJob = isMod ? (job as ModImportJob) : null;
-  const canStart = canStartImportJob(job, isRunning, kind);
-  const hasExportActions = (exportActions?.length ?? 0) > 0;
-  const showOverflowMenu = !isRunning && (isMod || hasExportActions);
-  const showStandaloneDelete = !isRunning && !showOverflowMenu;
+  const canStart = canStartImportJob(job, isRunning);
   const isFailed = job.status === 'failed';
-  const startTooltip = importStartTooltip(job, isRunning, kind, t);
+  const startTooltip = importStartTooltip(job, isRunning, t);
   const startButtonLabel = importStartButtonLabel(job, isRunning, t);
-  const lastError =
-    isFailed && 'last_error' in job ? (job as { last_error: string | null }).last_error : null;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -62,30 +52,17 @@ export const UnifiedJobRow = ({
   return (
     <div className={parentS.row}>
       <div className={parentS.rowLeft}>
-        <span className={parentS.typeBadge} style={{ background: kindColor(kind) }}>
-          {importKindBadgeLabel(kind, t)}
+        <span className={parentS.typeBadge} style={{ background: MOD_BADGE_COLOR }}>
+          {t('imports.tabMod')}
         </span>
         <div>
           <span className={parentS.fileName}>
             {job.file_name}
-            {modJob?.is_localized ? (
+            {job.is_localized ? (
               <span className={s.locBadge}>{t('modImport.localized')}</span>
             ) : null}
           </span>
-          <span className={parentS.meta}>
-            {isMod
-              ? t('common.strings', { count: total })
-              : t('imports.langPairMeta', {
-                  src: job.src_lang,
-                  tgt: job.tgt_lang,
-                  count: total,
-                })}
-          </span>
-          {lastError && (
-            <span className={s.errorText} title={lastError}>
-              {lastError}
-            </span>
-          )}
+          <span className={parentS.meta}>{t('common.strings', { count: total })}</span>
         </div>
       </div>
       <div className={parentS.rowRight}>
@@ -102,11 +79,6 @@ export const UnifiedJobRow = ({
           <span
             className={parentS.badge}
             style={{ background: statusColorBase(importStatusI18nKey(job, isRunning)) }}
-            title={
-              job.status === 'failed' && 'last_error' in job && job.last_error
-                ? job.last_error
-                : undefined
-            }
           >
             {statusLabel(job.status, t, job, isRunning)}
             {job.imported_records > 0 && ` (${pct}%)`}
@@ -144,7 +116,7 @@ export const UnifiedJobRow = ({
               {t('imports.cancelBtn')}
             </button>
           )}
-          {!isRunning && showOverflowMenu && (
+          {!isRunning && (
             <div className={s.menuWrap} ref={menuRef}>
               <button
                 onClick={(e) => {
@@ -182,39 +154,20 @@ export const UnifiedJobRow = ({
                       onAfterAction={() => setMenuOpen(false)}
                     />
                   )}
-                  {isMod && (
-                    <button
-                      onClick={() => {
-                        onDelete();
-                        setMenuOpen(false);
-                      }}
-                      className={`${s.menuItem} ${s.menuItemDanger}`}
-                      disabled={modDataMenu?.clearingRows || modDataMenu?.deletingAll}
-                    >
-                      <span className={s.menuIcon}>🗑</span>
-                      <span>{t('mods.deleteImportJob')}</span>
-                    </button>
-                  )}
-                  {!isMod && (
-                    <button
-                      onClick={() => {
-                        onDelete();
-                        setMenuOpen(false);
-                      }}
-                      className={`${s.menuItem} ${s.menuItemDanger}`}
-                    >
-                      <span className={s.menuIcon}>🗑</span>
-                      <span>{t('common.delete')}</span>
-                    </button>
-                  )}
+                  <button
+                    onClick={() => {
+                      onDelete();
+                      setMenuOpen(false);
+                    }}
+                    className={`${s.menuItem} ${s.menuItemDanger}`}
+                    disabled={modDataMenu?.clearingRows || modDataMenu?.deletingAll}
+                  >
+                    <span className={s.menuIcon}>🗑</span>
+                    <span>{t('mods.deleteImportJob')}</span>
+                  </button>
                 </div>
               )}
             </div>
-          )}
-          {showStandaloneDelete && (
-            <button onClick={onDelete} className={s.actionBtnDelete} title={t('common.delete')}>
-              🗑
-            </button>
           )}
         </div>
       </div>

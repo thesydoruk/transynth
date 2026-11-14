@@ -2,23 +2,18 @@ import { useCallback, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   api,
-  type EetProgressEvent,
-  type CsvProgressEvent,
   type ModProgressEvent,
   type ModImportJob,
   type PreviousVersionRow,
 } from '../../../api';
 import { modListQueryKey } from '../../../langDefaults';
 import { canStartImportJob, isImportJobResume, type LiveProgress } from '../modsShared';
-import type { UnifiedJob } from '../modsPageTypes';
 
 type UseImportJobRunnerOptions = {
   gameId: string;
   srcLang: string;
   targetLang: string;
   onReimportDetected: (payload: { newModId: number; prevVersions: PreviousVersionRow[] }) => void;
-  onEetPreview: (jobId: number) => void;
-  onCsvPreview: (jobId: number) => void;
 };
 
 export const useImportJobRunner = ({
@@ -26,72 +21,55 @@ export const useImportJobRunner = ({
   srcLang,
   targetLang,
   onReimportDetected,
-  onEetPreview,
-  onCsvPreview,
 }: UseImportJobRunnerOptions) => {
   const qc = useQueryClient();
-  const [liveProgress, setLiveProgress] = useState<Record<string, LiveProgress>>({});
-  const abortRefs = useRef<Record<string, AbortController>>({});
+  const [liveProgress, setLiveProgress] = useState<Record<number, LiveProgress>>({});
+  const abortRefs = useRef<Record<number, AbortController>>({});
 
   const refreshAll = useCallback(() => {
-    qc.invalidateQueries({ queryKey: ['eet-imports'] });
-    qc.invalidateQueries({ queryKey: ['csv-imports'] });
     qc.invalidateQueries({ queryKey: ['mod-imports'] });
     qc.invalidateQueries({ queryKey: modListQueryKey(gameId, srcLang, targetLang) });
   }, [qc, gameId, srcLang, targetLang]);
 
   const doStart = useCallback(
-    (kind: 'eet' | 'csv' | 'mod', jobId: number): Promise<boolean> => {
-      const key = `${kind}:${jobId}`;
+    (jobId: number): Promise<boolean> => {
       const onProgress = (e: { imported: number; total: number }) => {
-        setLiveProgress((prev) => ({ ...prev, [key]: { imported: e.imported, total: e.total } }));
+        setLiveProgress((prev) => ({
+          ...prev,
+          [jobId]: { imported: e.imported, total: e.total },
+        }));
       };
       const cleanup = () => {
         setLiveProgress((prev) => {
           const c = { ...prev };
-          delete c[key];
+          delete c[jobId];
           return c;
         });
-        delete abortRefs.current[key];
+        delete abortRefs.current[jobId];
         refreshAll();
-        if (kind === 'mod') {
-          api.modImport
-            .list()
-            .then((jobs) => {
-              const job = jobs.find((j) => j.id === jobId);
-              if (job?.mod_id != null) {
-                api.mods
-                  .previousVersions(job.mod_id)
-                  .then((prev) => {
-                    if (prev.length > 0) {
-                      onReimportDetected({ newModId: job.mod_id!, prevVersions: prev });
-                    }
-                  })
-                  .catch(() => {});
-              }
-            })
-            .catch(() => {});
-        }
+        api.modImport
+          .list()
+          .then((jobs) => {
+            const job = jobs.find((j) => j.id === jobId);
+            if (job?.mod_id != null) {
+              api.mods
+                .previousVersions(job.mod_id)
+                .then((prev) => {
+                  if (prev.length > 0) {
+                    onReimportDetected({ newModId: job.mod_id!, prevVersions: prev });
+                  }
+                })
+                .catch(() => {});
+            }
+          })
+          .catch(() => {});
       };
 
-      let promise: Promise<unknown>;
-      let abort: AbortController;
-
-      if (kind === 'eet') {
-        const r = api.eet.startImport(jobId, onProgress as (e: EetProgressEvent) => void);
-        promise = r.promise;
-        abort = r.abort;
-      } else if (kind === 'csv') {
-        const r = api.csv.startImport(jobId, onProgress as (e: CsvProgressEvent) => void);
-        promise = r.promise;
-        abort = r.abort;
-      } else {
-        const r = api.modImport.startImport(jobId, onProgress as (e: ModProgressEvent) => void);
-        promise = r.promise;
-        abort = r.abort;
-      }
-
-      abortRefs.current[key] = abort;
+      const { promise, abort } = api.modImport.startImport(
+        jobId,
+        onProgress as (e: ModProgressEvent) => void,
+      );
+      abortRefs.current[jobId] = abort;
       const done = promise
         .then(() => {
           cleanup();
@@ -108,10 +86,7 @@ export const useImportJobRunner = ({
   );
 
   const isImportJobRunning = useCallback(
-    (kind: UnifiedJob['kind'], jobId: number, running?: boolean) => {
-      const key = `${kind}:${jobId}`;
-      return running === true || !!liveProgress[key];
-    },
+    (jobId: number, running?: boolean) => running === true || !!liveProgress[jobId],
     [liveProgress],
   );
 
@@ -122,44 +97,37 @@ export const useImportJobRunner = ({
       if (job.status === 'completed') {
         await api.modImport.restart(job.id);
       }
-      await doStart('mod', job.id);
+      await doStart(job.id);
     },
     [doStart, refreshAll],
   );
 
   const handleImportStart = useCallback(
-    (u: UnifiedJob) => {
-      const running = isImportJobRunning(u.kind, u.job.id, u.job.running);
-      if (isImportJobResume(u.job, running)) {
-        void doStart(u.kind, u.job.id);
+    (job: ModImportJob) => {
+      const running = isImportJobRunning(job.id, job.running);
+      if (isImportJobResume(job, running)) {
+        void doStart(job.id);
         return;
       }
-      if (u.kind === 'eet') onEetPreview(u.job.id);
-      else if (u.kind === 'csv') onCsvPreview(u.job.id);
-      else void startModImportJob(u.job);
-    },
-    [doStart, isImportJobRunning, onCsvPreview, onEetPreview, startModImportJob],
-  );
-
-  const startAll = useCallback(
-    (activeImportJobs: UnifiedJob[]) => {
-      for (const u of activeImportJobs) {
-        if (
-          !canStartImportJob(u.job, isImportJobRunning(u.kind, u.job.id, u.job.running), u.kind)
-        ) {
-          continue;
-        }
-        if (u.kind === 'mod') void startModImportJob(u.job);
-        else void doStart(u.kind, u.job.id);
-      }
+      void startModImportJob(job);
     },
     [doStart, isImportJobRunning, startModImportJob],
   );
 
+  const startAll = useCallback(
+    (activeImportJobs: ModImportJob[]) => {
+      for (const job of activeImportJobs) {
+        if (!canStartImportJob(job, isImportJobRunning(job.id, job.running))) continue;
+        void startModImportJob(job);
+      }
+    },
+    [isImportJobRunning, startModImportJob],
+  );
+
   const pendingCount = useCallback(
-    (activeImportJobs: UnifiedJob[]) =>
-      activeImportJobs.filter((u) =>
-        canStartImportJob(u.job, isImportJobRunning(u.kind, u.job.id, u.job.running), u.kind),
+    (activeImportJobs: ModImportJob[]) =>
+      activeImportJobs.filter((job) =>
+        canStartImportJob(job, isImportJobRunning(job.id, job.running)),
       ).length,
     [isImportJobRunning],
   );

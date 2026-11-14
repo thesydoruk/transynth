@@ -17,8 +17,6 @@ langpack into the tool so its strings are ready to translate.
 - [Applying an Imported Translation Mod](#applying-an-imported-translation-mod)
 - [Importing BA2 Archives](#importing-ba2-archives)
 - [Nexus Mod Relations on Mod Page](#nexus-mod-relations-on-mod-page)
-- [Importing EET Files (Legacy)](#importing-eet-files-legacy)
-- [Importing CSV Files](#importing-csv-files)
 - [Troubleshooting](#troubleshooting)
 
 ---
@@ -30,8 +28,6 @@ langpack into the tool so its strings are ready to translate.
 | `.esp` / `.esm` / `.esl` | Bethesda mod plugin — primary source of translatable strings (FO4, FO76, FO3, FNV, OB, MW, SSE, SLE)                                                                                                                                                                                                                                                                                                  |
 | `.zip` / `.7z` / `.rar`  | Bethesda: plugin + optional `.ba2` / `.bsa`. Disco: Final Cut `.po` + `.wav` pack (no plugin required). The Witcher 3: `.w3strings` tables, with `.w3speech` and scene files when the archive has them                                                                                                                                                                                                |
 | game folder              | The Witcher 3: `npm run import:folder -- --game w3 --dir <install or mods folder> [--per-mod]` reads the tables, the speech container and the scenes (speakers) out of the game's own files. With `--stage-to <path>` it only copies those files (about 4.3 GB for the game with `--langs en,ua`), for a Transynth that runs on another machine: move the folder there and run the same command on it |
-| `.eet`                   | Legacy project file — imports existing translations                                                                                                                                                                                                                                                                                                                                                   |
-| `.csv`                   | RFC 4180-style comma-separated translation table                                                                                                                                                                                                                                                                                                                                                      |
 | `.ba2`                   | Fallout 4/76 archive — discovered automatically next to the plugin or inside an uploaded archive                                                                                                                                                                                                                                                                                                      |
 | `.bsa`                   | Skyrim SE/LE and FO3/FNV archive — discovered automatically next to the plugin or inside an uploaded archive                                                                                                                                                                                                                                                                                          |
 
@@ -43,13 +39,10 @@ Open the **Mods** page for the current game (`/games/:gameId/mods`).
 
 The main upload bar accepts plugin and archive files
 (`.esp` / `.esm` / `.esl` / `.zip` / `.7z` / `.rar`).
-EET and CSV files are under **Advanced import** on the same page.
 
 All jobs appear in one list, each with a type badge:
 
 - `MOD` for plugin or archive imports
-- `EET` for legacy projects
-- `CSV` for CSV imports
 
 To import a plugin or archive:
 
@@ -70,8 +63,6 @@ Language selection depends on import type:
 
 - **Mod import, non-localized plugin:** starts immediately using current/default languages (`srcLang` and `tgtLang`), without waiting for a modal.
 - **Mod import, localized plugin:** reads available locales from the mod's STRINGS data and also starts immediately.
-- **EET import:** starts immediately using current/default **Source Language** and **Target Language** values.
-- **CSV import:** starts immediately using current/default **Source Language** and **Target Language** values.
 
 Practical note: if you need to adjust languages manually before re-running a paused/failed job, use the job actions in the list.
 
@@ -101,8 +92,6 @@ Conceptually, a mod import progresses through these backend steps:
 3. Record and source-string ingestion into the database.
 4. Optional MCM text ingestion from `Interface/Translations` files.
 5. Optional PEX string ingestion from compiled Papyrus scripts.
-
-EET and CSV imports are simpler: they parse the uploaded file, ingest records, and stream numeric progress until completion.
 
 ---
 
@@ -390,101 +379,13 @@ actions:
 
 ---
 
-## Importing EET Files (Legacy)
-
-EET files are projects from the legacy desktop tool.
-Importing an EET file migrates existing translations into the pipeline database.
-
-EET imports are under **Advanced import** on the Mods page. They appear in the job list with the `EET` badge.
-
-Workflow:
-
-1. Upload a `.eet` file from the Mods page of the game it belongs to.
-2. Import starts automatically with the page's game and your current **Source Language** / **Target Language**.
-3. Track progress in the jobs list.
-
-The mod is filed under the game whose page you uploaded from. An EET file also names its own game in its header (for example `Fallout 4` or `Skyrim`); when that name clearly means a different game, the upload is refused with a message naming the file's game, and nothing is imported. Upload it again from that game's page. Editions that share their text count as one game here — a `SkyrimSE` file is accepted on the Skyrim Legendary Edition page — and a name Transynth does not recognise is not checked.
-
-What is imported from EET:
-
-- Source strings
-- Target translations when the EET record contains them
-- EET status bytes
-
-Status mapping:
-
-- `0x63` (`confirmed`) is imported as a human translation with full confidence
-- any other non-empty target text is imported as an automatic translation
-- empty target text creates only the source-string side
-
-Compared with a native mod import, EET import is a migration format, not a live plugin analysis pass.
-It imports what is present in the EET file and does not inspect BA2 archives, loose STRINGS assets, MCM text files, or PEX scripts.
-
----
-
-## Importing CSV Files
-
-CSV files can contain pre-translated strings exported from another tool.
-
-CSV imports are under **Advanced import** on the Mods page. They appear in the job list with the `CSV` badge.
-
-Expected format in the current implementation:
-
-- Encoding: UTF-8
-- Delimiter: comma
-- Quoting: standard CSV quoting with doubled double-quotes inside quoted values
-- Header-based mapping: column order does not matter as long as the header names are present
-
-Supported columns:
-
-- `FormID`
-- `Signature`
-- `EDID`
-- `Path`
-- `Source`
-- `Target`
-- `Status`
-
-Notes about the parser:
-
-- The current parser is **comma-separated**, not semicolon-delimited and not tab-delimited.
-- Missing columns are tolerated, but the import is most useful when the table includes the columns above.
-- The `Path` column is treated as the record field/path identifier used for storage and later lookup.
-
-Workflow:
-
-1. Upload the CSV file from the Mods page of the game it belongs to.
-2. Import starts automatically with the page's game and your current **Source Language** / **Target Language**.
-3. Track progress in the jobs list.
-
-A CSV file does not say which game it is for, so the mod is filed under the game whose page you uploaded from. Uploading the same file again from another game's page moves the mod to that game.
-
-Status handling:
-
-- `confirmed` maps to a human translation
-- `untranslated` maps to the untranslated status byte
-- numeric status values are accepted as-is
-- any non-empty `Target` value that is not `confirmed` is imported as an automatic translation
-
-Conflict handling in the current UI:
-
-- There is **no interactive overwrite/merge dialog** during CSV import.
-- The importer ingests the rows as uploaded.
-- Duplicate identical translations for the same imported source string are deduplicated by the database constraint.
-- CSV import is therefore best used for initial ingestion or migration, not as a surgical in-place merge tool for an already reviewed mod.
-
----
-
 ## Troubleshooting
 
 - **"File too large"**
   The web server limits multipart uploads only if `UPLOAD_MAX_FILE_SIZE_MB` is set. Unset means no practical application-level cap. You can also split oversized archives or upload only the needed plugin.
 
-- **"… is an EET file for …"**
-  The EET file's header names a different game from the page you uploaded it on. Open that game's Mods page and upload it there.
-
 - **"Unsupported format"**
-  The current accepted upload types are `.eet`, `.csv`, `.esp`, `.esm`, `.esl`, `.zip`, `.7z`, and `.rar`. A bare `.ba2` file is not accepted by the upload API.
+  The current accepted upload types are `.esp`, `.esm`, `.esl`, `.zip`, `.7z`, and `.rar`. A bare `.ba2` file is not accepted by the upload API.
 
 - **"No ESP/ESM/ESL plugin found in archive"**
   Your `.zip`, `.7z`, or `.rar` file did not contain a supported plugin. Extract it locally and confirm that the archive really contains the plugin you expect.

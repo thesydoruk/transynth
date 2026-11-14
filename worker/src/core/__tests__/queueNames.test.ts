@@ -32,8 +32,6 @@ describe('queueNameForKind', () => {
   it('keeps TM apply and imports on the general queue', () => {
     expect(queueNameForKind('tm-apply')).toBe(JOBS_QUEUE_NAME);
     expect(queueNameForKind('mod-import')).toBe(JOBS_QUEUE_NAME);
-    expect(queueNameForKind('csv-import')).toBe(JOBS_QUEUE_NAME);
-    expect(queueNameForKind('eet-import')).toBe(JOBS_QUEUE_NAME);
     expect(queueNameForKind('apply-imported')).toBe(JOBS_QUEUE_NAME);
     expect(queueNameForKind('langpack-export')).toBe(JOBS_QUEUE_NAME);
   });

@@ -42,8 +42,6 @@ export const JOB_KIND_SPECS: Record<JobKind, JobKindSpec> = {
   'tm-apply': { queue: 'cpu', needs: [] },
   'apply-imported': { queue: 'cpu', needs: [] },
   'mod-import': { queue: 'cpu', needs: [] },
-  'csv-import': { queue: 'cpu', needs: [] },
-  'eet-import': { queue: 'cpu', needs: [] },
   'langpack-export': { queue: 'cpu', needs: [] },
   'vortex-sync': { queue: 'cpu', needs: [] },
   // One cutscene at a time through audio-intel's batch lane (separation + transcription).

@@ -10,7 +10,7 @@
 export type GameId = string;
 
 /**
- * A single row from a Transynth CSV export or import file.
+ * A single translatable row of a mod import.
  * Represents one translatable record extracted from an ESP/ESM form.
  *
  * @field FormID - Hex form identifier, e.g. `00012345`.
@@ -38,7 +38,7 @@ export type CsvRow = {
 };
 
 /**
- * Composite key used to anchor a `CsvRow` during CSV diff-and-reimport.
+ * Composite key used to anchor a `CsvRow` during diff-and-reimport.
  * Fields are matched in priority order: hash (strongest) → edid+sig → sig+path.
  *
  * @field signature - Record type (e.g. `INFO`).

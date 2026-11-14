@@ -796,41 +796,14 @@
     }
   },
   "csvImport": {
-    "title": "Імпорт CSV",
-    "noFiles": "CSV файлів ще не завантажено. Завантажте .csv файли для початку.",
-    "importAll": "Імпортувати все ({{count}})",
-    "sourceLang": "Мова оригіналу",
-    "targetLang": "Мова перекладу",
-    "allSignatures": "Усі сигнатури",
-    "searchPlaceholder": "Пошук FormID / EDID / текст...",
-    "startImport": "Почати імпорт ({{count}} записів)",
-    "signature": "Сигнатура",
-    "formId": "FormID",
-    "edid": "EDID",
-    "fieldCol": "Поле",
-    "sourceCol": "Оригінал",
-    "targetCol": "Переклад",
-    "statusCol": "Статус",
-    "confirmed": "підтверджено",
-    "untranslated": "неперекладено",
-    "startImportBtn": "▶",
-    "pauseBtn": "⏸",
-    "cancelBtn": "⏹",
-    "deleteBtn": "🗑"
+    "statusCol": "Статус"
   },
   "imports": {
     "title": "Імпорт",
-    "pageDescription": "Завантажте EET-архіви, CSV-файли глосарію або мод-плагіни (.esp/.esm/.ba2/.zip). Кожен файл потрапляє в чергу для вибору мови перед початком імпорту.",
     "emptyTitle": "Ще немає активності імпорту",
-    "advancedImport": "Розширений імпорт",
-    "advancedImportHint": "Файли проєктів EET і таблиці перекладу CSV.",
-    "eetGameMismatch": "{{file}} — це EET-файл для {{fileGame}}. Завантажте його на сторінці цієї гри.",
     "uploadFailed": "Не вдалося завантажити {{file}}: {{message}}",
-    "tabEet": "EET",
-    "tabCsv": "CSV",
     "tabMod": "Мод",
     "importAll": "Імпортувати все ({{count}})",
-    "noFiles": "Файлів ще не завантажено. Завантажте EET, CSV або файли плагінів для початку.",
     "emptyUploadAction": "Обрати файли",
     "emptyDiscoverAction": "Переглянути NexusMods",
     "gameLabel": "Гра",
@@ -838,7 +811,6 @@
     "startLabel": "Старт",
     "resumeLabel": "Продовжити імпорт",
     "retryLabel": "Повторити",
-    "langPairMeta": "{{src}} → {{tgt}} · {{count, number}} записів",
     "pauseBtn": "⏸",
     "cancelBtn": "⏹",
     "pauseImportLabel": "Призупинити імпорт",
@@ -860,14 +832,7 @@
     "deleteModModeMod": "Мод і всі рядки",
     "deleteModModeModHint": "Видаляє запис мода та всі пов’язані записи, рядки та переклади.",
     "deleteModKeepReference": "Зберегти підтверджені переклади в еталонній базі",
-    "deleteModKeepReferenceHint": "Переклади цього мода зі статусом reviewed і human перед видаленням рядків копіюються в еталонну базу гри, тож TM і майбутні імпорти їх знайдуть.",
-    "deleteJobTitle": "Видалити імпорт",
-    "deleteJobMessage": "Видалити '{{name}}'? Запис про імпорт буде вилучено."
-  },
-  "eetImport": {
-    "title": "Імпорт EET",
-    "noFiles": "EET файлів ще не завантажено. Завантажте .eet файли для початку.",
-    "importAll": "Імпортувати все ({{count}})"
+    "deleteModKeepReferenceHint": "Переклади цього мода зі статусом reviewed і human перед видаленням рядків копіюються в еталонну базу гри, тож TM і майбутні імпорти їх знайдуть."
   },
   "modImport": {
     "title": "Імпорт модів",

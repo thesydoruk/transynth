@@ -1,5 +1,5 @@
 /**
- * Bulk PostgreSQL ingest for tabular record imports (EET, CSV).
+ * Bulk PostgreSQL ingest for tabular record imports.
  *
  * One UNNEST batch query per table instead of a round-trip per row, the same
  * pattern as the mod bulk writers alongside this file.
@@ -9,7 +9,7 @@ import { sha1Hex } from '../../utils/hash';
 import { normalizeForHash, normalizeNoPunct } from '../../utils/textNorm';
 import { modImportRecordKey } from './recordKeys';
 
-/** Minimal row shape shared by EET and CSV import pipelines. */
+/** Minimal row shape shared by the record import pipelines. */
 export type RecordImportRow = {
   signature: string;
   formId: string;

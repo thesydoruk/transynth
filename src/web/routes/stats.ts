@@ -97,7 +97,7 @@ export const statsRoutes = async (app: FastifyInstance, db: Tx) => {
           db.query(
             `SELECT DISTINCT mod_id FROM llm_jobs WHERE status = 'running' AND mod_id IS NOT NULL`,
           ),
-          // Mods with an active import job (mod archive — eet/csv have no mod_id).
+          // Mods with an active import job.
           db.query(
             `SELECT DISTINCT mod_id FROM mod_imports WHERE status IN ('pending','extracting','in_progress') AND mod_id IS NOT NULL`,
           ),

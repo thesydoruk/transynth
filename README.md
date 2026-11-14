@@ -81,7 +81,6 @@ A multi-user SaaS. A language-neutral TM platform. A replacement for owning the 
 - First-class LLM prompts and glossaries are Ukrainian. Other targets get a generic English prompt.
 - Production Postgres is external unless you enable the `embedded-db` Compose profile.
 - Importing a mod that ships several per-language voice BA2/BSA archives with the same internal paths keeps only the last extracted archive. Synthesized output is written under `_localize_{hash}/{lang}/` and is not affected.
-- EET and CSV import are migration paths under **Advanced import**, not the main plugin/archive flow.
 
 ## Docs
 

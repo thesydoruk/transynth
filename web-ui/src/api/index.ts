@@ -2,7 +2,6 @@ export * from './types';
 export { BASE } from './client';
 export { voiceAudioUrl, voiceTranslationAudioUrl, voiceRegeneratePreviewUrl } from './voiceUrls';
 export type { VoiceRegenerateParams, VoiceRegeneratePreview } from './types/pexVoice';
-export { EetGameMismatchError } from './endpoints/eet';
 
 import { modsEndpoints } from './endpoints/mods';
 import { statsEndpoints } from './endpoints/stats';
@@ -12,8 +11,6 @@ import { searchEndpoints } from './endpoints/search';
 import { dialogsEndpoints } from './endpoints/dialogs';
 import { glossaryEndpoints } from './endpoints/glossary';
 import { referenceEndpoints } from './endpoints/reference';
-import { eetEndpoints } from './endpoints/eet';
-import { csvEndpoints } from './endpoints/csv';
 import { modImportEndpoints } from './endpoints/modImport';
 import { activityEndpoints } from './endpoints/activity';
 import { systemLogEndpoints } from './endpoints/systemLog';
@@ -45,8 +42,6 @@ export const api = {
   dialogs: dialogsEndpoints,
   glossary: glossaryEndpoints,
   reference: referenceEndpoints,
-  eet: eetEndpoints,
-  csv: csvEndpoints,
   modImport: modImportEndpoints,
   activity: activityEndpoints,
   systemLog: systemLogEndpoints,

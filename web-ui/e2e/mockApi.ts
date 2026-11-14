@@ -523,7 +523,6 @@ const routes: Array<[RegExp, Answer]> = [
     /^\/api\/mod-import$/,
     [importJob(1, 'running'), importJob(2, 'completed'), importJob(3, 'failed')],
   ],
-  [/^\/api\/(csv|eet)$/, []],
   [/^\/api\/exports$/, { archives: [] }],
   [/^\/api\/vortex\/groups$/, { groups: [vortexGroup] }],
   [

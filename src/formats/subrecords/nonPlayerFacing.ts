@@ -14,7 +14,7 @@
  * - LVLI — ONAM overrides unique/legendary item names ("Tessa's Fist").
  *
  * Used at import (subrecord JSON `read: false`) and by the skip-detect scan
- * for rows already in the DB (CSV import, older scans).
+ * for rows already in the DB (older scans).
  */
 const NON_PLAYER_FACING_RECORDS = ['ARMA'] as const;
 

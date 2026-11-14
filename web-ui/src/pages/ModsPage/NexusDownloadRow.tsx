@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { NexusDownloadJob } from '../../nexusDownloadQueue';
-import { kindColor, statusColorBase } from './modsShared';
+import { MOD_BADGE_COLOR, statusColorBase } from './modsShared';
 import s from './ModsPageRow.module.scss';
 
 interface NexusDownloadRowProps {
@@ -15,7 +15,7 @@ export const NexusDownloadRow = ({ job }: NexusDownloadRowProps) => {
   return (
     <div className={s.row}>
       <div className={s.rowLeft}>
-        <span className={s.typeBadge} style={{ background: kindColor('mod') }}>
+        <span className={s.typeBadge} style={{ background: MOD_BADGE_COLOR }}>
           MOD
         </span>
         <div>

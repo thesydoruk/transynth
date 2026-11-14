@@ -364,38 +364,10 @@ DROP INDEX IF EXISTS glossary_term_src_tgt_key;
 CREATE UNIQUE INDEX IF NOT EXISTS glossary_term_src_tgt_game_key
   ON glossary(term, src_lang, tgt_lang, game);
 
-CREATE TABLE IF NOT EXISTS eet_imports (
-  id SERIAL PRIMARY KEY,
-  file_name TEXT NOT NULL,
-  file_hash TEXT NOT NULL,
-  mod_id INTEGER REFERENCES mods(id) ON DELETE SET NULL,
-  total_records INTEGER NOT NULL DEFAULT 0,
-  imported_records INTEGER NOT NULL DEFAULT 0,
-  status TEXT NOT NULL DEFAULT 'pending',
-  src_lang TEXT NOT NULL DEFAULT 'en',
-  tgt_lang TEXT NOT NULL DEFAULT 'uk',
-  last_error TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(file_hash)
-);
--- Idempotent migration: add last_error column to existing databases
-ALTER TABLE eet_imports ADD COLUMN IF NOT EXISTS last_error TEXT;
-
-CREATE TABLE IF NOT EXISTS csv_imports (
-  id SERIAL PRIMARY KEY,
-  file_name TEXT NOT NULL,
-  file_hash TEXT NOT NULL,
-  mod_id INTEGER REFERENCES mods(id) ON DELETE SET NULL,
-  total_records INTEGER NOT NULL DEFAULT 0,
-  imported_records INTEGER NOT NULL DEFAULT 0,
-  status TEXT NOT NULL DEFAULT 'pending',
-  src_lang TEXT NOT NULL DEFAULT 'en',
-  tgt_lang TEXT NOT NULL DEFAULT 'uk',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(file_hash)
-);
+-- EET and CSV translation-file import was removed; only mod import remains.
+-- These DROP IF EXISTS stay so older databases catch up on `npm run db:init`.
+DROP TABLE IF EXISTS eet_imports;
+DROP TABLE IF EXISTS csv_imports;
 
 CREATE TABLE IF NOT EXISTS mod_imports (
   id SERIAL PRIMARY KEY,

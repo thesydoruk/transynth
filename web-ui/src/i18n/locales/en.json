@@ -794,41 +794,14 @@
     }
   },
   "csvImport": {
-    "title": "CSV Imports",
-    "noFiles": "No CSV files uploaded yet. Upload .csv files to get started.",
-    "importAll": "Import all ({{count}})",
-    "sourceLang": "Source language",
-    "targetLang": "Target language",
-    "allSignatures": "All signatures",
-    "searchPlaceholder": "Search FormID / EDID / text...",
-    "startImport": "Start import ({{count}} records)",
-    "signature": "Signature",
-    "formId": "FormID",
-    "edid": "EDID",
-    "fieldCol": "Field",
-    "sourceCol": "Source",
-    "targetCol": "Target",
-    "statusCol": "Status",
-    "confirmed": "confirmed",
-    "untranslated": "untranslated",
-    "startImportBtn": "▶",
-    "pauseBtn": "⏸",
-    "cancelBtn": "⏹",
-    "deleteBtn": "🗑"
+    "statusCol": "Status"
   },
   "imports": {
     "title": "Imports",
-    "pageDescription": "Upload EET archives, CSV glossary files, or mod plugins (.esp/.esm/.ba2/.zip). Each file is queued for language configuration before import starts.",
     "emptyTitle": "No import activity yet",
-    "advancedImport": "Advanced import",
-    "advancedImportHint": "EET project files and CSV translation tables.",
-    "eetGameMismatch": "{{file}} is an EET file for {{fileGame}}. Upload it from that game's page.",
     "uploadFailed": "Could not upload {{file}}: {{message}}",
-    "tabEet": "EET",
-    "tabCsv": "CSV",
     "tabMod": "Mod",
     "importAll": "Import all ({{count}})",
-    "noFiles": "No files uploaded yet. Upload EET, CSV, or plugin files to get started.",
     "emptyUploadAction": "Choose files",
     "emptyDiscoverAction": "Browse NexusMods",
     "gameLabel": "Game",
@@ -836,7 +809,6 @@
     "startLabel": "Start",
     "resumeLabel": "Resume import",
     "retryLabel": "Retry",
-    "langPairMeta": "{{src}} → {{tgt}} · {{count, number}} records",
     "pauseBtn": "⏸",
     "cancelBtn": "⏹",
     "pauseImportLabel": "Pause import",
@@ -858,14 +830,7 @@
     "deleteModModeMod": "Mod and all rows",
     "deleteModModeModHint": "Deletes the mod entry and all related records, strings, and translations.",
     "deleteModKeepReference": "Keep reviewed translations in the reference base",
-    "deleteModKeepReferenceHint": "Reviewed and human translations of this mod are copied into the per-game reference base before the rows are deleted, so TM and future imports still find them.",
-    "deleteJobTitle": "Delete import",
-    "deleteJobMessage": "Delete '{{name}}'? The import job record will be removed."
-  },
-  "eetImport": {
-    "title": "EET Imports",
-    "noFiles": "No EET files uploaded yet. Upload .eet files to get started.",
-    "importAll": "Import all ({{count}})"
+    "deleteModKeepReferenceHint": "Reviewed and human translations of this mod are copied into the per-game reference base before the rows are deleted, so TM and future imports still find them."
   },
   "modImport": {
     "title": "Mod Import",

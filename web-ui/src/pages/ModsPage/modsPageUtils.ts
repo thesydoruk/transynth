@@ -8,20 +8,6 @@ const ARCHIVE_EXTENSIONS = ['.zip', '.7z', '.rar'];
 export const acceptedModExtensions = (uploadExtensions: readonly string[] = []): string =>
   [...uploadExtensions, ...ARCHIVE_EXTENSIONS].join(',');
 
-/** EET / CSV — behind Advanced import. */
-export const ACCEPTED_ADVANCED_EXTENSIONS = '.eet,.csv';
-
-export type UploadKind = 'eet' | 'csv' | 'mod';
-
-/** Determines the import kind from a file extension. */
-export const kindFromExt = (name: string): UploadKind | null => {
-  const ext = name.slice(name.lastIndexOf('.')).toLowerCase();
-  if (ext === '.eet') return 'eet';
-  if (ext === '.csv') return 'csv';
-  if (['.esp', '.esm', '.esl', '.zip', '.7z', '.rar'].includes(ext)) return 'mod';
-  return null;
-};
-
 /** Mod import jobs that are still in-flight or not represented by a mod row. */
 export const isActiveModImportJob = (
   job: { status: string; mod_id: number | null },
