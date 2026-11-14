@@ -1,6 +1,10 @@
-import { extractNumbers, normalizeAutoTranslation, transplantNumbers } from '../../utils/textNorm';
+import {
+  extractNumbers,
+  matchSourceCapitalization,
+  normalizeAutoTranslationQuotes,
+  transplantNumbers,
+} from '../../utils/textNorm';
 import { PLACEHOLDER_RE } from '../../utils/placeholders';
-import type { GameId } from '../../types';
 
 /** Placeholders and tags in order, without the paragraph-break runs the regex also masks. */
 const placeholdersOf = (text: string): string[] =>
@@ -46,19 +50,20 @@ const transplantPlaceholders = (
  * swapped for the target's. Returns null when adaptation is unsafe (e.g.
  * number or placeholder count mismatch, or one missing from the translation).
  *
- * Successful adaptations get the same markup + ALL CAPS post-process as LLM
- * auto-translations, keyed off the target source string. `game` is the game
- * the translation is being written *into*: a match may come from another mod,
- * but the punctuation rules that apply are the destination's.
+ * A match is a stored translation, most often a reviewed one, so it is copied
+ * the way a save would store it: guillemets fold to ASCII quotes (the editor
+ * rule), and nothing else changes. The post-process for LLM drafts must not run
+ * here: it folds an em dash a reviewer put there on purpose and upper-cases a
+ * line the reviewer chose not to — re-imported mods lost both that way while
+ * still reading `reviewed`. Only a match whose source differs gets the ALL
+ * CAPS rule, because its translation was written for another casing.
  */
 export const adaptTmTranslation = (
   translation: string,
   matchSource: string,
   targetSource: string,
-  game: GameId | null | undefined,
 ): string | null => {
-  if (matchSource === targetSource)
-    return normalizeAutoTranslation(targetSource, translation, game);
+  if (matchSource === targetSource) return normalizeAutoTranslationQuotes(translation);
   const numbered = transplantNumbers(
     translation,
     extractNumbers(matchSource),
@@ -67,5 +72,5 @@ export const adaptTmTranslation = (
   if (numbered === null) return null;
   const adapted = transplantPlaceholders(numbered, matchSource, targetSource);
   if (adapted === null) return null;
-  return normalizeAutoTranslation(targetSource, adapted, game);
+  return matchSourceCapitalization(targetSource, normalizeAutoTranslationQuotes(adapted));
 };

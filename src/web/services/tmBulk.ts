@@ -129,7 +129,7 @@ const bulkFindTmMatches = async (
     const target = targetById.get(row.target_id);
     if (!target) continue;
 
-    const text = adaptTmTranslation(row.text, row.match_source, target.text_raw, game);
+    const text = adaptTmTranslation(row.text, row.match_source, target.text_raw);
     if (text === null) continue;
 
     const method: TmMatchMethod =

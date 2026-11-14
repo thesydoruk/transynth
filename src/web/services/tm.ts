@@ -349,7 +349,6 @@ export const propagateTranslation = async (
   translatedText: string,
   targetLang: string,
   excludeStringId: number,
-  game: GameId,
   srcLang = CONFIG.defaultSrcLang,
 ): Promise<number> => {
   const { rows: candidates } = await db.query<{ id: number; text_raw: string }>(
@@ -365,7 +364,7 @@ export const propagateTranslation = async (
 
   const writeRows: TmBulkWriteRow[] = [];
   for (const candidate of candidates) {
-    const text = adaptTmTranslation(translatedText, sourceText, candidate.text_raw, game);
+    const text = adaptTmTranslation(translatedText, sourceText, candidate.text_raw);
     if (text === null) continue;
     writeRows.push({
       stringId: candidate.id,
