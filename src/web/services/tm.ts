@@ -17,7 +17,6 @@
  */
 import type { Tx } from '../../db';
 import { withTransaction } from '../../db';
-import type { GameId } from '../../types';
 import type pg from 'pg';
 import { log } from '../../logger';
 import { CONFIG } from '../../config';
