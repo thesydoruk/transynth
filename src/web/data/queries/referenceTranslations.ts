@@ -6,6 +6,7 @@ import type { Tx } from '../../../db/types';
 import { CONFIG } from '../../../config';
 import { referenceGameKey, referenceGameSql } from '../../../games/referenceKey';
 import { normalizeForHash } from '../../../utils/textNorm';
+import { adoptLegacyReferenceRows, loadModOrigins } from './referenceOrigin';
 
 export type ReferenceOrigin = 'manual' | 'promote' | 'delete_snapshot' | 'auto_approve';
 
@@ -24,6 +25,8 @@ export type ReferenceTranslationRow = {
   source_text: string;
   translation: string;
   origin: string;
+  /** The plugin layer the row belongs to; `''` for none. See referenceOrigin.ts. */
+  origin_key: string;
   origin_mod_name: string | null;
   origin_mod_version: string | null;
   origin_status: string | null;
@@ -33,8 +36,8 @@ export type ReferenceTranslationRow = {
 };
 
 const SELECT_COLUMNS = `id, game, src_lang, tgt_lang, formid_hex, path, edid, signature,
-  source_text, translation, origin, origin_mod_name, origin_mod_version, origin_status, note,
-  created_at, updated_at`;
+  source_text, translation, origin, origin_key, origin_mod_name, origin_mod_version,
+  origin_status, note, created_at, updated_at`;
 
 export type ListReferenceParams = {
   game?: string | null;
@@ -116,8 +119,9 @@ export type ManualReferenceInput = {
 };
 
 /**
- * Add a row by hand. No anchors: the row matches by normalised source text
- * only. Re-adding the same source text replaces the translation.
+ * Add a row by hand. No anchors and no origin layer: the row matches by
+ * normalised source text only. Re-adding the same source text replaces the
+ * translation.
  */
 export const addManualReferenceTranslation = async (
   db: Tx,
@@ -127,10 +131,11 @@ export const addManualReferenceTranslation = async (
   const translation = input.translation.trim();
   const { rows } = await db.query<ReferenceTranslationRow>(
     `INSERT INTO reference_translations(
-       game, src_lang, tgt_lang, source_text, text_norm, translation, origin, note
+       game, src_lang, tgt_lang, source_text, text_norm, translation, origin, origin_key, note
      )
-     VALUES ($1, $2, $3, $4, $5, $6, 'manual', $7)
-     ON CONFLICT (game, src_lang, tgt_lang, formid_hex, path, md5(source_text)) DO UPDATE SET
+     VALUES ($1, $2, $3, $4, $5, $6, 'manual', '', $7)
+     ON CONFLICT (game, src_lang, tgt_lang, formid_hex, path, md5(source_text), origin_key)
+     DO UPDATE SET
        translation = EXCLUDED.translation,
        text_norm = EXCLUDED.text_norm,
        origin = 'manual',
@@ -156,7 +161,10 @@ export type UpdateReferenceInput = {
   note?: string | null;
 };
 
-/** Edit a row on the Reference page. The row becomes `manual` and stays that way. */
+/**
+ * Edit a row on the Reference page. The row becomes `manual` and stays that
+ * way; it keeps its origin layer.
+ */
 export const updateReferenceTranslation = async (
   db: Tx,
   id: number,
@@ -209,9 +217,12 @@ export type PromoteReferenceOptions = {
 /**
  * Copy live translations into the reference base.
  *
- * One INSERT … SELECT over the scope. An existing reference row is replaced
- * unless it was edited by hand (`origin = 'manual'`). Returns the number of
- * rows written.
+ * One INSERT … SELECT over the scope. Every mod writes into its own origin
+ * layer (see referenceOrigin.ts), so a patch never replaces the base game's row
+ * for a line they share. Inside a layer an existing row is replaced unless it
+ * was edited by hand (`origin = 'manual'`). Rows the same mods promoted before
+ * layers existed are moved into their layer first. Returns the number of rows
+ * written.
  */
 export const promoteTranslationsToReference = async (
   db: Tx,
@@ -223,24 +234,32 @@ export const promoteTranslationsToReference = async (
   const scopeIds = byMod ? opts.modIds : opts.stringIds;
   if (!scopeIds || scopeIds.length === 0) return 0;
 
+  const origins = await loadModOrigins(
+    db,
+    byMod ? { modIds: scopeIds } : { stringIds: scopeIds },
+  );
+  if (origins.length === 0) return 0;
+  await adoptLegacyReferenceRows(db, origins);
+
   const gameSql = referenceGameSql('m.game');
-  const keySql = `${gameSql}, s.lang, t.target_lang, COALESCE(r.formid_hex, ''), COALESCE(r.path, ''), s.text_raw`;
+  const keySql = `${gameSql}, s.lang, t.target_lang, COALESCE(r.formid_hex, ''), COALESCE(r.path, ''), s.text_raw, layer.origin_key`;
   const scopeSql = byMod ? 'r.mod_id = ANY($1::int[])' : 's.id = ANY($1::int[])';
   const { rowCount } = await db.query(
     `INSERT INTO reference_translations(
        game, src_lang, tgt_lang, formid_hex, path, edid, signature,
-       source_text, text_norm, translation, origin,
+       source_text, text_norm, translation, origin, origin_key,
        origin_mod_name, origin_mod_version, origin_status
      )
      SELECT DISTINCT ON (${keySql})
        ${gameSql}, s.lang, t.target_lang,
        COALESCE(r.formid_hex, ''), COALESCE(r.path, ''), COALESCE(r.edid, ''), r.signature,
-       s.text_raw, COALESCE(s.text_norm, ''), t.text, $4,
+       s.text_raw, COALESCE(s.text_norm, ''), t.text, $4, layer.origin_key,
        m.name, COALESCE(m.version_label, m.version_hash), t.status
      FROM translations t
      JOIN strings s ON s.id = t.src_string_id
      JOIN records r ON r.id = s.record_id
      JOIN mods m ON m.id = r.mod_id
+     JOIN UNNEST($5::int[], $6::text[]) AS layer(mod_id, origin_key) ON layer.mod_id = m.id
      WHERE ${scopeSql}
        AND t.target_lang = $2
        AND t.status = ANY($3::text[])
@@ -248,7 +267,8 @@ export const promoteTranslationsToReference = async (
        AND t.text <> ''
      ORDER BY ${keySql},
               CASE t.status WHEN 'reviewed' THEN 0 ELSE 1 END, t.updated_at DESC
-     ON CONFLICT (game, src_lang, tgt_lang, formid_hex, path, md5(source_text)) DO UPDATE SET
+     ON CONFLICT (game, src_lang, tgt_lang, formid_hex, path, md5(source_text), origin_key)
+     DO UPDATE SET
        translation = EXCLUDED.translation,
        text_norm = EXCLUDED.text_norm,
        edid = EXCLUDED.edid,
@@ -259,7 +279,14 @@ export const promoteTranslationsToReference = async (
        origin_status = EXCLUDED.origin_status,
        updated_at = NOW()
      WHERE reference_translations.origin <> 'manual'`,
-    [scopeIds, targetLang, statuses, opts.origin],
+    [
+      scopeIds,
+      targetLang,
+      statuses,
+      opts.origin,
+      origins.map((origin) => origin.modId),
+      origins.map((origin) => origin.originKey),
+    ],
   );
   return rowCount ?? 0;
 };

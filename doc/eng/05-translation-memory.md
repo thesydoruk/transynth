@@ -213,6 +213,15 @@ RAG index trusts. Three ways in:
 Promoting the same anchor again updates the row. The exception is a row edited
 by hand on the Reference page: a promotion never overwrites it.
 
+Every plugin writes into its own **origin layer**. A patch overrides base-game
+records, often without changing their text; the base game and the patch each
+keep a row for such a line, so promoting one never replaces the other's
+translation. The layer is the lower-cased plugin file name (`fallout4.esm`),
+not the mod's name, which changes from one import to the next; a mod of a game
+without plugin files uses its lower-cased name. A row added by hand has no
+layer. Rows promoted before layers existed have none either and move into
+their mod's layer the next time that mod is promoted.
+
 ### How reference rows are read
 
 TM auto-apply looks for each of the three methods in two places: the reference
@@ -224,6 +233,12 @@ source text is written as **`reviewed`** at once: the reference row was
 reviewed already, a second pass would defeat the base. A number-transplant
 match is new text and stays `tm`. Such rows carry `tm_reference_<method>`
 provenance, so the history shows the translation came from the reference base.
+
+When several layers hold the line, a row edited by hand wins, then the layer of
+the mod being filled (the patch reads its own wording, the base game its own),
+then the newest row. Two layers holding two wordings of one line are versions
+of it; an anchor counts as holding sibling texts only when a single layer has
+more than one text there.
 
 Voice is not copied from the reference base: TM carries synthesized takes only
 from a live donor mod.

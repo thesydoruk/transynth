@@ -16,7 +16,7 @@
  * > human > tm > auto > draft) and records provenance for auditability.
  */
 import type { Tx } from '../../db';
-import { gameForMod, withTransaction } from '../../db';
+import { withTransaction } from '../../db';
 import type { GameId } from '../../types';
 import type pg from 'pg';
 import { log } from '../../logger';
@@ -27,7 +27,9 @@ import { invalidateVoiceListContext } from '../voice/preview/voiceListContext';
 import {
   bulkApplyTmBatch,
   bulkUpsertTmTranslations,
+  loadTmModScope,
   type TmBulkWriteRow,
+  type TmModScope,
   type TmMatchMethod,
   type TmUntranslatedRow,
 } from './tmBulk';
@@ -106,7 +108,7 @@ const applyTMSubChunk = async (
   targetLang: string,
   srcLang: string,
   chunk: TmUntranslatedRow[],
-  game: GameId,
+  scope: TmModScope,
 ): Promise<{
   applied: number;
   approved: number;
@@ -114,7 +116,7 @@ const applyTMSubChunk = async (
   sourceModIds: number[];
 }> =>
   withTransaction(db, async (client) =>
-    bulkApplyTmBatch(client, modId, chunk, targetLang, srcLang, game),
+    bulkApplyTmBatch(client, modId, chunk, targetLang, srcLang, scope),
   );
 
 const applyTMChunk = async (
@@ -126,12 +128,12 @@ const applyTMChunk = async (
   byMethod: Record<TmMatchMethod, number>,
   sourceModIds: Set<number>,
   workers: number,
-  game: GameId,
+  scope: TmModScope,
 ): Promise<{ applied: number; approved: number }> => {
   const pool = db as pg.Pool;
   const subChunks = splitChunk(chunk, workers);
   const partials = await mapWithConcurrency(subChunks, workers, (subChunk) =>
-    applyTMSubChunk(pool, modId, targetLang, srcLang, subChunk, game),
+    applyTMSubChunk(pool, modId, targetLang, srcLang, subChunk, scope),
   );
 
   let applied = 0;
@@ -201,7 +203,8 @@ export const applyTMToMod = async (
   let applied = 0;
   let approved = 0;
   let processed = 0;
-  const game = await gameForMod(db, modId);
+  // The game, and the mod's own layer in the reference base, read first there.
+  const scope = await loadTmModScope(db, modId);
   const byMethod: Record<TmMatchMethod, number> = {
     anchor: 0,
     edid: 0,
@@ -233,7 +236,7 @@ export const applyTMToMod = async (
       byMethod,
       sourceModIds,
       workers,
-      game,
+      scope,
     );
     const chunkApplied = chunkResult.applied;
     applied += chunkApplied;
@@ -301,7 +304,8 @@ export const applyTMToStringIds = async (
     [stringIds, modId, targetLang, srcLang],
   );
 
-  const game = await gameForMod(db, modId);
+  // The game, and the mod's own layer in the reference base, read first there.
+  const scope = await loadTmModScope(db, modId);
   const byMethod: Record<TmMatchMethod, number> = {
     anchor: 0,
     edid: 0,
@@ -324,7 +328,7 @@ export const applyTMToStringIds = async (
       byMethod,
       sourceModIds,
       workers,
-      game,
+      scope,
     );
     applied += chunkResult.applied;
     approved += chunkResult.approved;

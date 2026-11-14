@@ -13,9 +13,27 @@ import {
 import { adaptTmTranslation } from './tmAdapt';
 import type { GameId } from '../../types';
 import { referenceGameKey } from '../../games/referenceKey';
+import { resolveGameId } from '../../games/registry';
+import { referenceOriginKey, type ModOriginSource } from '../data/queries/referenceOrigin';
 import { TM_MATCH_SQL } from './tmMatchSql';
 
 export type TmMatchMethod = 'anchor' | 'edid' | 'text_norm' | 'numeric';
+
+/** What TM matching needs to know about the mod being filled. */
+export type TmModScope = {
+  game: GameId;
+  /** The mod's layer in the reference base; `''` when the mod is gone. */
+  originKey: string;
+};
+
+export const loadTmModScope = async (db: Tx, modId: number): Promise<TmModScope> => {
+  const { rows } = await db.query<ModOriginSource>(
+    `SELECT name, abs_path, vortex_plugin, game FROM mods WHERE id = $1`,
+    [modId],
+  );
+  const mod = rows[0];
+  return { game: resolveGameId(mod?.game), originKey: mod ? referenceOriginKey(mod) : '' };
+};
 
 export type TmUntranslatedRow = {
   id: number;
@@ -80,7 +98,8 @@ const emptyByMethod = (): Record<TmMatchMethod, number> => ({
  * One SQL round-trip per batch (replaces up to 3×N per-row lookups).
  *
  * Each method looks in two places: the per-game reference base, which wins
- * over a live mod on the same anchor, and other imported mods. An identical
+ * over a live mod on the same anchor (the mod's own origin layer first, see
+ * tmMatchSql.ts), and other imported mods. An identical
  * source text wins over every inexact one regardless of method, and an inexact
  * anchor/edid hit is skipped when the anchor holds several sibling texts. When
  * the matched source differs from the target only by numbers, the translation
@@ -92,8 +111,9 @@ const bulkFindTmMatches = async (
   rows: TmUntranslatedRow[],
   targetLang: string,
   srcLang: string,
-  game: GameId,
+  scope: TmModScope,
 ): Promise<TmBulkMatch[]> => {
+  const { game } = scope;
   if (rows.length === 0) return [];
 
   const ids = rows.map((r) => r.id);
@@ -122,6 +142,7 @@ const bulkFindTmMatches = async (
     targetLang,
     srcLang,
     referenceGameKey(game),
+    scope.originKey,
   ]);
 
   const adapted: TmBulkMatch[] = [];
@@ -230,7 +251,7 @@ export const bulkApplyTmBatch = async (
   rows: TmUntranslatedRow[],
   targetLang: string,
   srcLang: string,
-  game: GameId,
+  scope: TmModScope,
 ): Promise<{
   applied: number;
   /** Rows written as `reviewed` straight from the reference base. */
@@ -241,7 +262,7 @@ export const bulkApplyTmBatch = async (
   const byMethod = emptyByMethod();
   if (rows.length === 0) return { applied: 0, approved: 0, byMethod, sourceModIds: [] };
 
-  const matches = await bulkFindTmMatches(db, modId, rows, targetLang, srcLang, game);
+  const matches = await bulkFindTmMatches(db, modId, rows, targetLang, srcLang, scope);
   if (matches.length === 0) return { applied: 0, approved: 0, byMethod, sourceModIds: [] };
 
   const writeRows: TmBulkWriteRow[] = matches.map((m) => ({

@@ -3,7 +3,8 @@
  *
  * Parameters: $1 string ids, $2 formid_hex, $3 path, $4 edid, $5 text_norm,
  * $6 text_raw (all arrays, one entry per target), $7 the mod being filled,
- * $8 target language, $9 source language, $10 reference game key.
+ * $8 target language, $9 source language, $10 reference game key, $11 origin
+ * key of the mod being filled (its reference layer, see referenceOrigin.ts).
  *
  * Each method (anchor → edid → text_norm) looks in the per-game reference base
  * and in other imported mods. An identical source text wins over every inexact
@@ -28,7 +29,15 @@ const TM_CANDIDATE_ORDER = `ORDER BY CASE WHEN s.text_raw = t.text_raw THEN 0 EL
                     COALESCE(tr.confidence, 0) DESC,
                     tr.updated_at DESC`;
 
+/**
+ * Rank reference rows the same way: an identical source text first. Among
+ * several layers holding the line, a row edited by hand wins, then the layer
+ * of the mod being filled — a patch reads its own wording, the base game its
+ * own — then the newest row.
+ */
 const TM_REFERENCE_ORDER = `ORDER BY CASE WHEN rt.source_text = t.text_raw THEN 0 ELSE 1 END,
+                    CASE WHEN rt.origin = 'manual' THEN 0 ELSE 1 END,
+                    CASE WHEN rt.origin_key = $11 THEN 0 ELSE 1 END,
                     rt.updated_at DESC`;
 
 /**
@@ -37,10 +46,16 @@ const TM_REFERENCE_ORDER = `ORDER BY CASE WHEN rt.source_text = t.text_raw THEN 
  * ITXT). A match there that is not the exact text is a *sibling*, not an
  * earlier wording of the target, and must not be copied.
  */
-const siblingsSql = (textNorm: string): string =>
-  `MIN(${textNorm}) OVER (PARTITION BY t.id) <> MAX(${textNorm}) OVER (PARTITION BY t.id)`;
-const REFERENCE_SIBLINGS = siblingsSql('rt.text_norm');
-const LIVE_SIBLINGS = siblingsSql('s.text_norm');
+const siblingsSql = (textNorm: string, partition: string): string =>
+  `MIN(${textNorm}) OVER (PARTITION BY ${partition}) <> MAX(${textNorm}) OVER (PARTITION BY ${partition})`;
+const LIVE_SIBLINGS = siblingsSql('s.text_norm', 't.id');
+/**
+ * In the reference base the test runs inside one origin layer: two layers
+ * holding two wordings of the same line (the original and a patch's fix) are
+ * versions of it, not siblings. `reference` below folds the per-layer flag
+ * into one per anchor — a window function cannot wrap another.
+ */
+const REFERENCE_LAYER_SIBLINGS = siblingsSql('rt.text_norm', 't.id, rt.origin_key');
 
 /**
  * Best candidate per target. Returns `target_id, text, match_source,
@@ -51,9 +66,9 @@ export const TM_MATCH_SQL = `WITH targets AS (
       FROM UNNEST($1::int[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[])
         AS u(id, formid_hex, path, edid, text_norm, text_raw)
     ),
-    reference AS (
+    reference_rows AS (
       SELECT t.id AS target_id, rt.translation AS text, rt.source_text AS match_source,
-        1 AS method_rank, ${REFERENCE_SIBLINGS} AS siblings,
+        1 AS method_rank, ${REFERENCE_LAYER_SIBLINGS} AS layer_siblings,
         ROW_NUMBER() OVER (PARTITION BY t.id ${TM_REFERENCE_ORDER}) AS rn
       FROM targets t
       JOIN reference_translations rt
@@ -63,7 +78,7 @@ export const TM_MATCH_SQL = `WITH targets AS (
 
       UNION ALL
 
-      SELECT t.id, rt.translation, rt.source_text, 2, ${REFERENCE_SIBLINGS},
+      SELECT t.id, rt.translation, rt.source_text, 2, ${REFERENCE_LAYER_SIBLINGS},
         ROW_NUMBER() OVER (PARTITION BY t.id ${TM_REFERENCE_ORDER}) AS rn
       FROM targets t
       JOIN reference_translations rt
@@ -80,6 +95,11 @@ export const TM_MATCH_SQL = `WITH targets AS (
         ON rt.game = $10 AND rt.src_lang = $9 AND rt.tgt_lang = $8
        AND rt.text_norm = t.text_norm
       WHERE NULLIF(t.text_norm, '') IS NOT NULL
+    ),
+    reference AS (
+      SELECT target_id, text, match_source, method_rank, rn,
+        BOOL_OR(layer_siblings) OVER (PARTITION BY target_id, method_rank) AS siblings
+      FROM reference_rows
     ),
     live AS (
       SELECT t.id AS target_id, tr.text, s.text_raw AS match_source, r.mod_id AS source_mod_id,
