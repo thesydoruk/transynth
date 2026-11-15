@@ -92,7 +92,7 @@ describe('runSyncCycle after a failed cycle', () => {
       uploadError:
         'Upload mods:cool mod-1-1:coolmod failed: 500 {"message":"Archive holds no files"}',
     });
-    expect(outcome.kind).toBe('order-only');
+    expect(outcome).toMatchObject({ kind: 'order-only', rejected: ['Cool Mod'] });
   });
 
   it('runs the stages for an inventory the server already holds when the last cycle failed', async () => {

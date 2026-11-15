@@ -22,13 +22,22 @@ import type {
 import { isUploadRejection, type AgentApi } from './apiClient';
 import { exportOrderSignature, unitsSignature } from './changeDetector';
 import type { AgentConfig } from './config';
+import type { AgentScanSummary } from './control';
 import { cachedFileHasher, type HashCache } from './hashCache';
 import type { AgentState } from './state';
 
 export type SyncOutcome =
   | { kind: 'unchanged' }
-  | { kind: 'order-only'; groupId: number }
-  | { kind: 'synced'; groupId: number; runId: number; uploaded: number; tmRunId: number | null };
+  | { kind: 'order-only'; groupId: number; rejected?: string[] }
+  | {
+      kind: 'synced';
+      groupId: number;
+      runId: number;
+      uploaded: number;
+      tmRunId: number | null;
+      /** Units the server refused: nothing in them it can import. */
+      rejected: string[];
+    };
 
 type PlanResponse = {
   run: { id: number };
@@ -45,6 +54,10 @@ export type SyncContext = {
   onPhase?: (phase: 'scanning' | 'uploading' | 'waiting-server') => void;
   /** Called with every inventory the cycle takes, so the loop knows where the videos are. */
   onInventory?: (inventory: VortexInventory) => void;
+  /** What the cycle is busy with, in words, for the agent's own page. */
+  onActivity?: (text: string) => void;
+  /** Called with the totals of every scan. */
+  onScan?: (scan: AgentScanSummary) => void;
   /** The machine's name, for the video manifests. */
   agentKey?: string;
 };
@@ -99,6 +112,14 @@ export const scanForSync = async (ctx: SyncContext) => {
   });
   ctx.onInventory?.(inventory);
   const exportOrder = readExportOrder(ctx.config);
+  ctx.onScan?.({
+    at: new Date().toISOString(),
+    units: inventory.units.length,
+    // A mods-only channel does not look at the game.
+    gameVersion: ctx.config.channel === 'mods' ? null : inventory.gameRelease.versionLabel || null,
+    plugins: exportOrder.plugins.length,
+    enabledPlugins: exportOrder.enabledPlugins?.length ?? 0,
+  });
   return {
     inventory,
     exportOrder,
@@ -167,14 +188,17 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
     sha1: await hashFile(file.absPath),
     ...(ctx.agentKey ? { agentKey: ctx.agentKey } : {}),
   });
+  let nth = 0;
   try {
     for (const unit of scan.inventory.units) {
       if (!needed.has(unit.unitId)) continue;
+      nth += 1;
+      ctx.onActivity?.(`packing ${unit.name} (${nth}/${needed.size})`);
       const zipPath = path.join(tmp, vortexUnitZipName(unit));
       await packVortexUnitZip(unit, zipPath, { describeVideo: describe });
-      log.info(
-        `vortex-agent: uploading ${unit.name} (${(fs.statSync(zipPath).size / 1048576).toFixed(1)} MiB)`,
-      );
+      const mib = (fs.statSync(zipPath).size / 1048576).toFixed(1);
+      log.info(`vortex-agent: uploading ${unit.name} (${mib} MiB)`);
+      ctx.onActivity?.(`uploading ${unit.name} (${nth}/${needed.size}, ${mib} MiB)`);
       try {
         await api.putUnitZip(plan.run.id, unit.unitId, zipPath);
         uploaded += 1;
@@ -196,7 +220,7 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
   if (uploaded === 0 && rejected.length > 0 && state.lastRunId != null && !state.resyncNeeded) {
     state.signatures.units = scan.unitsSig;
     state.signatures.order = scan.orderSig;
-    return { kind: 'order-only', groupId: plan.group.id };
+    return { kind: 'order-only', groupId: plan.group.id, rejected };
   }
 
   ctx.onPhase?.('waiting-server');
@@ -206,17 +230,20 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
     exportOrder: scan.exportOrder,
   });
   if (!started.skipped) {
-    await api.waitRun(plan.run.id, (run) =>
-      log.info(
-        `vortex-agent: run #${plan.run.id} ${run.status} ${run.current_stage ?? run.last_completed_stage ?? ''}`,
-      ),
-    );
+    await api.waitRun(plan.run.id, (run) => {
+      const line = `run #${plan.run.id} ${run.status} ${run.current_stage ?? run.last_completed_stage ?? ''}`;
+      log.info(`vortex-agent: ${line}`);
+      ctx.onActivity?.(line.trim());
+    });
   }
 
   let tmRunId: number | null = null;
   if (config.autoStages === 'tm') {
     tmRunId = await startOrJoinTm(api, plan.group.id, config.channel);
-    await api.waitRun(tmRunId, (run) => log.info(`vortex-agent: TM run #${tmRunId} ${run.status}`));
+    await api.waitRun(tmRunId, (run) => {
+      log.info(`vortex-agent: TM run #${tmRunId} ${run.status}`);
+      ctx.onActivity?.(`TM run #${tmRunId} ${run.status}`);
+    });
   }
 
   state.lastRunId = plan.run.id;
@@ -224,5 +251,12 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
   state.signatures.order = scan.orderSig;
   state.lastSyncAt = new Date().toISOString();
   state.resyncNeeded = false;
-  return { kind: 'synced', groupId: plan.group.id, runId: plan.run.id, uploaded, tmRunId };
+  return {
+    kind: 'synced',
+    groupId: plan.group.id,
+    runId: plan.run.id,
+    uploaded,
+    tmRunId,
+    rejected,
+  };
 };

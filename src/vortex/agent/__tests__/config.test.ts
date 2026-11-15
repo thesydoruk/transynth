@@ -37,6 +37,14 @@ describe('agent config', () => {
     expect(parseAgentConfig({ game: 'fo4', gameDir: 'x', pollSec: 1 }, {}).pollSec).toBe(30);
   });
 
+  it('serves its page on 3220 unless told another port, and 0 turns the page off', () => {
+    const port = (uiPort?: unknown) => parseAgentConfig({ game: 'fo4', gameDir: 'x', uiPort }, {});
+    expect(port().uiPort).toBe(3220);
+    expect(port(4000).uiPort).toBe(4000);
+    expect(port(0).uiPort).toBe(0);
+    expect(port('nope').uiPort).toBe(3220);
+  });
+
   it('backs off exponentially up to half an hour', () => {
     expect(retryDelayMs(1)).toBe(60_000);
     expect(retryDelayMs(3)).toBe(240_000);

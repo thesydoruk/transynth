@@ -47,7 +47,8 @@ npm run vortex:agent -- --once        # one tick, a sync if needed, exit
 npm run vortex:agent                  # loop until Ctrl+C
 ```
 
-To keep the agent alive, register a scheduled task that starts at logon
+To keep the agent alive, tick the autostart box on [the agent's page](#the-agents-page),
+or register a scheduled task that starts at logon
 (`schtasks /create /sc onlogon /tn TransynthVortexAgent /tr "cmd /c cd /d <clone> && npm run vortex:agent"`)
 with restart on failure, or call `--once` every few minutes.
 
@@ -96,6 +97,42 @@ and the dubbed videos ship in the group's langpack at `Video/<file>.bk2`; nothin
 installed on the Vortex machine. A video Vortex deployed from our own langpack is read from
 `<file>.vortex_backup`, the game's file Vortex keeps next to it. The rest happens in the "Media" tab of the
 mod's voice mode. See [Dubbing the cutscenes](18-video-dubbing.md).
+
+### The agent's page
+
+While it loops, the agent serves a page of its own at `http://127.0.0.1:3220/` (`uiPort`
+in the config; `0` or `--no-ui` turns it off, `--once` never serves it). It shows what the
+agent is doing right now (the mod being uploaded, the run and its stage, the langpack
+download with its progress), the countdown to a sync or to the next attempt after a
+failure, whether the server answered the last heartbeat, the last scan, the folders the
+server refused, the paths and settings in use and the newest journal entries. Four buttons:
+
+- **Sync now** — plans with the server and runs the stages again without waiting for the
+  settle window, the retry delay or the next full scan;
+- **Pause / Resume** — while paused the agent only sends heartbeats: no sync, no upload, no
+  delivery (Sync now still runs one). A restart resumes;
+- **Deliver langpack again** — forgets which archive was delivered, so the newest one is
+  put into Vortex's downloads again (a file that is already there is left alone);
+- **Stop agent** — the same as Ctrl+C: it ends after the step it is on.
+
+Under **Settings** the page edits the config file: every key of `vortex-agent.json`,
+checked the way the agent checks the file when it starts (the game and staging folders
+must exist, `autoStages` never goes past `tm`), and nothing is written when a check fails.
+The token can be set or cleared there but is never shown. After a save the agent finishes
+the step it is on and starts its loop again with the new settings; only `uiPort` waits for
+the next start. A first run needs no `--init`: start the agent, open the page — it comes
+up in setup mode — fill in the game folder and save.
+
+**Start the agent when I sign in to Windows** writes a launcher,
+`Transynth Vortex agent.cmd`, into your Startup folder
+(`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`); unticking it deletes the
+file. No scheduled task, no administrator rights. The launcher starts the agent minimised
+from the clone the page was served from and starts it again 30 seconds after a crash; an
+agent stopped from the page or with Ctrl+C stays stopped until the next sign-in.
+
+The page is for the person at this machine: it listens on loopback only, refuses a request
+addressed to any other host name, takes a command only from itself, and never shows the
+token. A second agent on the same port runs without a page and says so in its log.
 
 ### State and journal
 

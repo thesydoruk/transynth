@@ -81,6 +81,35 @@ export const appendJournal = (file: string, entry: Record<string, unknown>): voi
   fs.appendFileSync(file, `${JSON.stringify({ at: new Date().toISOString(), ...entry })}\n`);
 };
 
+/** The newest journal entries, oldest first; lines that are not JSON are dropped. */
+export const readJournalTail = (file: string, max = 40): Array<Record<string, unknown>> => {
+  let text: string;
+  try {
+    const size = fs.statSync(file).size;
+    const length = Math.min(size, 256 * 1024);
+    const buffer = Buffer.alloc(length);
+    const fd = fs.openSync(file, 'r');
+    try {
+      fs.readSync(fd, buffer, 0, length, size - length);
+    } finally {
+      fs.closeSync(fd);
+    }
+    text = buffer.toString('utf8');
+  } catch {
+    return [];
+  }
+  const entries: Array<Record<string, unknown>> = [];
+  for (const line of text.split('\n')) {
+    try {
+      const entry: unknown = JSON.parse(line);
+      if (entry && typeof entry === 'object') entries.push(entry as Record<string, unknown>);
+    } catch {
+      // a blank line, or the first one cut by the read window
+    }
+  }
+  return entries.slice(-max);
+};
+
 /** Exponential backoff: 1, 2, 4 … capped at 30 minutes. */
 export const retryDelayMs = (failures: number): number =>
   Math.min(30 * 60_000, 60_000 * 2 ** Math.max(0, failures - 1));

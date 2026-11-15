@@ -10,9 +10,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { log } from '../../logger';
 import { vortexGroupKey, vortexGroupLabel } from '../groupKey';
-import type { VortexAgentHeartbeat, VortexAgentState, VortexInventory } from '../types';
-import { isVideoRelPath } from '../videoFiles';
-import type { AgentApi, HeartbeatReply } from './apiClient';
+import type { VortexAgentHeartbeat, VortexAgentState } from '../types';
+import type { AgentApi } from './apiClient';
 import {
   diffWatchSnapshots,
   readWatchSnapshot,
@@ -20,10 +19,16 @@ import {
   type WatchSnapshot,
 } from './changeDetector';
 import { agentDataDir, type AgentConfig } from './config';
-import { cachedFileHasher, loadHashCache, saveHashCache } from './hashCache';
-import { deliverLangpack, looksLikeVortexDownloads, shouldDeliver } from './langpackDelivery';
-import { runSyncCycle, scanForSync } from './syncCycle';
-import { uploadVideoFiles } from './videoUpload';
+import { AgentControl } from './control';
+import { loadHashCache, saveHashCache } from './hashCache';
+import {
+  deliverLangpack,
+  langpackFileName,
+  looksLikeVortexDownloads,
+  shouldDeliver,
+} from './langpackDelivery';
+import { runSyncCycle } from './syncCycle';
+import { AgentVideoSync } from './videoSync';
 import {
   appendJournal,
   readAgentState,
@@ -49,9 +54,9 @@ export type AgentLoopOptions = {
   once?: boolean;
   sleep?: (ms: number) => Promise<void>;
   isStopping?: () => boolean;
+  /** Commands from the agent's page, and the live facts it shows. */
+  control?: AgentControl;
 };
-
-const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export class VortexAgentLoop {
   private state: AgentState;
@@ -60,12 +65,32 @@ export class VortexAgentLoop {
   private settleUntil: number | null = null;
   private lastWatch: WatchSnapshot | null = null;
   private readonly cache;
-  /** Video file hash → where the file is, from the last inventory. */
-  private videoIndex = new Map<string, string>();
+  private readonly videos: AgentVideoSync;
+  readonly control: AgentControl;
 
   constructor(private readonly opts: AgentLoopOptions) {
     this.state = readAgentState(opts.paths.state);
     this.cache = loadHashCache(opts.paths.cache);
+    this.control = opts.control ?? new AgentControl();
+    this.videos = new AgentVideoSync({
+      config: opts.config,
+      api: opts.api,
+      cache: this.cache,
+      cachePath: opts.paths.cache,
+      state: () => this.state,
+      journal: (entry) => this.journal(entry),
+      onBusy: (busy) => {
+        this.agentState = busy ? 'uploading' : 'idle';
+      },
+      onActivity: (text) => {
+        this.control.activity = { text };
+      },
+    });
+  }
+
+  /** What the loop knows right now, for the agent's page. */
+  view() {
+    return { state: this.state, agentState: this.agentState, settleUntil: this.settleUntil };
   }
 
   private journal(entry: Record<string, unknown>): void {
@@ -113,11 +138,20 @@ export class VortexAgentLoop {
   private async heartbeat(): Promise<void> {
     const reply = await this.opts.api.heartbeat(this.heartbeatBody());
     this.state.groupId = reply.groupId;
-    await this.uploadVideosQuietly(reply.videoUploads);
+    this.control.heartbeatResult(null);
+    this.control.latestLangpack = reply.latestLangpack;
+    if (this.control.paused) return;
+    await this.videos.upload(reply.videoUploads);
     if (!this.opts.config.deliverLangpack) return;
     if (!shouldDeliver(reply.latestLangpack, this.state.deliveredArchiveId)) return;
     this.agentState = 'delivering';
     const { config } = this.opts;
+    const fileName = langpackFileName(config.game, config.tgtLang, reply.latestLangpack.archiveId);
+    this.control.activity = {
+      text: `downloading ${fileName}`,
+      file: path.join(config.downloadsDir, `${fileName}.part`),
+      ...(reply.latestLangpack.byteSize != null ? { total: reply.latestLangpack.byteSize } : {}),
+    };
     if (!looksLikeVortexDownloads(config.downloadsDir)) {
       log.warn(`vortex-agent: ${config.downloadsDir} has no Vortex marker file; delivering anyway`);
     }
@@ -142,60 +176,8 @@ export class VortexAgentLoop {
     this.agentState = 'idle';
   }
 
-  /** Remember where every video of the inventory is, by its hash. */
-  private async indexVideos(inventory: VortexInventory): Promise<void> {
-    const hash = cachedFileHasher(this.cache);
-    const index = new Map<string, string>();
-    for (const unit of inventory.units) {
-      for (const file of unit.files) {
-        if (isVideoRelPath(file.relPath)) index.set(await hash(file.absPath), file.absPath);
-      }
-    }
-    this.videoIndex = index;
-  }
-
-  /**
-   * The file behind a hash the server asks about. A resident agent whose
-   * staging never changed has not scanned since it started, so a hash it does
-   * not know triggers one scan (cheap: the hashes are cached).
-   */
-  private async locateVideos(fingerprints: readonly string[]): Promise<void> {
-    if (fingerprints.every((fp) => this.videoIndex.has(fp))) return;
-    const scan = await scanForSync({
-      config: this.opts.config,
-      state: this.state,
-      cache: this.cache,
-      api: this.opts.api,
-    });
-    await this.indexVideos(scan.inventory);
-    saveHashCache(this.opts.paths.cache, this.cache);
-  }
-
-  /** The video files the server waits for: found by hash and uploaded as they are. */
-  private async uploadVideosQuietly(tasks: HeartbeatReply['videoUploads']): Promise<void> {
-    const { config } = this.opts;
-    if (!config.videos || !tasks?.length) return;
-    this.agentState = 'uploading';
-    try {
-      await this.locateVideos(tasks.map((t) => t.fingerprint));
-      const outcome = await uploadVideoFiles({
-        tasks,
-        locate: (fp) => this.videoIndex.get(fp) ?? null,
-        api: this.opts.api,
-        log: (line) => log.info(`vortex-agent: ${line}`),
-      });
-      this.journal({ event: 'video-upload', ...outcome });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.journal({ event: 'video-upload-error', message });
-      log.warn(`vortex-agent: video upload failed: ${message}`);
-    } finally {
-      this.agentState = 'idle';
-    }
-  }
-
   /** Did staging change, and has it been quiet long enough to sync? */
-  private dueForSync(now: number): boolean {
+  private dueForSync(now: number, force = false): boolean {
     const watch = readWatchSnapshot(this.opts.config);
     const changedSinceState = watchSignature(watch) !== this.state.signatures.watch;
     // A failed cycle is retried like a due full scan: the staging folder may
@@ -210,7 +192,7 @@ export class VortexAgentLoop {
       this.lastWatch = watch;
       return false;
     }
-    if (this.opts.once || !changedSinceState) {
+    if (this.opts.once || force || !changedSinceState) {
       this.lastWatch = watch;
       return true;
     }
@@ -229,21 +211,48 @@ export class VortexAgentLoop {
     try {
       await this.heartbeat();
     } catch (err) {
-      log.warn(
-        `vortex-agent: heartbeat failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      const message = err instanceof Error ? err.message : String(err);
+      if (this.agentState === 'delivering') {
+        // The server answered; it is the langpack that did not arrive.
+        this.agentState = 'idle';
+        this.journal({ event: 'delivery-error', message });
+        log.warn(`vortex-agent: langpack delivery failed: ${message}`);
+      } else {
+        this.control.heartbeatResult(message);
+        log.warn(`vortex-agent: heartbeat failed: ${message}`);
+      }
+    } finally {
+      this.control.activity = null;
     }
+  }
+
+  /** What the page asked for since the last tick; true when a sync must run now. */
+  private takeCommands(): boolean {
+    if (this.control.take('redeliver')) {
+      this.state.deliveredArchiveId = null;
+      this.save();
+      this.journal({ event: 'command', command: 'redeliver' });
+    }
+    if (!this.control.take('sync')) return false;
+    // The same as a failed cycle coming due: plan again and run the stages.
+    this.state.resyncNeeded = true;
+    this.state.retryAfter = null;
+    this.journal({ event: 'command', command: 'sync' });
+    return true;
   }
 
   async tick(): Promise<void> {
     const now = Date.now();
+    const syncNow = this.takeCommands();
     // Report, and deliver what is ready, before any sync: a sync may hold this
     // tick for the length of a TM run, and the langpack is ready now.
     await this.heartbeatQuietly();
     try {
-      if (this.state.retryAfter && now < Date.parse(this.state.retryAfter)) {
+      if (this.control.paused && !syncNow) {
+        // paused from the page: nothing on the agent's own initiative
+      } else if (this.state.retryAfter && now < Date.parse(this.state.retryAfter)) {
         // still backing off after a failure of the same change
-      } else if (this.dueForSync(now)) {
+      } else if (this.dueForSync(now, syncNow)) {
         const outcome = await runSyncCycle({
           config: this.opts.config,
           state: this.state,
@@ -254,9 +263,16 @@ export class VortexAgentLoop {
             this.agentState = phase;
           },
           onInventory: (inventory) => {
-            void this.indexVideos(inventory);
+            void this.videos.index(inventory);
+          },
+          onActivity: (text) => {
+            this.control.activity = { text };
+          },
+          onScan: (scan) => {
+            this.control.scan = scan;
           },
         });
+        this.control.rejected = outcome.kind === 'unchanged' ? [] : (outcome.rejected ?? []);
         this.state.signatures.watch = this.lastWatch ? watchSignature(this.lastWatch) : null;
         this.state.lastFullScanAt = new Date().toISOString();
         this.state.lastError = null;
@@ -280,17 +296,21 @@ export class VortexAgentLoop {
       this.save();
       this.journal({ event: 'error', message, retryAfter: this.state.retryAfter });
       log.warn(`vortex-agent: ${message} (retry after ${this.state.retryAfter})`);
+    } finally {
+      this.control.activity = null;
     }
     // The sync's import may have registered videos: the second heartbeat picks their tasks up.
     await this.heartbeatQuietly();
   }
 
   async run(): Promise<void> {
-    const sleep = this.opts.sleep ?? defaultSleep;
+    const sleep = this.opts.sleep ?? ((ms: number) => this.control.sleep(ms));
+    const stopping = () =>
+      this.control.stopping || this.control.reloading || this.opts.isStopping?.() === true;
     do {
       await this.tick();
       if (this.opts.once) return;
-      await sleep(this.opts.config.pollSec * 1000);
-    } while (!this.opts.isStopping?.());
+      if (!stopping()) await sleep(this.opts.config.pollSec * 1000);
+    } while (!stopping());
   }
 }

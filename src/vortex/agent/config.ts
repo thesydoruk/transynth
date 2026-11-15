@@ -40,7 +40,11 @@ export type AgentConfig = {
    * this machine: the server reads, dubs and writes the videos.
    */
   videos: boolean;
+  /** Port of the agent's own page on 127.0.0.1; 0 turns the page off. */
+  uiPort: number;
 };
+
+export const DEFAULT_UI_PORT = 3220;
 
 const AUTO_STAGES: readonly AgentAutoStage[] = ['import', 'carry', 'tm'];
 
@@ -76,10 +80,17 @@ export const configTemplate = (game: GameId = 'fo4'): AgentConfig => ({
   autoStages: 'tm',
   deliverLangpack: true,
   videos: false,
+  uiPort: DEFAULT_UI_PORT,
 });
 
-const isDeployableGame = (value: unknown): value is GameId =>
-  typeof value === 'string' && allGamePlugins().some((p) => p.id === value && p.deployment);
+/** The games Vortex deploys: the ones an agent can watch. */
+export const deployableGames = (): GameId[] =>
+  allGamePlugins()
+    .filter((p) => p.deployment)
+    .map((p) => p.id);
+
+export const isDeployableGame = (value: unknown): value is GameId =>
+  typeof value === 'string' && deployableGames().includes(value as GameId);
 
 const num = (value: unknown, fallback: number, min: number): number =>
   typeof value === 'number' && Number.isFinite(value) && value >= min ? value : fallback;
@@ -118,6 +129,7 @@ export const parseAgentConfig = (
       : 'tm',
     deliverLangpack: r.deliverLangpack !== false,
     videos: r.videos === true,
+    uiPort: Math.min(65535, Math.floor(num(r.uiPort, template.uiPort, 0))),
   };
   if (!config.gameDir) problems.push('gameDir is required (the game install folder)');
   if (r.autoStages !== undefined && !AUTO_STAGES.includes(r.autoStages as AgentAutoStage)) {
@@ -129,6 +141,16 @@ export const parseAgentConfig = (
   return config;
 };
 
+/** The folders the agent reads must be there; throws naming the one that is not. */
+export const assertConfigDirs = (config: AgentConfig): void => {
+  for (const [key, dir] of [
+    ['stagingPath', config.stagingPath],
+    ['gameDir', config.gameDir],
+  ] as const) {
+    if (!fs.existsSync(dir)) throw new Error(`vortex-agent config: ${key} does not exist: ${dir}`);
+  }
+};
+
 export const loadAgentConfig = (file = defaultConfigPath()): AgentConfig => {
   let text: string;
   try {
@@ -137,12 +159,7 @@ export const loadAgentConfig = (file = defaultConfigPath()): AgentConfig => {
     throw new Error(`No agent config at ${file} — run with --init to write a template`);
   }
   const config = parseAgentConfig(JSON.parse(text));
-  for (const [key, dir] of [
-    ['stagingPath', config.stagingPath],
-    ['gameDir', config.gameDir],
-  ] as const) {
-    if (!fs.existsSync(dir)) throw new Error(`vortex-agent config: ${key} does not exist: ${dir}`);
-  }
+  assertConfigDirs(config);
   return config;
 };
 
