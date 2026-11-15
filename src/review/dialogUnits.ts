@@ -14,7 +14,7 @@ import {
   type DialogScope,
   type DialogTranscriptRow,
 } from '../web/data/queries/dialogs';
-import { isFocusTarget, type ReviewFocus } from './focus';
+import { isFocusTarget, isRedone, type ReviewFocus } from './focus';
 import type { ReviewLine, ReviewUnit } from './types';
 
 /** Statuses an editor does not review: removed, refused, or deliberately left untranslated. */
@@ -49,7 +49,7 @@ const entryLine = (
     id: line.string_id,
     kind: line.kind,
     src: line.source,
-    tr: line.translation ?? '',
+    tr: isRedone(opts.focus, line) ? '' : (line.translation ?? ''),
   };
   if (line.context) out.ctx = line.context;
   if (line.kind === 'prompt') {
@@ -108,9 +108,11 @@ export const collectDialogUnits = async (
   const units: ReviewUnit[] = [];
   for (const { scope, kind } of SCOPES) {
     const groups = (await listDialogGroups(db, modId, scope, opts.srcLang, opts.targetLang))
-      .filter((g) =>
-        opts.focus?.untranslated ? g.translated_count < g.line_count : g.translated_count > 0,
-      )
+      .filter((g) => {
+        if (!opts.focus?.untranslated) return g.translated_count > 0;
+        // A redone translation still counts as translated here; units without work drop later.
+        return Boolean(opts.focus.redo?.size) || g.translated_count < g.line_count;
+      })
       .sort((a, b) => a.label.localeCompare(b.label, 'en'));
     for (const [i, group] of groups.entries()) {
       opts.onProgress?.(scope, i, groups.length);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { focusUnits, isFocusTarget } from '../focus';
+import { focusUnits, isFocusTarget, isRedone } from '../focus';
 import type { ReviewLine, ReviewUnit } from '../types';
 
 const line = (id: number, work: boolean): ReviewLine => ({
@@ -32,6 +32,18 @@ describe('isFocusTarget', () => {
     expect(isFocusTarget(focus, row(''))).toBe(true);
     expect(isFocusTarget(focus, row('Привіт'))).toBe(false);
     expect(isFocusTarget(focus, row(null, null, '100%'))).toBe(false);
+  });
+
+  it('takes a translated line again when its provenance is to be redone', () => {
+    const focus = { untranslated: true, redo: new Set(['tm_auto_anchor']) };
+    expect(isFocusTarget(focus, row('Згода.', 'tm_auto_anchor'))).toBe(true);
+    expect(isRedone(focus, row('Згода.', 'tm_auto_anchor'))).toBe(true);
+    expect(isFocusTarget(focus, row('Привіт', 'tm_reference_anchor'))).toBe(false);
+    expect(isRedone(focus, row(null, 'tm_auto_anchor'))).toBe(false);
+    // Without an untranslated run the list means nothing.
+    expect(isRedone({ redo: new Set(['tm_auto_anchor']) }, row('Згода.', 'tm_auto_anchor'))).toBe(
+      false,
+    );
   });
 
   it('takes only the named provenances in a provenance run', () => {

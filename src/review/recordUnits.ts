@@ -6,7 +6,7 @@
 import type { Tx } from '../db';
 import type { LlmPromptFamily } from '../llm/promptFamily';
 import { UNREVIEWABLE_STATUSES } from './dialogUnits';
-import { isFocusTarget, type ReviewFocus } from './focus';
+import { isFocusTarget, isRedone, type ReviewFocus } from './focus';
 import type { ReviewLine, ReviewUnit } from './types';
 
 export type ModStringRow = {
@@ -59,7 +59,7 @@ const recordLine = (
     id: row.id,
     kind: row.signature === 'INFO' ? (row.field === 'RNAM' ? 'prompt' : 'response') : row.field,
     src: row.source,
-    tr: row.translation,
+    tr: isRedone(focus, row) ? '' : row.translation,
     sig: row.signature,
     field: row.field,
   };

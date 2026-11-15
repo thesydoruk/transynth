@@ -20,6 +20,8 @@
  *   --prefix <name>               Batch id prefix (one mod only; default: slug of the mod name)
  *   --untranslated                Translate run: only lines without a translation are work,
  *                                 translated neighbours come as context
+ *   --redo-provenance <name>      With --untranslated: translations with this provenance are
+ *                                 wrong memory matches — hide them and translate again (repeatable)
  *   --target-provenance <name>    Review only lines with this provenance (repeatable), e.g. the
  *                                 output of a translate run; the rest is context
  *
@@ -49,7 +51,9 @@ const argv = await yargs(hideBin(process.argv))
   .option('prefix', { type: 'string' })
   .option('untranslated', { type: 'boolean', default: false })
   .option('target-provenance', { type: 'string', array: true, default: [] as string[] })
+  .option('redo-provenance', { type: 'string', array: true, default: [] as string[] })
   .check((a) => !(a.untranslated && a['target-provenance'].length) || 'Pick one focus')
+  .check((a) => !a['redo-provenance'].length || a.untranslated || 'Use with --untranslated')
   .check((a) => !(a.prefix && a.mod.length > 1) || 'Use --prefix with a single --mod')
   .help()
   .parse();
@@ -84,6 +88,7 @@ try {
       focus: {
         untranslated: argv.untranslated,
         provenances: new Set(argv['target-provenance']),
+        redo: new Set(argv['redo-provenance']),
       },
       onProgress: (scope, done, total) => {
         if (done % 500 === 0) process.stderr.write(`mod ${modId} ${scope}: ${done}/${total}\n`);
