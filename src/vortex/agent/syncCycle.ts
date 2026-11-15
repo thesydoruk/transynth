@@ -85,9 +85,14 @@ const startOrJoinTm = async (
   api: AgentApi,
   groupId: number,
   channel: AgentConfig['channel'],
+  modIds?: number[],
 ): Promise<number> => {
   try {
-    const tm = await api.startStage(groupId, 'tm', { channel, startedBy: 'agent' });
+    const tm = await api.startStage(groupId, 'tm', {
+      channel,
+      startedBy: 'agent',
+      ...(modIds ? { modIds } : {}),
+    });
     return tm.runId;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -226,20 +231,28 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
   ctx.onPhase?.('waiting-server');
   await api.postExportOrder(plan.group.id, scan.exportOrder);
   const to = config.autoStages === 'import' ? 'import' : 'carry';
+  // A first sync, a retry of a failed cycle and a Sync from the page go over
+  // the whole group; otherwise carry and TM touch only the mods just imported.
+  const allMods = state.lastRunId == null || state.resyncNeeded;
   const started = await api.startRange(plan.run.id, 'import', to, {
     exportOrder: scan.exportOrder,
+    ...(allMods ? { allMods } : {}),
   });
+  let imported: number[] | undefined;
   if (!started.skipped) {
-    await api.waitRun(plan.run.id, (run) => {
+    const done = await api.waitRun(plan.run.id, (run) => {
       const line = `run #${plan.run.id} ${run.status} ${run.current_stage ?? run.last_completed_stage ?? ''}`;
       log.info(`vortex-agent: ${line}`);
       ctx.onActivity?.(line.trim());
     });
+    imported = done.plan_json?.importedModIds;
   }
 
   let tmRunId: number | null = null;
-  if (config.autoStages === 'tm') {
-    tmRunId = await startOrJoinTm(api, plan.group.id, config.channel);
+  // An older server names no imported mods: TM then runs over the group, as before.
+  const tmModIds = allMods ? undefined : imported;
+  if (config.autoStages === 'tm' && tmModIds?.length !== 0) {
+    tmRunId = await startOrJoinTm(api, plan.group.id, config.channel, tmModIds);
     await api.waitRun(tmRunId, (run) => {
       log.info(`vortex-agent: TM run #${tmRunId} ${run.status}`);
       ctx.onActivity?.(`TM run #${tmRunId} ${run.status}`);

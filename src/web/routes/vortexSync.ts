@@ -186,7 +186,7 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
 
   app.post<{
     Params: { runId: string };
-    Body: { from?: string; to?: string; exportOrder?: VortexExportOrder };
+    Body: { from?: string; to?: string; exportOrder?: VortexExportOrder; allMods?: boolean };
   }>('/api/vortex/sync/:runId/start', async (req, reply) => {
     const runId = parseRouteId(req.params.runId);
     if (runId === null) return reply.code(400).send({ error: 'Invalid run id' });
@@ -217,8 +217,13 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
     }
     const from = stages[0]! as ServerVortexStage;
     const to = stages[stages.length - 1]! as ServerVortexStage;
+    const allMods = req.body?.allMods === true;
     const jobId = await startBackgroundJob(
-      { kind: 'vortex-sync', modId: null, params: { runId, from, to } },
+      {
+        kind: 'vortex-sync',
+        modId: null,
+        params: { runId, from, to, ...(allMods ? { allMods } : {}) },
+      },
       { runId },
     );
     await updateVortexSyncRun(db, runId, { status: 'queued', job_id: jobId });

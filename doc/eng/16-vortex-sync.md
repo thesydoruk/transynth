@@ -65,7 +65,9 @@ afterwards, then:
 3. `import` → `carry` (translations and finished takes carried over from the previous
    version);
 4. `tm` — the same tm-apply jobs as the TM button in the editor; it reads the reference
-   base, so official ESMs, DLC and known mods get reviewed translations at once;
+   base, so official ESMs, DLC and known mods get reviewed translations at once.
+   `carry` and `tm` touch only the mods this sync imported; a first sync, a retry after a
+   failed one and **Sync now** go over the whole group, and so does the TM button;
 5. sends the server the current load order and file winners. When only the order changed,
    it sends just that, without an upload.
 
