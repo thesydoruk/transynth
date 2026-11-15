@@ -47,6 +47,17 @@ export const unitJobIds = (unit: VortexPlanUnit): number[] => {
 };
 
 /**
+ * The mods the carry stage visits: the ones this run imported. Every mod staging
+ * holds only when asked (the agent retrying a failed cycle) or when the run
+ * imported nothing, so a new mod does not cost a pass over the whole group.
+ */
+export const carryTargetIds = (
+  present: number[],
+  imported: number[],
+  allMods: boolean,
+): number[] => (allMods || imported.length === 0 ? present : imported);
+
+/**
  * Units the plan asked the agent to upload that the server never registered
  * and never refused: their upload did not reach the route, so importing the
  * rest and calling the run complete would drop them without a word.

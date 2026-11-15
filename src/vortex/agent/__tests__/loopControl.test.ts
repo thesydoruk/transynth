@@ -61,7 +61,7 @@ describe('the agent loop under the page’s commands', () => {
       post: plan,
       postExportOrder: jest.fn(async () => ({ ok: true })),
       startRange: jest.fn(async () => ({ ok: true, skipped: false })),
-      waitRun: jest.fn(async () => undefined),
+      waitRun: jest.fn(async () => ({ status: 'completed' })),
       downloadLangpack,
     } as unknown as AgentApi;
     const control = new AgentControl();

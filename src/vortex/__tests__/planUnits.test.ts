@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { vortexUnitKey } from '../groupKey';
-import { findPlanUnit, unitJobIds, unitsNeverUploaded } from '../planUnits';
+import { carryTargetIds, findPlanUnit, unitJobIds, unitsNeverUploaded } from '../planUnits';
 import type { VortexPlanUnit } from '../types';
 
 // A real unitId from production: 101 characters, past the router's default limit.
@@ -60,6 +60,17 @@ describe('unitJobIds', () => {
   it('falls back to the single job of an older plan', () => {
     expect(unitJobIds(unit({ existingJobId: 7 }))).toEqual([7]);
     expect(unitJobIds(unit({}))).toEqual([]);
+  });
+});
+
+describe('carryTargetIds', () => {
+  it('visits only the mods the run imported', () => {
+    expect(carryTargetIds([1, 2, 3], [3], false)).toEqual([3]);
+  });
+
+  it('visits every mod in staging when asked or when nothing was imported', () => {
+    expect(carryTargetIds([1, 2, 3], [3], true)).toEqual([1, 2, 3]);
+    expect(carryTargetIds([1, 2, 3], [], false)).toEqual([1, 2, 3]);
   });
 });
 

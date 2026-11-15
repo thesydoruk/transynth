@@ -25,6 +25,8 @@ export type VortexRunView = {
   last_completed_stage: string | null;
   error: string | null;
   export_archive_id?: number | null;
+  /** After the import stage: the mods that run imported (absent on an older server). */
+  plan_json?: { importedModIds?: number[] } | null;
 };
 
 export type HeartbeatReply = {

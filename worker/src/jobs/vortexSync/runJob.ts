@@ -18,7 +18,7 @@ import {
   upsertCurrentGameRelease,
   type VortexSyncRunRow,
 } from '../../../../src/vortex/db';
-import { unitJobIds, unitsNeverUploaded } from '../../../../src/vortex/planUnits';
+import { carryTargetIds, unitJobIds, unitsNeverUploaded } from '../../../../src/vortex/planUnits';
 import { findPreviousVortexMod, markCurrentVortexMods } from '../../../../src/vortex/dbFamily';
 import {
   isFanOutStage,
@@ -38,6 +38,8 @@ export type VortexSyncJobParams = {
   /** In-process range (CLI / agent): import→carry or export. */
   from?: ServerVortexStage;
   to?: ServerVortexStage;
+  /** Carry over every mod in staging, not only the ones this run imported. */
+  allMods?: boolean;
   /** One fan-out stage (UI button / agent TM). */
   stage?: VortexFanOutStage;
   modIds?: number[];
@@ -59,8 +61,12 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 
 type RunOpts = { jobId: number; isCancelled: () => boolean };
 
-const runImportStage = async (db: Tx, run: VortexSyncRunRow): Promise<number[]> => {
+/** `present`: every mod staging holds; `imported`: the ones this run brought in. */
+type ImportedMods = { present: number[]; imported: number[] };
+
+const runImportStage = async (db: Tx, run: VortexSyncRunRow): Promise<ImportedMods> => {
   const importedModIds: number[] = [];
+  const imported: number[] = [];
   for (const unit of planUnits(run)) {
     if (unit.action === 'skip' && unit.existingModId) {
       importedModIds.push(...(unit.existingModIds ?? [unit.existingModId]));
@@ -70,14 +76,20 @@ const runImportStage = async (db: Tx, run: VortexSyncRunRow): Promise<number[]> 
     for (const jobId of unitJobIds(unit)) {
       const job = await getModImportJob(db, jobId);
       if (!job) continue;
+      // Completed already: an earlier attempt of this run imported it, and its
+      // carry may never have run.
       if (job.status === 'completed' && job.mod_id) {
         importedModIds.push(job.mod_id);
+        imported.push(job.mod_id);
         continue;
       }
       const plugin = job.esp_path ? ` · ${path.basename(job.esp_path)}` : '';
       log.info(`Vortex sync: importing ${unit.name}${plugin} (job #${job.id})`);
       const result = await runModImport(db, job);
-      if (result.mod_id) importedModIds.push(result.mod_id);
+      if (result.mod_id) {
+        importedModIds.push(result.mod_id);
+        imported.push(result.mod_id);
+      }
     }
   }
   // What arrived is imported (a retry then skips it instead of uploading it
@@ -102,7 +114,14 @@ const runImportStage = async (db: Tx, run: VortexSyncRunRow): Promise<number[]> 
     }
   }
   await markCurrentVortexMods(db, run.vortex_group_id, importedModIds);
-  return importedModIds;
+  // The agent reads this to run TM for the new mods only.
+  await db.query(
+    `UPDATE vortex_sync_runs
+        SET plan_json = jsonb_set(COALESCE(plan_json, '{}'::jsonb), '{importedModIds}', $2::jsonb)
+      WHERE id = $1`,
+    [run.id, JSON.stringify(imported)],
+  );
+  return { present: importedModIds, imported };
 };
 
 /** Carry runs for minutes per large mod, so a stop request is honoured between mods and rows. */
@@ -213,18 +232,18 @@ export const runVortexSyncJob = async (
       return await runFanOut(db, run, params, opts);
     }
     const stages = sliceStages(params.from ?? 'import', params.to ?? 'carry');
-    let importedModIds: number[] = [];
+    let mods: ImportedMods = { present: [], imported: [] };
     for (const stage of stages) {
       if (opts.isCancelled()) {
         await updateVortexSyncRun(db, run.id, { status: 'cancelled' });
         return { status: 'cancelled', error: null, done: 0, total: stages.length };
       }
       await updateVortexSyncRun(db, run.id, { current_stage: stage });
-      if (stage === 'import') importedModIds = await runImportStage(db, run);
+      if (stage === 'import') mods = await runImportStage(db, run);
       if (stage === 'carry') {
         const targets =
-          importedModIds.length > 0
-            ? importedModIds
+          mods.present.length > 0
+            ? carryTargetIds(mods.present, mods.imported, params.allMods === true)
             : await listCurrentGroupModIds(
                 db,
                 run.vortex_group_id,
