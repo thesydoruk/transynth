@@ -1,5 +1,5 @@
-import { Link, useLocation } from 'react-router-dom';
-import { useEffect, useMemo } from 'react';
+import { Link, useLocation, useMatch } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from './api';
@@ -8,6 +8,7 @@ import { NavIcon } from './components/NavIcon';
 import { useTheme } from './components/ThemeContext';
 import { getCurrentGame, setCurrentGame } from './langDefaults';
 import { useContentLangs } from './hooks/useContentLangs';
+import { routePatterns, routes } from './routes';
 import nav from './App.module.scss';
 
 export const AppNav = () => {
@@ -16,10 +17,7 @@ export const AppNav = () => {
   const { theme, toggleTheme } = useTheme();
   const { srcLang, targetLang } = useContentLangs();
 
-  const routeGameId = useMemo(() => {
-    const match = loc.pathname.match(/^\/games\/([^/]+)/);
-    return match?.[1] ?? null;
-  }, [loc.pathname]);
+  const routeGameId = useMatch(`${routePatterns.game}/*`)?.params.gameId ?? null;
 
   const currentGameId = routeGameId ?? getCurrentGame();
 
@@ -37,13 +35,13 @@ export const AppNav = () => {
 
   return (
     <nav className={nav.nav}>
-      <Link to="/" className={nav.brand}>
+      <Link to={routes.games()} className={nav.brand}>
         {t('nav.brand')}
       </Link>
 
       <div className={nav.contextStrip}>
         <Link
-          to={currentGame ? `/games/${currentGame.id}` : '/games'}
+          to={currentGame ? routes.game(currentGame.id) : routes.games()}
           className={nav.contextBadge}
           title={
             currentGame ? t('nav.currentGameLink', { game: currentGame.name }) : t('nav.pickGame')

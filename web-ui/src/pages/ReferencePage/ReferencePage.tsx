@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader';
 import { getContentLanguageOptions } from '../../langDefaults';
 import { REFERENCE_PAGE_SIZE, useReferencePage } from './useReferencePage';
@@ -34,15 +34,7 @@ export const ReferencePage = () => {
 
   return (
     <div className={s.page}>
-      <PageHeader
-        title={t('reference.title')}
-        description={t('reference.description')}
-        actions={
-          <Link to={`/games/${gameId}`} className={s.btnGhost}>
-            {t('reference.backToHub')}
-          </Link>
-        }
-      />
+      <PageHeader title={t('reference.title')} description={t('reference.description')} />
 
       <div className={s.toolbar}>
         <label className={s.filterLabel}>

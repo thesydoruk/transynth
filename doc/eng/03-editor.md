@@ -30,7 +30,7 @@ The editor is the main workspace for reviewing, correcting, and completing trans
 ## Opening the Editor
 
 From a game’s mods list (`/games/:gameId`), click the name of a mod to open its editor.
-The editor URL is `/games/:gameId/mods/:id`. Home `/` is the games catalogue, not the mods list.
+The editor URL is `/games/:gameId/mods/:modId`. Home `/` is the games catalogue, not the mods list.
 
 If you are updating an existing mod version, the editor also exposes an **Update** button.
 That uploads a newer plugin or archive and redirects you into the diff workflow once the new import is ready.

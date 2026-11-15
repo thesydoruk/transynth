@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api';
 import { getContentLanguageOptions, getTgtLang } from '../../langDefaults';
 import { ConfirmModal } from '../../components/ConfirmModal';
@@ -38,8 +38,23 @@ export const CoherencePage = () => {
   const qc = useQueryClient();
 
   // ── Local state ──────────────────────────────────────────────────────────
-  const [targetLang, setTargetLang] = useState(getTgtLang());
-  const [page, setPage] = useState(0);
+  // The language and the page live in the address: `lang` (when not the default), `page` from 1.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const targetLang = searchParams.get('lang') || getTgtLang();
+  const page = Math.max(0, (Number(searchParams.get('page')) || 1) - 1);
+  const setView = (next: { lang?: string; page: number }) =>
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev);
+        const lang = next.lang ?? targetLang;
+        if (lang === getTgtLang()) params.delete('lang');
+        else params.set('lang', lang);
+        if (next.page > 0) params.set('page', String(next.page + 1));
+        else params.delete('page');
+        return params;
+      },
+      { replace: true },
+    );
   const [showResolveAllConfirm, setShowResolveAllConfirm] = useState(false);
   const { showToast } = useToast();
 
@@ -104,7 +119,7 @@ export const CoherencePage = () => {
     <div className={s.page}>
       {/* Page header */}
       <div className={s.header}>
-        <h2 className={s.title}>{t('coherence.title')}</h2>
+        <h1 className={s.title}>{t('coherence.title')}</h1>
       </div>
       <p className={s.description}>{t('coherence.description')}</p>
 
@@ -114,10 +129,7 @@ export const CoherencePage = () => {
         <select
           className={s.select}
           value={targetLang}
-          onChange={(e) => {
-            setTargetLang(e.target.value);
-            setPage(0);
-          }}
+          onChange={(e) => setView({ lang: e.target.value, page: 0 })}
         >
           {languageOptions.map((l) => (
             <option key={l.code} value={l.code}>
@@ -175,8 +187,8 @@ export const CoherencePage = () => {
                 {t('coherence.page', { current: page + 1, total: totalPages })}
               </span>
             }
-            onPrev={() => setPage((p) => Math.max(0, p - 1))}
-            onNext={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            onPrev={() => setView({ page: Math.max(0, page - 1) })}
+            onNext={() => setView({ page: Math.min(totalPages - 1, page + 1) })}
             prevDisabled={page === 0}
             nextDisabled={page >= totalPages - 1}
             prevLabel="←"

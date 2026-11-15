@@ -1,3 +1,4 @@
+import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from '../../components/PageHeader';
 import { GlossaryEnforcePanel } from './components/GlossaryEnforcePanel';
@@ -6,8 +7,10 @@ import { GlossaryToolbar } from './components/GlossaryToolbar';
 import { useGlossaryPage } from './useGlossaryPage';
 import s from './GlossaryPage.module.scss';
 
+/** A game's glossary. Route: /games/:gameId/glossary. */
 export const GlossaryPage = () => {
   const { t } = useTranslation();
+  const { gameId = '' } = useParams<{ gameId: string }>();
   const {
     srcLang,
     setSrcLang,
@@ -37,7 +40,7 @@ export const GlossaryPage = () => {
     startEdit,
     cancelEdit,
     saveEdit,
-  } = useGlossaryPage();
+  } = useGlossaryPage(gameId);
 
   const emptyHint = t('glossary.emptyTranslatorHint');
 

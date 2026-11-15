@@ -1,19 +1,26 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  DEFAULT_GAME_ID,
-  getCurrentGame,
-  getSrcLang,
-  getTgtLang,
-  modListQueryKey,
-} from '../../langDefaults';
+import { useSearchParams } from 'react-router-dom';
+import { getSrcLang, getTgtLang, modListQueryKey } from '../../langDefaults';
 import { api, type GlossaryEntry } from '../../api';
 
-export const useGlossaryPage = () => {
+/** State of a game's glossary; the search text lives in the address as `q`. */
+export const useGlossaryPage = (currentGameId: string) => {
   const qc = useQueryClient();
   const [srcLang, setSrcLang] = useState(getSrcLang());
   const [tgtLang, setTgtLang] = useState(getTgtLang());
-  const [q, setQ] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const q = searchParams.get('q') ?? '';
+  const setQ = (value: string) =>
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set('q', value);
+        else next.delete('q');
+        return next;
+      },
+      { replace: true },
+    );
   const [newTerm, setNewTerm] = useState('');
   const [newTranslation, setNewTranslation] = useState('');
   const [editId, setEditId] = useState<number | null>(null);
@@ -22,7 +29,6 @@ export const useGlossaryPage = () => {
   const [enforceModId, setEnforceModId] = useState<number | ''>('');
   const newTermRef = useRef<HTMLInputElement | null>(null);
 
-  const currentGameId = getCurrentGame() ?? DEFAULT_GAME_ID;
   const { data: mods } = useQuery({
     queryKey: modListQueryKey(currentGameId),
     queryFn: () => api.mods.list(currentGameId),

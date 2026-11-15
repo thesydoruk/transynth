@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { routes } from '../../routes';
 import s from './ModsPage.module.scss';
 
 type ModsPageEmptyStateProps = {
@@ -18,7 +19,7 @@ export const ModsPageEmptyState = ({ gameId, onUploadClick }: ModsPageEmptyState
         <button onClick={onUploadClick} className={s.btn}>
           {t('imports.emptyUploadAction')}
         </button>
-        <Link to={`/games/${gameId}/nexus`} className={s.emptyLinkBtn}>
+        <Link to={routes.gameSection(gameId, 'nexus')} className={s.emptyLinkBtn}>
           {t('imports.emptyDiscoverAction')}
         </Link>
       </div>

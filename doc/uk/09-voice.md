@@ -57,7 +57,7 @@ Disco Elysium не використовує FaceFX. Синтезовані ре�
 ## Режим Voice
 
 Відкрийте мод і перемкніть тулбар на **Voice**
-(`?mode=voice` на `/games/:gameId/mods/:id`).
+(`?mode=voice` на `/games/:gameId/mods/:modId`).
 
 Режим є і в Bethesda, і в Disco. У Disco **немає** вкладки Dialogs і немає дій
 INNR / визначення статі.

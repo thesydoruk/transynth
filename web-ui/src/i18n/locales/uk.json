@@ -208,14 +208,16 @@
     "modCount_many": "{{count}} модів",
     "modCount_other": "{{count}} моду",
     "links": {
+      "mods": "Моди",
       "nexus": "Nexus",
       "coherence": "Узгодженість",
       "diff": "Порівняння",
       "reference": "Еталон",
       "vortex": "Vortex",
-      "glossary": "Глосарій",
-      "voice": "Озвучення"
-    }
+      "glossary": "Глосарій"
+    },
+    "crumbsLabel": "Де ви зараз",
+    "crumbGames": "Ігри"
   },
   "modAi": {
     "progressShort": "{{done}} / {{total}}",
@@ -525,7 +527,8 @@
     "tmApplyDoneApproved": "TM застосовано до {{count}} рядків; {{approved}} одразу підтверджено з еталонної бази.",
     "referencePromoted": "Додано в еталонну базу перекладів: {{count}}.",
     "referencePromotedNone": "Нічого промотувати: еталонами стають лише переклади reviewed і human.",
-    "showDraftsAction": "Показати чернетки"
+    "showDraftsAction": "Показати чернетки",
+    "backToGame": "До модів гри"
   },
   "dialogs": {
     "scope": {
@@ -763,8 +766,6 @@
     "filterChanged": "Змінені",
     "openInEditor": "Відкрити в редакторі (чернетки)",
     "showAllAction": "Показати всі зміни",
-    "openCurrentGameAction": "Відкрити поточну гру",
-    "openGamesAction": "Відкрити каталог ігор",
     "checklistTitle": "Передрелізний чекліст",
     "checklistSubtitle": "Завершіть оновлений мод у release-flow без зайвих переходів між сторінками.",
     "statusReady": "Готово до експорту",
@@ -824,7 +825,6 @@
   "reference": {
     "title": "Еталонна база",
     "description": "Переклади, що переживають моди, з яких прийшли. TM-автозастосування читає цю базу раніше за живі моди; рядок, відредагований тут, промоція вже не перезапише.",
-    "backToHub": "← Гра",
     "sourceLang": "Джерело:",
     "targetLang": "Ціль:",
     "filterPlaceholder": "Фільтр за оригіналом, перекладом або EDID…",
@@ -1410,7 +1410,6 @@
     "resultsCountAll": "{{count}} модів у {{game}}",
     "noResults": "За цим запитом модів не знайдено.",
     "clearSearchAction": "Очистити пошук",
-    "backToGameAction": "Повернутися до гри",
     "noSummary": "Опис відсутній",
     "downloads": "Завантаження: {{count}}",
     "endorsements": "Вподобання: {{count}}",
@@ -1498,7 +1497,9 @@
       "indonesian": "Індонезійська",
       "english": "Англійська",
       "unknown": "Невідома"
-    }
+    },
+    "nexusModNotFoundTitle": "Мод не знайдено",
+    "nexusModNotFoundSubtitle": "Адреса не вказує на мод Nexus."
   },
   "video": {
     "empty": {
@@ -1562,7 +1563,6 @@
   "vortex": {
     "title": "Vortex",
     "description": "Резидентний агент на машині з Vortex дзеркалить стейдж, сам проганяє імпорт, перенесення перекладів і TM, а готові ленгпаки кладе в теку завантажень Vortex. LLM, перевірку, озвучення й експорт запускають звідси, коли їхні хости увімкнені.",
-    "backToHub": "← Гра",
     "group": "Стейдж",
     "empty": {
       "title": "Агента Vortex ще нема",

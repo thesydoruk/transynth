@@ -1,0 +1,145 @@
+/* Game layout: a crumb line and the section tabs, one bar under the top navigation. */
+
+.bar {
+  padding: 10px 24px 0;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.crumb,
+.crumbGame {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.crumb {
+  flex: none;
+  color: var(--link);
+}
+
+.crumbSep {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.crumbGame {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-bright);
+  font-weight: 650;
+  line-height: 24px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The strip scrolls sideways on a narrow screen instead of wrapping into rows. */
+.tabs {
+  display: flex;
+  gap: 2px;
+  margin-top: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.tab {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  text-decoration: none;
+  white-space: nowrap;
+
+  &:hover {
+    color: var(--text-bright);
+    background: var(--bg-hover);
+  }
+}
+
+.tabActive {
+  border-bottom-color: var(--accent);
+  color: var(--text-bright);
+  font-weight: 600;
+}
+
+.tabCount {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+.notice {
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.noticeError {
+  color: var(--danger);
+}
+
+.missing {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 20px;
+}
+
+.backLink {
+  display: inline-block;
+  margin: 0 0 8px;
+  color: var(--link);
+  font-size: 13px;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.missingTitle {
+  margin: 0;
+  color: var(--text-bright);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.missingText {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .bar {
+    padding: 8px 12px 0;
+  }
+
+  .tab {
+    min-height: 40px;
+  }
+}

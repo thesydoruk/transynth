@@ -368,11 +368,11 @@ Important limitation: if you upload an archive with multiple plugins, the curren
 
 ## Nexus Mod Relations on Mod Page
 
-Discover is the **Nexus** link on the game page, route `/games/:gameId/nexus`.
+Discover is the **Nexus** tab of the game, route `/games/:gameId/nexus`.
 An empty search lists Nexus mods for that game (paginated). It is not the
 imported-mods workspace (`/games/:gameId`).
 
-Nexus details are `/games/:gameId/nexus/:modId`. The bottom block uses three
+Nexus details are `/games/:gameId/nexus/:nexusModId`. The bottom block uses three
 relation tabs:
 
 - **Possible translations** — heuristic list of likely translation mods,

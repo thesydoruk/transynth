@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { GameInfo, NexusModItem } from '../../../api';
 import s from './ModTile.module.scss';
+import { routes } from '../../../routes';
 
 interface ModTileProps {
   game: GameInfo;
@@ -34,7 +35,7 @@ export const ModTile = ({ game, mod }: ModTileProps) => {
 
       <div className={s.cardBody}>
         <h3 className={s.modName}>
-          <Link to={`/games/${game.id}/nexus/${mod.modId}`} className={s.cardLink}>
+          <Link to={routes.nexusMod(game.id, mod.modId)} className={s.cardLink}>
             {mod.name}
           </Link>
         </h3>

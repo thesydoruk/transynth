@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import s from './GameHeader.module.scss';
+import { routes } from '../../routes';
+import s from './GameLayout.module.scss';
 
 type GameUnavailableProps = {
   /** `loading` and `error` replace the whole page; `missing` is an unknown game id. */
@@ -20,12 +21,12 @@ export const GameUnavailable = ({ state, error }: GameUnavailableProps) => {
     );
   }
   return (
-    <div className={s.page}>
-      <Link to="/" className={s.backLink}>
+    <div className={s.missing}>
+      <Link to={routes.games()} className={s.backLink}>
         {t('games.backToGames')}
       </Link>
-      <h1 className={s.name}>{t('games.notFoundTitle')}</h1>
-      <p className={s.meta}>{t('games.notFoundSubtitle')}</p>
+      <h1 className={s.missingTitle}>{t('games.notFoundTitle')}</h1>
+      <p className={s.missingText}>{t('games.notFoundSubtitle')}</p>
     </div>
   );
 };

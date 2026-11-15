@@ -200,16 +200,3 @@
   font-size: 13px;
   margin-left: 4px;
 }
-
-.btnGhost {
-  color: var(--text-dim);
-  font-size: 13px;
-  text-decoration: none;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-
-  &:hover {
-    color: var(--text);
-  }
-}

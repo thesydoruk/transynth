@@ -1,35 +1,7 @@
-/* Game header: back link, identity, totals and links — one quiet block above the toolbar. */
-
-.page {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 24px 20px;
-}
-
-.notice {
-  padding: 48px 20px;
-  text-align: center;
-  color: var(--text-muted);
-}
-
-.noticeError {
-  color: var(--danger);
-}
+/* Game header: identity and totals — one quiet block above the toolbar. */
 
 .header {
-  margin: 0 0 12px;
-}
-
-.backLink {
-  display: inline-block;
-  margin: 0 0 8px;
-  color: var(--link);
-  font-size: 13px;
-  text-decoration: none;
-
-  &:hover {
-    text-decoration: underline;
-  }
+  margin: 0 0 16px;
 }
 
 .identity {
@@ -91,34 +63,4 @@
 .statLabel {
   color: var(--text-bright);
   font-weight: 650;
-}
-
-.links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0 0 16px;
-}
-
-.link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 32px;
-  padding: 4px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text);
-  font-size: 13px;
-  text-decoration: none;
-
-  &:hover {
-    background: var(--bg-hover);
-    border-color: var(--border-heavy);
-  }
-}
-
-.linkCount {
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
 }

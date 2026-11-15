@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader';
 import { useVortexPage } from './useVortexPage';
 import { VortexAgentPanel } from './VortexAgentPanel';
@@ -17,15 +17,7 @@ export const VortexPage = () => {
 
   return (
     <div className={s.page}>
-      <PageHeader
-        title={t('vortex.title')}
-        description={t('vortex.description')}
-        actions={
-          <Link to={`/games/${gameId}`} className={s.btnGhost}>
-            {t('vortex.backToHub')}
-          </Link>
-        }
-      />
+      <PageHeader title={t('vortex.title')} description={t('vortex.description')} />
 
       {p.groups.length > 1 && (
         <label className={s.filterLabel}>

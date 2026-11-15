@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api, type DiffEntry } from '../../api';
-import { DEFAULT_GAME_ID, getCurrentGame, modListQueryKey } from '../../langDefaults';
+import { modListQueryKey } from '../../langDefaults';
+import { routes } from '../../routes';
 import { useContentLangs } from '../../hooks/useContentLangs';
 import { StatusBadge } from '../../components/StatusBadge';
 import { ReleaseChecklist } from './components';
@@ -40,20 +41,28 @@ export const DiffPage = () => {
     enabled: !!gameId,
   });
   const queryClient = useQueryClient();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [newModId, setNewModId] = useState(searchParams.get('newModId') ?? '');
-  const [oldModId, setOldModId] = useState(searchParams.get('oldModId') ?? '');
+  // The compared pair lives in the address, so a comparison can be reopened or shared.
+  const newModId = searchParams.get('newModId') ?? '';
+  const oldModId = searchParams.get('oldModId') ?? '';
+  const setPair = (key: 'newModId' | 'oldModId', value: string) =>
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        return next;
+      },
+      { replace: true },
+    );
   const [filter, setFilter] = useState<'all' | 'added' | 'removed' | 'changed'>('all');
-  const currentGameId = getCurrentGame();
   const selectedNewModId = Number(newModId);
   const selectedNewMod = mods?.find((m) => m.id === selectedNewModId);
-  const editorBaseTo = selectedNewMod
-    ? `/games/${selectedNewMod.game}/mods/${selectedNewMod.id}`
-    : null;
-  const modsTo = selectedNewMod ? `/games/${selectedNewMod.game}` : null;
+  const editorBaseTo = selectedNewMod ? routes.mod(gameId, selectedNewMod.id) : null;
+  const modsTo = selectedNewMod ? routes.game(gameId) : null;
   const activityTo = selectedNewMod
-    ? `/settings?tab=activity&entityType=mod&entityId=${selectedNewMod.id}`
+    ? routes.settings('activity', { entityType: 'mod', entityId: selectedNewMod.id })
     : null;
 
   const { data: modStats } = useQuery({
@@ -131,7 +140,7 @@ export const DiffPage = () => {
           <label className={s.label}>{t('diff.newVersion')}</label>
           <select
             value={newModId}
-            onChange={(e) => setNewModId(e.target.value)}
+            onChange={(e) => setPair('newModId', e.target.value)}
             className={s.select}
           >
             <option value="">{t('diff.selectMod')}</option>
@@ -146,7 +155,7 @@ export const DiffPage = () => {
           <label className={s.label}>{t('diff.oldVersion')}</label>
           <select
             value={oldModId}
-            onChange={(e) => setOldModId(e.target.value)}
+            onChange={(e) => setPair('oldModId', e.target.value)}
             className={s.select}
           >
             <option value="">{t('diff.selectMod')}</option>
@@ -231,7 +240,7 @@ export const DiffPage = () => {
               carryOver.data.needsReview > 0 &&
               newModId && (
                 <Link
-                  to={`/games/${mods?.find((m) => m.id === Number(newModId))?.game ?? DEFAULT_GAME_ID}/mods/${newModId}?status=draft`}
+                  to={routes.mod(gameId, newModId, { status: 'draft' })}
                   className={s.btnOpenEditor}
                   title={t('diff.openInEditorTitle')}
                 >
@@ -255,8 +264,10 @@ export const DiffPage = () => {
               total={Number(modStats.total)}
               editorTo={editorBaseTo}
               modsTo={modsTo}
-              draftReviewTo={editorBaseTo ? `${editorBaseTo}?status=draft` : null}
-              qaTo={editorBaseTo ? `${editorBaseTo}?qaOnly=1` : null}
+              draftReviewTo={
+                selectedNewMod ? routes.mod(gameId, selectedNewMod.id, { status: 'draft' }) : null
+              }
+              qaTo={selectedNewMod ? routes.mod(gameId, selectedNewMod.id, { qaOnly: 1 }) : null}
               activityTo={activityTo}
               recentActivity={(recentActivity?.entries ?? []).map((entry) => ({
                 id: entry.id,
@@ -292,12 +303,6 @@ export const DiffPage = () => {
                 <button className={s.emptyBtn} onClick={() => setFilter('all')}>
                   {t('diff.showAllAction')}
                 </button>
-                <Link
-                  className={s.emptyLinkBtn}
-                  to={currentGameId ? `/games/${currentGameId}` : '/games'}
-                >
-                  {currentGameId ? t('diff.openCurrentGameAction') : t('diff.openGamesAction')}
-                </Link>
               </div>
             </div>
           ) : (

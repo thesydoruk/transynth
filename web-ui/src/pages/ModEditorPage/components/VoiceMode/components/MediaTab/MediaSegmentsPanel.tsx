@@ -4,6 +4,7 @@ import { api } from '../../../../../../api';
 import type { VideoAsset, VideoSegment } from '../../../../../../api';
 import { formatDuration } from './useMediaTab';
 import s from './MediaTab.module.scss';
+import { routes } from '../../../../../../routes';
 
 type Props = {
   gameId: string;
@@ -45,7 +46,7 @@ export const MediaSegmentsPanel = ({ gameId, modId, asset, segments, loading, on
             {t('video.segments.progress', { translated, count: segments.length })}
           </span>
         )}
-        <Link to={`/games/${gameId}/mods/${modId}?signature=VIDEO`} className={s.btnGhost}>
+        <Link to={routes.mod(gameId, modId, { signature: 'VIDEO' })} className={s.btnGhost}>
           {t('video.segments.openStrings')}
         </Link>
         <button type="button" className={s.linkButton} onClick={onClose}>

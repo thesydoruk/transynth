@@ -1,7 +1,7 @@
 /**
  * GameModDetailsPage — detailed Nexus mod view.
  *
- * Route: /games/:gameId/nexus/:modId
+ * Route: /games/:gameId/nexus/:nexusModId
  */
 
 import { Link, useParams } from 'react-router-dom';
@@ -14,11 +14,12 @@ import { useGameModDetailsQueries } from './hooks/useGameModDetailsQueries';
 import { useModFileActions } from './hooks/useModFileActions';
 import { useNexusDownloadQueue } from './hooks/useNexusDownloadQueue';
 import s from './GameModDetailsPage.module.scss';
+import { routes } from '../../routes';
 
 export const GameModDetailsPage = () => {
   const { t } = useTranslation();
-  const { gameId = '', modId = '' } = useParams<{ gameId: string; modId: string }>();
-  const numericModId = Number(modId);
+  const { gameId = '', nexusModId = '' } = useParams<{ gameId: string; nexusModId: string }>();
+  const numericModId = Number(nexusModId);
   const nexusDownloads = useNexusDownloadQueue();
 
   const {
@@ -55,11 +56,11 @@ export const GameModDetailsPage = () => {
   if (!game || !Number.isFinite(numericModId) || numericModId <= 0) {
     return (
       <div className={s.page}>
-        <Link to="/" className={s.backLink}>
-          {t('games.backToGames')}
+        <Link to={routes.gameSection(gameId, 'nexus')} className={s.backLink}>
+          {t('games.backToMods')}
         </Link>
-        <h1 className={s.title}>{t('games.notFoundTitle')}</h1>
-        <p className={s.subtitle}>{t('games.notFoundSubtitle')}</p>
+        <h1 className={s.title}>{t('games.nexusModNotFoundTitle')}</h1>
+        <p className={s.subtitle}>{t('games.nexusModNotFoundSubtitle')}</p>
       </div>
     );
   }
@@ -67,7 +68,7 @@ export const GameModDetailsPage = () => {
   return (
     <div className={s.page}>
       <div className={s.header}>
-        <Link to={`/games/${gameId}/nexus`} className={s.backLink}>
+        <Link to={routes.gameSection(gameId, 'nexus')} className={s.backLink}>
           {t('games.backToMods')}
         </Link>
         <h1 className={s.title}>{details?.mod.name ?? t('common.loading')}</h1>

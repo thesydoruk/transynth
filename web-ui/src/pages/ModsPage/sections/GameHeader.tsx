@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, type GameInfo, type Mod } from '../../../api';
 import { summarizeContent, type ContentSummary } from '../modsView';
@@ -31,7 +30,7 @@ const StatGroup = ({ label, summary, showCount, format }: StatGroupProps) => {
   );
 };
 
-/** Back link, cover, name and meta, then totals for the game and DLC and for mods. */
+/** Cover, name and meta, then totals for the game and DLC and for mods. */
 export const GameHeader = ({ game, mods }: GameHeaderProps) => {
   const { t, i18n } = useTranslation();
   const summary = useMemo(() => summarizeContent(mods), [mods]);
@@ -46,9 +45,6 @@ export const GameHeader = ({ game, mods }: GameHeaderProps) => {
 
   return (
     <header className={s.header}>
-      <Link to="/" className={s.backLink}>
-        {t('games.backToGames')}
-      </Link>
       <div className={s.identity}>
         <img src={api.games.coverUrl(game.id)} alt="" className={s.cover} loading="lazy" />
         <div className={s.identityText}>

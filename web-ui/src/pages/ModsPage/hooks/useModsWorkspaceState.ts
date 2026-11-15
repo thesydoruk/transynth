@@ -13,6 +13,7 @@ import { useModSelection } from './useModSelection';
 import { useModExport } from './useModExport';
 import { useExportArchives } from './useExportArchives';
 import { useModDeleteActions } from './useModDeleteActions';
+import { routes } from '../../../routes';
 
 type Options = {
   gameId: string;
@@ -144,8 +145,8 @@ export const useModsWorkspaceState = ({
     },
     reimport,
     closeReimport: () => setReimport(null),
-    openMod: (modId) => nav(`/games/${gameId}/mods/${modId}`),
-    openAiPanel: (modId) => nav(`/games/${gameId}/mods/${modId}?open=ai-verify`),
+    openMod: (modId) => nav(routes.mod(gameId, modId)),
+    openAiPanel: (modId) => nav(routes.mod(gameId, modId, { open: 'ai-verify' })),
     setContentKind,
   };
 };
