@@ -41,10 +41,13 @@ const tokensKept = (line: ReviewLine, next: string, game: GameId | null) => {
  * The text the editor's save path would store: the game's markup shape copied
  * from the source (Disco folds «» to `"…"`, restores `--` and `*italics*`).
  * Checked and applied in this form, so an editor need not know the lockit.
+ * The editor's own typography stays: a Creation Engine fix keeps its em dashes.
  */
 export const shapeFixText = (line: ReviewLine, next: string, game: GameId | null): string => {
   const text = findGamePlugin(game)?.text;
-  return text ? text.restoreMarkupShape(text.restoreCensoredSpeech(line.src), next) : next;
+  if (!text) return next;
+  const shape = text.restoreReviewedShape ?? text.restoreMarkupShape;
+  return shape(text.restoreCensoredSpeech(line.src), next);
 };
 
 /** What the game's own verify guard says about the shaped text; empty when it is fine. */

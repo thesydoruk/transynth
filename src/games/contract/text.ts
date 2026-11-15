@@ -89,6 +89,13 @@ export type GameTextAdapter = {
   restoreMarkupShape(source: string, translation: string): string;
 
   /**
+   * The same step for text an editor wrote and a review checked. Absent when
+   * it does not differ from `restoreMarkupShape`; a game whose shape step also
+   * tidies a model's typography keeps the editor's own here.
+   */
+  restoreReviewedShape?(source: string, translation: string): string;
+
+  /**
    * Sharpen an LLM verify verdict using checks only this game can make.
    * Return `result` unchanged when nothing is wrong.
    */

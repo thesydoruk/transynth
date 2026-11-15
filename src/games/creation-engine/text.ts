@@ -57,5 +57,10 @@ export const createCreationEngineTextAdapter = (title: CreationEngineTitle): Gam
    */
   restoreMarkupShape: (_source, translation) =>
     normalizeAutoTranslationDashes(normalizeAutoTranslationQuotes(translation)),
+  /**
+   * A reviewed line keeps the dashes its editor chose, as saving it in the
+   * editor does; only «» fold to ASCII quotes.
+   */
+  restoreReviewedShape: (_source, translation) => normalizeAutoTranslationQuotes(translation),
   guardVerifyResult: (_item, result) => result,
 });

@@ -82,6 +82,31 @@ describe('validateFixes', () => {
     expect(checked.rejected).toEqual([{ fix, why: ['duplicate id'] }]);
     expect(checked.notes).toEqual(['n']);
   });
+
+  it("keeps the editor's dashes in a Creation Engine fix and folds only the guillemets", () => {
+    const l = line({ src: 'War - "war" never changes.', tr: 'Війна - "війна" не міняється.' });
+    const batch: ReviewBatch = {
+      batch_id: 'fo4-dialog-002',
+      mod: 'Fallout4.esm',
+      mod_id: 33,
+      game: 'fo4',
+      family: 'dialog',
+      names: {},
+      units: [{ unit_id: 'u', kind: 'conversation', lines: [l] }],
+    };
+    const fix = { id: 1, old: l.tr, new: 'Війна — «війна» ніколи не змінюється.' };
+
+    const checked = validateFixes(batch, { batch_id: batch.batch_id, fixes: [fix] }, 'fo4');
+
+    expect(checked.rejected).toEqual([]);
+    expect(checked.ok[0].new).toBe('Війна — "війна" ніколи не змінюється.');
+  });
+
+  it('accepts a fix that only restores a dash', () => {
+    expect(
+      problems('Ти готовий — іти, <Alias=Player>?', { tr: 'Ти готовий - іти, <Alias=Player>?' }),
+    ).toEqual([]);
+  });
 });
 
 describe('fixProblems — Disco lockit markup', () => {
