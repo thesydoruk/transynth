@@ -7,7 +7,12 @@ import { describe, expect, it } from '@jest/globals';
 import { upsertVortexMod } from '../../db/mods';
 import { useTestDb } from '../../testing/testDb';
 import { getOrCreateVortexGroup } from '../db';
-import { findPreviousVortexMod, markCurrentVortexMods, planVortexUnits } from '../dbFamily';
+import {
+  findPreviousVortexMod,
+  markCurrentForSettledPlan,
+  markCurrentVortexMods,
+  planVortexUnits,
+} from '../dbFamily';
 import { ensureVortexSchema } from '../schema';
 import type { VortexPlanPayload } from '../types';
 
@@ -177,6 +182,50 @@ describe('vortex mod families', () => {
     expect(await current(groupId)).toEqual([inventory, vrPatch, hud]);
     expect(await current(groupId)).not.toContain(inventoryOld);
     expect(await current(groupId)).not.toContain(hudOld);
+  });
+
+  it('hands the current mark back when the newer folder leaves staging', async () => {
+    const groupId = await group();
+    const plugin = 'WorkshopFramework.esm';
+    const original = await mod(groupId, 'Workshop Framework', 'en1', {
+      plugin,
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    const translated = await mod(groupId, 'WorkshopFramework', 'uk1', { plugin });
+    for (const [id, hash] of [
+      [original, 'en1'],
+      [translated, 'uk1'],
+    ] as const) {
+      await db().query(
+        `INSERT INTO mod_imports(file_name, file_hash, mod_id, status)
+         VALUES ('x.zip', $2, $1, 'completed')`,
+        [id, `v${groupId}:${hash}`],
+      );
+    }
+    await markCurrentVortexMods(db(), groupId, [original, translated]);
+    expect(await current(groupId)).toEqual([translated]);
+
+    // Both folders in staging: nothing to import, the newer one stays current.
+    const both = await plan(groupId, [
+      unit('Workshop Framework', 'en1', plugin, null),
+      unit('WorkshopFramework', 'uk1', plugin, null),
+    ]);
+    expect(await markCurrentForSettledPlan(db(), groupId, both)).toBe(true);
+    expect(await current(groupId)).toEqual([translated]);
+
+    // The translated folder is gone: the original is the current version again.
+    const left = await plan(groupId, [unit('Workshop Framework', 'en1', plugin, null)]);
+    expect(left.map((u) => u.action)).toEqual(['skip']);
+    expect(await markCurrentForSettledPlan(db(), groupId, left)).toBe(true);
+    expect(await current(groupId)).toEqual([original]);
+
+    // A plan that still uploads something leaves the marks to the import stage.
+    const withUpload = await plan(groupId, [
+      unit('Workshop Framework', 'en1', plugin, null),
+      unit('WorkshopFramework', 'uk2', plugin, null),
+    ]);
+    expect(await markCurrentForSettledPlan(db(), groupId, withUpload)).toBe(false);
+    expect(await current(groupId)).toEqual([original]);
   });
 
   it('backfills the plugin of mods imported before the column existed', async () => {
