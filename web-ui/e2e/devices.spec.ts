@@ -49,7 +49,16 @@ const PAGES: PageCase[] = [
   { name: 'coherence', path: '/games/fo4/coherence', ready: heading },
   { name: 'reference', path: '/games/fo4/reference', ready: text('Settler 1') },
   { name: 'vortex', path: '/games/fo4/vortex', ready: text('gaming-pc · 0.10.0') },
-  { name: 'glossary', path: '/glossary', ready: text('Commonwealth Minutemen General') },
+  {
+    name: 'glossary',
+    path: '/games/fo4/glossary',
+    ready: text('Commonwealth Minutemen General'),
+  },
+  {
+    name: 'glossary via the old address',
+    path: '/glossary',
+    ready: text('Commonwealth Minutemen General'),
+  },
   { name: 'settings: general', path: '/settings?tab=general', ready: heading },
   { name: 'settings: llm', path: '/settings?tab=llm', ready: text(/Qwen3-30B/) },
   { name: 'settings: voice', path: '/settings?tab=voice', ready: text(/ai-pipeline\.local:8020/) },
@@ -166,6 +175,37 @@ test('a user can get from the game list to a mod and into settings', async ({ pa
   await expect(page).toHaveURL(/\/settings$/);
 });
 
+test("a game's sections are tabs that stay put, and the editor leads back to the game", async ({
+  page,
+}) => {
+  await open(page, '/games/fo4');
+  const tabs = page.getByRole('navigation', { name: 'Розділи гри' });
+  await expect(tabs.getByRole('link', { name: 'Моди' })).toHaveAttribute('aria-current', 'page');
+
+  for (const [name, path] of [
+    ['Узгодженість', 'coherence'],
+    ['Глосарій', 'glossary'],
+    ['Vortex', 'vortex'],
+  ]) {
+    const tab = tabs.getByRole('link', { name });
+    await tab.click();
+    await expect(page).toHaveURL(new RegExp(`/games/fo4/${path}$`));
+    await expect(tab).toHaveAttribute('aria-current', 'page');
+    const { width } = page.viewportSize()!;
+    const box = (await tab.boundingBox())!;
+    expect(box.x, `${name} tab starts off screen`).toBeGreaterThanOrEqual(-1);
+    expect(box.x + box.width, `${name} tab ends off screen`).toBeLessThanOrEqual(width + 1);
+    expect(box.height, `${name} tab is too short to tap`).toBeGreaterThanOrEqual(MIN_TARGET);
+  }
+
+  await tabs.getByRole('link', { name: 'Моди' }).click();
+  await expect(page).toHaveURL(/\/games\/fo4$/);
+  await page.getByText('Unofficial Fallout 4 Patch').first().click();
+  await expect(page).toHaveURL(/\/games\/fo4\/mods\/2$/);
+  await page.getByRole('link', { name: 'До модів гри' }).click();
+  await expect(page).toHaveURL(/\/games\/fo4$/);
+});
+
 test.describe('mod editor', () => {
   test('gives the string grid most of the screen width', async ({ page }) => {
     await open(page, `/games/fo4/mods/${FIXTURE_MOD_ID}`);
@@ -278,7 +318,7 @@ test('settings open on the tab named in the address, and that tab is on screen',
 
 test.describe('tables', () => {
   test('a glossary row edits without scrolling sideways', async ({ page }) => {
-    await open(page, '/glossary');
+    await open(page, '/games/fo4/glossary');
     const edit = page.getByRole('button', { name: /Редагувати/ }).first();
     await expect(edit).toBeVisible();
     const { width } = page.viewportSize()!;

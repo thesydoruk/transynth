@@ -204,14 +204,16 @@
     "modCount_one": "{{count}} mod",
     "modCount_other": "{{count}} mods",
     "links": {
+      "mods": "Mods",
       "nexus": "Nexus",
       "coherence": "Coherence",
       "diff": "Diff",
       "reference": "Reference",
       "vortex": "Vortex",
-      "glossary": "Glossary",
-      "voice": "Voice"
-    }
+      "glossary": "Glossary"
+    },
+    "crumbsLabel": "Where you are",
+    "crumbGames": "Games"
   },
   "modAi": {
     "progressShort": "{{done}} / {{total}}",
@@ -521,7 +523,8 @@
     "tmApplyDoneApproved": "TM applied to {{count}} rows; {{approved}} approved at once from the reference base.",
     "referencePromoted": "{{count}} translation(s) added to the reference base.",
     "referencePromotedNone": "Nothing to promote: only reviewed and human translations become reference.",
-    "showDraftsAction": "Show drafts"
+    "showDraftsAction": "Show drafts",
+    "backToGame": "Back to the game’s mods"
   },
   "dialogs": {
     "scope": {
@@ -759,8 +762,6 @@
     "filterChanged": "changed",
     "openInEditor": "Open in Editor (Drafts)",
     "showAllAction": "Show all changes",
-    "openCurrentGameAction": "Open current game",
-    "openGamesAction": "Open games catalog",
     "checklistTitle": "Pre-release checklist",
     "checklistSubtitle": "Finish the updated mod without leaving the release flow.",
     "statusReady": "Ready to export",
@@ -820,7 +821,6 @@
   "reference": {
     "title": "Reference base",
     "description": "Translations that outlive the mods they came from. TM auto-apply reads this base ahead of live mods; a row edited here is never overwritten by a promotion.",
-    "backToHub": "← Game",
     "sourceLang": "Source:",
     "targetLang": "Target:",
     "filterPlaceholder": "Filter by source, translation or EDID…",
@@ -1406,7 +1406,6 @@
     "resultsCountAll": "{{count}} mods in {{game}}",
     "noResults": "No mods found for this query.",
     "clearSearchAction": "Clear search",
-    "backToGameAction": "Back to the game",
     "noSummary": "No summary provided",
     "downloads": "Downloads: {{count}}",
     "endorsements": "Endorsements: {{count}}",
@@ -1494,7 +1493,9 @@
       "indonesian": "Indonesian",
       "english": "English",
       "unknown": "Unknown"
-    }
+    },
+    "nexusModNotFoundTitle": "Mod not found",
+    "nexusModNotFoundSubtitle": "The address does not name a Nexus mod."
   },
   "video": {
     "empty": {
@@ -1558,7 +1559,6 @@
   "vortex": {
     "title": "Vortex",
     "description": "The resident agent on the Vortex machine mirrors the staging folder, runs import, carry-over and TM on its own, and drops finished langpacks into Vortex's downloads folder. LLM, verify, voice and export start from here, when their hosts are up.",
-    "backToHub": "← Game",
     "group": "Staging folder",
     "empty": {
       "title": "No Vortex agent yet",

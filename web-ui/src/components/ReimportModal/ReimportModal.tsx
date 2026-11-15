@@ -20,6 +20,7 @@ import type { PreviousVersionRow } from '../../api';
 import { Button } from '../Button';
 import { ModalShell } from '../ModalShell';
 import s from './ReimportModal.module.scss';
+import { routes } from '../../routes';
 
 interface ReimportModalProps {
   newModId: number;
@@ -41,7 +42,7 @@ export const ReimportModal = ({ newModId, prevVersions, onClose }: ReimportModal
   const openDiff = () => {
     if (selectedId == null || !routeGameId) return;
     onClose();
-    navigate(`/games/${routeGameId}/diff?newModId=${newModId}&oldModId=${selectedId}`);
+    navigate(routes.diff(routeGameId, { newModId, oldModId: selectedId }));
   };
 
   const header = (

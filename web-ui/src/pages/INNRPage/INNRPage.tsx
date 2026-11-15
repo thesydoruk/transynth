@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { getContentLanguageOptions, getTgtLang } from '../../langDefaults';
 import { GroupCard } from './GroupCard';
 import s from './INNRPage.module.scss';
+import { routes } from '../../routes';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -93,7 +94,7 @@ export const INNRPage = () => {
     <div className={s.page}>
       {/* Page header with back button */}
       <div className={s.header}>
-        <button className={s.backBtn} onClick={() => navigate(`/games/${gameId}/mods/${modId}`)}>
+        <button className={s.backBtn} onClick={() => navigate(routes.mod(gameId ?? '', modId))}>
           ← {t('innr.backToEditor')}
         </button>
         <h2 className={s.title}>{t('innr.title')}</h2>

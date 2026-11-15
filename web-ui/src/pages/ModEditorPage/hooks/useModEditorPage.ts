@@ -21,8 +21,8 @@ const FETCH_PAGE_SIZE = 100;
 
 /** Composes all mod-editor state, queries, mutations, and action handlers. */
 export function useModEditorPage() {
-  const { id, gameId } = useParams<{ id: string; gameId: string }>();
-  const modId = Number(id);
+  const { modId: modIdParam, gameId } = useParams<{ modId: string; gameId: string }>();
+  const modId = Number(modIdParam);
   const clearSelectionRef = useRef<() => void>(() => {});
   const flushAutosaveRef = useRef<() => void>(() => {});
   const cancelAutosaveRef = useRef<() => void>(() => {});

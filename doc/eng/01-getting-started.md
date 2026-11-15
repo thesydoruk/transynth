@@ -284,7 +284,7 @@ Use the URL that matches your runtime mode:
 
 There is **no login**. Anyone who can reach the HTTP port can use the app — see [SECURITY.md](../../SECURITY.md).
 
-The first screen is the **Games** catalogue (`/`). Until setup is done it shows a short checklist: configure the LLM, import a mod, run auto-translate. Pick a title to open the game page (`/games/:gameId`): a compact header with the game and its totals, links to the game’s other pages, and the mods workspace. The old `/games/:gameId/mods` address redirects there; the editor is `/games/:gameId/mods/:id`.
+The first screen is the **Games** catalogue (`/`). Until setup is done it shows a short checklist: configure the LLM, import a mod, run auto-translate. Pick a title to open the game page (`/games/:gameId`): a crumb and a tab strip shared by every section of the game (Mods, Nexus, Coherence, Diff, Reference, Glossary, Vortex), and under them the mods workspace with the game’s totals. The old `/games/:gameId/mods` address redirects there; the editor is `/games/:gameId/mods/:modId`.
 
 The top bar is thin: the brand (games catalogue), a badge for the last game you opened, the content language pair (`SRC → TGT`), Settings (gear), and **System log** (`/system-log` — LLM / TTS / job / system lines). Glossary, Diff, and Coherence are links on the game page, not in the first row.
 

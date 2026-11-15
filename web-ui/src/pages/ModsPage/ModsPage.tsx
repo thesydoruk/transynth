@@ -4,7 +4,7 @@
  * Sections: toolbar (upload, search, filters), activity, game and DLC, mods, exports.
  * The view (source, content, status, search, grouping) lives in the URL.
  *
- * URL: /games/:gameId
+ * URL: /games/:gameId — the index section of the game layout.
  */
 import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
@@ -17,14 +17,13 @@ import { ModListHeader } from './ModListHeader';
 import { ModsPageEmptyState } from './ModsPageEmptyState';
 import { ModsPageModals } from './ModsPageModals';
 import { ModsWorkspaceContext } from './ModsWorkspaceContext';
-import { useGameInfo, useModsPageData, useModsView, useModsWorkspaceState } from './hooks';
+import { useGameInfo } from '../../hooks/useGameInfo';
+import { useModsPageData, useModsView, useModsWorkspaceState } from './hooks';
 import { countActivity } from './modsPageUtils';
 import { filterMods, splitByContent } from './modsView';
 import { ActivitySection } from './sections/ActivitySection';
 import { ExportsSection } from './sections/ExportsSection';
 import { GameHeader } from './sections/GameHeader';
-import { GameLinks } from './sections/GameLinks';
-import { GameUnavailable } from './sections/GameUnavailable';
 import { GameContentSection } from './sections/GameContentSection';
 import { ModsSection } from './sections/ModsSection';
 import { ModsToolbar } from './sections/ModsToolbar';
@@ -47,9 +46,8 @@ export const ModsPage = () => {
   const { game, mods } = useMemo(() => splitByContent(visibleMods), [visibleMods]);
   const workspace = useModsWorkspaceState({ gameId, srcLang, targetLang, pageData, visibleMods });
 
-  if (gameInfo.isLoading) return <GameUnavailable state="loading" />;
-  if (gameInfo.error) return <GameUnavailable state="error" error={gameInfo.error} />;
-  if (!gameInfo.game) return <GameUnavailable state="missing" />;
+  // The game layout renders this page only for a game it has resolved.
+  if (!gameInfo.game) return null;
 
   if (pageData.modsError) {
     return (
@@ -73,7 +71,6 @@ export const ModsPage = () => {
     <ModsWorkspaceContext.Provider value={workspace}>
       <div className={s.page}>
         <GameHeader game={gameInfo.game} mods={allMods} />
-        <GameLinks gameId={gameId} srcLang={srcLang} targetLang={targetLang} />
         <ModsToolbar view={view} onChange={setView} showFilters={allMods.length > 0} />
 
         {loading ? (

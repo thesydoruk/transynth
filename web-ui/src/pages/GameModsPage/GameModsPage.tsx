@@ -12,7 +12,7 @@
 
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type GameInfo } from '../../api';
@@ -105,24 +105,12 @@ export const GameModsPage = () => {
     return <div className={s.error}>{t('common.error', { message: String(gamesError) })}</div>;
   }
 
-  if (!game) {
-    return (
-      <div className={s.page}>
-        <Link to={`/games/${gameId}`} className={s.backLink}>
-          {t('games.backToGames')}
-        </Link>
-        <h1 className={s.title}>{t('games.notFoundTitle')}</h1>
-        <p className={s.subtitle}>{t('games.notFoundSubtitle')}</p>
-      </div>
-    );
-  }
+  // The game layout renders this page only for a game it has resolved.
+  if (!game) return null;
 
   return (
     <div className={s.page}>
       <div className={s.header}>
-        <Link to={`/games/${gameId}`} className={s.backLink}>
-          {t('games.backToGames')}
-        </Link>
         <h1 className={s.title}>{t('games.modsTitle', { game: game.name })}</h1>
         <p className={s.subtitle}>{t('games.modsSubtitle')}</p>
       </div>
@@ -183,9 +171,6 @@ export const GameModsPage = () => {
                     >
                       {t('games.clearSearchAction')}
                     </button>
-                    <Link to={`/games/${gameId}`} className={s.emptyLinkBtn}>
-                      {t('games.backToGameAction')}
-                    </Link>
                   </div>
                 </div>
               ) : (

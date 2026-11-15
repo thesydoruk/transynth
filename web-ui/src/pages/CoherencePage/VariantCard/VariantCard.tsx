@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { CoherenceEntry } from '../../../api';
 import { StatusBadge } from '../../../components/StatusBadge';
 import s from './VariantCard.module.scss';
+import { routes } from '../../../routes';
 
 export interface VariantCardProps {
   translation: string;
@@ -43,7 +44,10 @@ export const VariantCard = ({ translation, strings, onApply, isApplying }: Varia
             <StatusBadge status={entry.status} small />
             <Link
               className={s.openLink}
-              to={`/games/${entry.mod_game}/mods/${entry.mod_id}?status=${encodeURIComponent(entry.status)}&signature=${encodeURIComponent(entry.signature)}`}
+              to={routes.mod(entry.mod_game, entry.mod_id, {
+                status: entry.status,
+                signature: entry.signature,
+              })}
               title={t('coherence.openInEditor')}
             >
               ↗

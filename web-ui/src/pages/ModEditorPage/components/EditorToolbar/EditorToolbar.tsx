@@ -10,6 +10,7 @@ import { type StatusFilterValue } from '../../statusFilter';
 import type { EditorCapabilities } from '../../editorCapabilities';
 import { EditorModeSwitch, type EditorPageMode } from './EditorModeSwitch';
 import styles from './EditorToolbar.module.scss';
+import { routes } from '../../../../routes';
 
 /** Shape returned by the stats API. */
 export interface ModStats {
@@ -135,7 +136,19 @@ export const EditorToolbar = ({
   return (
     <div className={styles.toolbar}>
       <div className={styles.modHeader}>
-        <span className={styles.modName}>{modName ?? '…'}</span>
+        <span className={styles.modTitle}>
+          {gameId && (
+            <Link
+              to={routes.game(gameId)}
+              className={styles.backToGame}
+              title={t('modEditor.backToGame')}
+              aria-label={t('modEditor.backToGame')}
+            >
+              ←
+            </Link>
+          )}
+          <span className={styles.modName}>{modName ?? '…'}</span>
+        </span>
         <ModAiControls
           translate={aiJobs.translate}
           verify={aiJobs.verify}
@@ -234,7 +247,7 @@ export const EditorToolbar = ({
       />
       {capabilities.actions.innrLink && hasInnrSignature && (
         <Link
-          to={`/games/${gameId}/mods/${modId}/innr`}
+          to={routes.modInnr(gameId ?? '', modId)}
           className={styles.btnSec}
           title={t('modEditor.innrEditorTitle')}
         >

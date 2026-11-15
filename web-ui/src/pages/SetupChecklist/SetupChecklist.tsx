@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { DashboardData, SettingsPayload } from '../../api';
 import s from './SetupChecklist.module.scss';
+import { routes } from '../../routes';
 
 export interface SetupChecklistProps {
   dash: DashboardData | undefined;
@@ -30,7 +31,7 @@ export const SetupChecklist = ({ dash, settings, workspaceTo }: SetupChecklistPr
       done: llmReady,
       label: t('setup.llmItem'),
       action: t('setup.llmAction'),
-      to: '/settings?tab=llm',
+      to: routes.settings('llm'),
     },
     {
       done: hasImportedMod,

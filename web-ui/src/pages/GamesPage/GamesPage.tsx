@@ -23,6 +23,7 @@ import { getCurrentGame } from '../../langDefaults';
 import { SetupChecklist } from '../SetupChecklist';
 import { GameTile, SkeletonGameTile } from './GameTile';
 import s from './GamesPage.module.scss';
+import { routes } from '../../routes';
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 
@@ -54,7 +55,7 @@ export const GamesPage = () => {
 
   const currentGameId = getCurrentGame();
   const workspaceId = data?.find((game) => game.id === currentGameId)?.id ?? data?.[0]?.id ?? null;
-  const workspaceTo = workspaceId ? `/games/${workspaceId}` : undefined;
+  const workspaceTo = workspaceId ? routes.game(workspaceId) : undefined;
   const checklist = <SetupChecklist dash={dash} settings={settings} workspaceTo={workspaceTo} />;
 
   if (isLoading) {
@@ -91,7 +92,7 @@ export const GamesPage = () => {
           <h2 className={s.emptyTitle}>{t('games.emptyTitle')}</h2>
           <p className={s.emptyText}>{emptyHint}</p>
           <div className={s.emptyActions}>
-            <Link className={s.emptyLinkBtn} to="/settings">
+            <Link className={s.emptyLinkBtn} to={routes.settings()}>
               {t('games.openSettingsAction')}
             </Link>
           </div>
@@ -99,7 +100,7 @@ export const GamesPage = () => {
       ) : (
         <div className={s.grid}>
           {(data ?? []).map((game) => (
-            <Link key={game.id} to={`/games/${game.id}`} className={s.tileLink}>
+            <Link key={game.id} to={routes.game(game.id)} className={s.tileLink}>
               <GameTile game={game} />
             </Link>
           ))}

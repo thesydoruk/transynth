@@ -80,16 +80,6 @@
   cursor: not-allowed;
 }
 
-.btnGhost {
-  background: transparent;
-  color: var(--text-dim);
-  border: 1px solid var(--border-light);
-  border-radius: 4px;
-  padding: 6px 12px;
-  font-size: 13px;
-  text-decoration: none;
-}
-
 .error {
   color: var(--danger);
   font-size: 12px;

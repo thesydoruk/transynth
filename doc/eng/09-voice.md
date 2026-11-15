@@ -61,7 +61,7 @@ Bethesda FUZ / LIP.
 ## Voice mode
 
 Open a mod and switch the toolbar to **Voice**
-(`?mode=voice` on `/games/:gameId/mods/:id`).
+(`?mode=voice` on `/games/:gameId/mods/:modId`).
 
 Bethesda and Disco both have this mode. Disco has **no Dialogs** tab and no
 INNR / gender-detect actions.

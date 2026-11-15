@@ -1,5 +1,6 @@
 export { CoherencePage } from './CoherencePage';
 export { DiffPage } from './DiffPage';
+export { GameLayout } from './GameLayout';
 export { GameModDetailsPage } from './GameModDetailsPage';
 export { GameModsPage } from './GameModsPage';
 export { GamesPage } from './GamesPage';

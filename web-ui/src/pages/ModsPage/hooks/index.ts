@@ -9,4 +9,3 @@ export { useExportArchives } from './useExportArchives';
 export { useModDeleteActions } from './useModDeleteActions';
 export { useModsView } from './useModsView';
 export { useModsWorkspaceState } from './useModsWorkspaceState';
-export { useGameInfo } from './useGameInfo';
