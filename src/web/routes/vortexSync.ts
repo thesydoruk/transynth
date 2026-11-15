@@ -23,7 +23,7 @@ import {
   updateVortexSyncRun,
 } from '../../vortex/db';
 import { findPlanUnit, patchVortexPlanUnit } from '../../vortex/planUnits';
-import { planVortexUnits } from '../../vortex/dbFamily';
+import { markCurrentForSettledPlan, planVortexUnits } from '../../vortex/dbFamily';
 import { ensureVortexSchema } from '../../vortex/schema';
 import { registerVortexPack, vortexExtractDir } from '../../vortex/registerPack';
 import { scopedVortexFileHash, vortexGroupLabel } from '../../vortex/groupKey';
@@ -108,6 +108,7 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
       gameDir: body.gameDir,
     });
     const units = await planVortexUnits(db, group.id, { ...body, channel, game });
+    await markCurrentForSettledPlan(db, group.id, units);
     const run = await insertVortexSyncRun(db, {
       groupId: group.id,
       game,

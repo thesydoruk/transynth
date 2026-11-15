@@ -135,3 +135,21 @@ export const markCurrentVortexMods = async (
     [groupId, presentModIds],
   );
 };
+
+/**
+ * A plan with nothing to import starts no run, so the import stage never marks
+ * the current versions: a folder removed from staging would leave its mod
+ * current instead of the version that is still there. Mark them from the plan.
+ */
+export const markCurrentForSettledPlan = async (
+  db: Tx,
+  groupId: number,
+  units: VortexPlanUnit[],
+): Promise<boolean> => {
+  if (units.length === 0 || units.some((unit) => unit.action !== 'skip')) return false;
+  const present = units.flatMap(
+    (unit) => unit.existingModIds ?? (unit.existingModId ? [unit.existingModId] : []),
+  );
+  await markCurrentVortexMods(db, groupId, present);
+  return true;
+};
