@@ -11,7 +11,19 @@ export type ReviewFocus = {
   untranslated?: boolean;
   /** Work only on lines whose translation has one of these provenances. */
   provenances?: ReadonlySet<string>;
+  /**
+   * With `untranslated`: translations with these provenances are not trusted
+   * (a wrong memory match) — the line is work again and its text is hidden.
+   */
+  redo?: ReadonlySet<string>;
 };
+
+/** True when a line's current translation is to be thrown away and redone. */
+export const isRedone = (
+  focus: ReviewFocus | undefined,
+  line: { translation: string | null; provenance: string | null },
+): boolean =>
+  Boolean(focus?.untranslated && line.translation && focus.redo?.has(line.provenance ?? ''));
 
 /** Context lines kept on each side of a run of work lines. */
 const FOCUS_NEIGHBOURS = 4;
@@ -27,7 +39,9 @@ export const isFocusTarget = (
   line: { translation: string | null; provenance: string | null; source: string },
 ): boolean => {
   if (!isFocused(focus)) return true;
-  if (focus!.untranslated) return !line.translation && hasLetters(line.source);
+  if (focus!.untranslated) {
+    return (!line.translation || isRedone(focus, line)) && hasLetters(line.source);
+  }
   return line.translation != null && focus!.provenances!.has(line.provenance ?? '');
 };
 
