@@ -4,7 +4,7 @@ import type { Tx } from '../../db';
 import { log } from '../../logger';
 import { ensureDir } from '../../utils/file';
 import { decodeAudioToReferenceWav } from '../ffmpegAudio';
-import { resolveVoiceRootRel, type VoiceFileEntry } from '../discoverVoiceFiles';
+import { findDirAnyCase, resolveVoiceRootRel, type VoiceFileEntry } from '../discoverVoiceFiles';
 import {
   loadVoiceSpeakerRef,
   voiceSpeakerRefMatches,
@@ -144,7 +144,9 @@ export const resolveSpeakerReferenceForSpeaker = async (
   const { db, modId, speakerKey } = input;
   const isEligible = input.isEligible ?? anyVoiceReferenceEligible;
   const voiceRootRel = resolveVoiceRootRel(input.pluginRelPath);
-  const voiceRootAbs = path.join(input.packageDir, ...voiceRootRel.split('/'));
+  const voiceRootAbs =
+    findDirAnyCase(input.packageDir, voiceRootRel) ??
+    path.join(input.packageDir, ...voiceRootRel.split('/'));
   const speakerCacheDir = speakerReferenceCacheRoot(modId);
   const dirs: CacheDirs = {
     speaker: speakerCacheDir,

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
-import { resolveVoiceRootRel } from '../../../voice/discoverVoiceFiles';
+import { findDirAnyCase, resolveVoiceRootRel } from '../../../voice/discoverVoiceFiles';
 import {
   modImportLocalizeDir,
   resolveModImportExtractRoot,
@@ -55,8 +55,7 @@ const importPackageVoiceContext = (
   const pluginRel = pluginRelPath(pkg.packageDir, pluginPath);
   // A package picked beside the plugin (a sibling content folder) is not its voice root.
   if (pluginRel.startsWith('..') || path.isAbsolute(pluginRel)) return null;
-  const voiceRoot = path.join(pkg.packageDir, ...resolveVoiceRootRel(pluginRel).split('/'));
-  if (!fs.existsSync(voiceRoot)) return null;
+  if (!findDirAnyCase(pkg.packageDir, resolveVoiceRootRel(pluginRel))) return null;
   return {
     packageDir: pkg.packageDir,
     pluginRel,
@@ -89,11 +88,7 @@ export const resolveVoicePackageContext = (
   }
 
   for (const candidate of candidates) {
-    const voiceRoot = path.join(
-      candidate.packageDir,
-      ...resolveVoiceRootRel(candidate.pluginRel).split('/'),
-    );
-    if (fs.existsSync(voiceRoot)) {
+    if (findDirAnyCase(candidate.packageDir, resolveVoiceRootRel(candidate.pluginRel))) {
       return {
         ...candidate,
         pluginPath,

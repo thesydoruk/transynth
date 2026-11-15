@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { EspStringRow } from '../../formats/esp';
 import { logImport } from '../../logging/loggers';
+import { findDirAnyCase } from '../../voice/discoverVoiceFiles';
 
 const buildNpcNameMap = (
   espRows: EspStringRow[],
@@ -83,9 +84,9 @@ const buildVoiceFolderMap = (espPath: string): Map<string, string> => {
   const map = new Map<string, string>();
   const modDir = path.dirname(espPath);
   const pluginName = path.basename(espPath);
-  const voiceRoot = path.join(modDir, 'Sound', 'Voice', pluginName);
+  const voiceRoot = findDirAnyCase(modDir, `Sound/Voice/${pluginName}`);
 
-  if (!fs.existsSync(voiceRoot)) return map;
+  if (!voiceRoot) return map;
 
   let dirs: fs.Dirent[];
   try {

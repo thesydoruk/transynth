@@ -38,6 +38,34 @@ const resolveVoiceTreeRel = (pluginRelPath: string): string =>
   normalizeRelPath(path.dirname(resolveVoiceRootRel(pluginRelPath)));
 
 /**
+ * A folder by its package-relative path, whatever case each segment has on
+ * disk. The engine reads `sound/voice` and `Sound/Voice` alike and mods ship
+ * both; a Linux host does not. The exact spelling wins; null when no folder
+ * matches.
+ */
+export const findDirAnyCase = (packageDir: string, relDir: string): string | null => {
+  let current = packageDir;
+  for (const segment of normalizeRelPath(relDir).split('/').filter(Boolean)) {
+    const exact = path.join(current, segment);
+    if (fs.existsSync(exact)) {
+      current = exact;
+      continue;
+    }
+    let children: fs.Dirent[];
+    try {
+      children = fs.readdirSync(current, { withFileTypes: true });
+    } catch {
+      return null;
+    }
+    const want = segment.toLowerCase();
+    const hit = children.find((child) => child.isDirectory() && child.name.toLowerCase() === want);
+    if (!hit) return null;
+    current = path.join(current, hit.name);
+  }
+  return current;
+};
+
+/**
  * Origin folders the plugin's takes may sit in: its own and its TES4 masters'.
  * Null when the plugin file cannot be read, and then every folder is walked.
  */
@@ -62,11 +90,15 @@ const allowedVoiceOrigins = (packageDir: string, pluginRelPath: string): Set<str
  * DLC folders beside `Fallout4.esm` in a game's Data directory, a sibling
  * add-on — belong to someone else. Folder names are matched by what they are,
  * so a folder whose case differs from the plugin file name is found too.
+ *
+ * So is a tree the mod spells `sound/voice`. A take's `relPath` still starts
+ * with `Sound/Voice`: it names where the dub goes, and everything that looks
+ * for dubs looks there. The original is read through `absolutePath`.
  */
 export const discoverVoiceFiles = (packageDir: string, pluginRelPath: string): VoiceFileEntry[] => {
   const treeRel = resolveVoiceTreeRel(pluginRelPath);
-  const treeRoot = path.join(packageDir, ...treeRel.split('/'));
-  if (!fs.existsSync(treeRoot)) return [];
+  const treeRoot = findDirAnyCase(packageDir, treeRel);
+  if (!treeRoot) return [];
   const allowed = allowedVoiceOrigins(packageDir, pluginRelPath);
 
   const entries: VoiceFileEntry[] = [];

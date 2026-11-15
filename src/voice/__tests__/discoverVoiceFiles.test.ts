@@ -1,7 +1,12 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { dedupeVoiceFiles, discoverVoiceFiles, type VoiceFileEntry } from '../discoverVoiceFiles';
+import {
+  dedupeVoiceFiles,
+  discoverVoiceFiles,
+  findDirAnyCase,
+  type VoiceFileEntry,
+} from '../discoverVoiceFiles';
 
 const entry = (
   speaker: string,
@@ -93,6 +98,30 @@ describe('discoverVoiceFiles', () => {
       const found = discoverVoiceFiles(root, 'Data/Patch.esp');
 
       expect(found.map((e) => e.originPlugin)).toEqual(['fallout4.esm', 'patch.esp']);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('finds a tree the mod spells in lower case and names its takes under Sound/Voice', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'discover-voice-'));
+    try {
+      const speaker = path.join(root, 'sound', 'voice', 'maxwellsworl.esp', '1max_galevoice');
+      fs.mkdirSync(speaker, { recursive: true });
+      fs.writeFileSync(path.join(speaker, '00040de6_1.fuz'), 'x');
+
+      const found = discoverVoiceFiles(root, 'MaxwellsWorl.esp');
+
+      expect(found.map((e) => [e.relPath, e.originPlugin, e.lineKey])).toEqual([
+        [
+          'Sound/Voice/maxwellsworl.esp/1max_galevoice/00040de6_1.fuz',
+          'maxwellsworl.esp',
+          '040DE6',
+        ],
+      ]);
+      expect(fs.existsSync(found[0]!.absolutePath)).toBe(true);
+      expect(findDirAnyCase(root, 'Sound/Voice/MaxwellsWorl.esp')).not.toBeNull();
+      expect(findDirAnyCase(root, 'Sound/Voice/Other.esp')).toBeNull();
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
