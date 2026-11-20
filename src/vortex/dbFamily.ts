@@ -1,5 +1,6 @@
 /** Version families of Vortex mods: plan targets, carry sources, the current version. */
 import type { Tx } from '../db';
+import { setMachinePresentMods } from './dbMachines';
 import { modFamilySql, paramFamilySql, vortexPluginKey } from './family';
 import { scopedVortexFileHash } from './groupKey';
 import type { VortexPlanPayload, VortexPlanUnit } from './types';
@@ -104,13 +105,18 @@ export const findPreviousVortexMod = async (
   return rows[0]?.id ?? null;
 };
 
-/** Mark staging-present mods as current; older siblings in the same family stay archived. */
+/**
+ * Mark staging-present mods as current; older siblings in the same family stay
+ * archived. With a machine, the mods are also recorded as the ones it holds.
+ */
 export const markCurrentVortexMods = async (
   db: Tx,
   groupId: number,
   presentModIds: number[],
+  machineId: number | null = null,
 ): Promise<void> => {
   if (presentModIds.length === 0) return;
+  if (machineId != null) await setMachinePresentMods(db, machineId, presentModIds);
   await db.query(
     `WITH present AS (
        SELECT id, vortex_plugin, nexus_mod_id, name, channel, created_at
@@ -145,11 +151,12 @@ export const markCurrentForSettledPlan = async (
   db: Tx,
   groupId: number,
   units: VortexPlanUnit[],
+  machineId: number | null = null,
 ): Promise<boolean> => {
   if (units.length === 0 || units.some((unit) => unit.action !== 'skip')) return false;
   const present = units.flatMap(
     (unit) => unit.existingModIds ?? (unit.existingModId ? [unit.existingModId] : []),
   );
-  await markCurrentVortexMods(db, groupId, present);
+  await markCurrentVortexMods(db, groupId, present, machineId);
   return true;
 };

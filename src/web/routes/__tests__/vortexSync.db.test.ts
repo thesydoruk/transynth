@@ -47,6 +47,35 @@ describe('vortex API ids', () => {
     expect((await get('/api/vortex/sync/999/langpack')).statusCode).toBe(404);
   });
 
+  it('plans for the machine the agent names', async () => {
+    const plan = (agentKey: string) =>
+      app().inject({
+        method: 'POST',
+        url: '/api/vortex/sync/plan',
+        payload: {
+          groupKey: 'fo4:c:/vortex/fallout4/mods',
+          game: 'fo4',
+          stagingPath: 'C:/Vortex/fallout4/mods',
+          gameDir: `C:/Games/${agentKey}`,
+          agentKey,
+          units: [],
+        },
+      });
+
+    const desk = (await plan('desk')).json();
+    const laptop = (await plan('laptop')).json();
+
+    expect(laptop.group.id).toBe(desk.group.id);
+    const { rows } = await db().query(
+      `SELECT a.agent_key, a.game_dir, r.id AS run_id
+       FROM vortex_sync_runs r JOIN vortex_agents a ON a.id = r.agent_id ORDER BY r.id`,
+    );
+    expect(rows).toEqual([
+      { agent_key: 'desk', game_dir: 'C:/Games/desk', run_id: desk.run.id },
+      { agent_key: 'laptop', game_dir: 'C:/Games/laptop', run_id: laptop.run.id },
+    ]);
+  });
+
   // The Vortex page links to this URL; the browser's download manager needs the size.
   it('streams the finished langpack of a run with its size', async () => {
     const group = await getOrCreateVortexGroup(db(), {

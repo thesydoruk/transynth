@@ -58,7 +58,7 @@ export type SyncContext = {
   onActivity?: (text: string) => void;
   /** Called with the totals of every scan. */
   onScan?: (scan: AgentScanSummary) => void;
-  /** The machine's name, for the video manifests. */
+  /** The machine's name: whose mods and load order these are, and for the video manifests. */
   agentKey?: string;
 };
 
@@ -86,11 +86,13 @@ const startOrJoinTm = async (
   groupId: number,
   channel: AgentConfig['channel'],
   modIds?: number[],
+  agentKey?: string,
 ): Promise<number> => {
   try {
     const tm = await api.startStage(groupId, 'tm', {
       channel,
       startedBy: 'agent',
+      ...(agentKey ? { agentKey } : {}),
       ...(modIds ? { modIds } : {}),
     });
     return tm.runId;
@@ -150,7 +152,7 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
   if (!unitsChanged && !orderChanged) return { kind: 'unchanged' };
 
   if (!unitsChanged && state.groupId != null) {
-    await api.postExportOrder(state.groupId, scan.exportOrder);
+    await api.postExportOrder(state.groupId, scan.exportOrder, ctx.agentKey);
     state.signatures.order = scan.orderSig;
     return { kind: 'order-only', groupId: state.groupId };
   }
@@ -161,6 +163,7 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
     game: config.game,
     stagingPath: scan.inventory.stagingPath,
     gameDir: scan.inventory.gameDir,
+    ...(ctx.agentKey ? { agentKey: ctx.agentKey } : {}),
     channel: config.channel,
     srcLang: config.srcLang,
     tgtLang: config.tgtLang,
@@ -175,7 +178,7 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
 
   if (needed.size === 0 && state.lastRunId != null && !state.resyncNeeded) {
     // Everything the server knows already; only the order may be new.
-    await api.postExportOrder(plan.group.id, scan.exportOrder);
+    await api.postExportOrder(plan.group.id, scan.exportOrder, ctx.agentKey);
     state.signatures.units = scan.unitsSig;
     state.signatures.order = scan.orderSig;
     return { kind: 'order-only', groupId: plan.group.id };
@@ -229,7 +232,7 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
   }
 
   ctx.onPhase?.('waiting-server');
-  await api.postExportOrder(plan.group.id, scan.exportOrder);
+  await api.postExportOrder(plan.group.id, scan.exportOrder, ctx.agentKey);
   const to = config.autoStages === 'import' ? 'import' : 'carry';
   // A first sync, a retry of a failed cycle and a Sync from the page go over
   // the whole group; otherwise carry and TM touch only the mods just imported.
@@ -252,7 +255,7 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
   // An older server names no imported mods: TM then runs over the group, as before.
   const tmModIds = allMods ? undefined : imported;
   if (config.autoStages === 'tm' && tmModIds?.length !== 0) {
-    tmRunId = await startOrJoinTm(api, plan.group.id, config.channel, tmModIds);
+    tmRunId = await startOrJoinTm(api, plan.group.id, config.channel, tmModIds, ctx.agentKey);
     await api.waitRun(tmRunId, (run) => {
       log.info(`vortex-agent: TM run #${tmRunId} ${run.status}`);
       ctx.onActivity?.(`TM run #${tmRunId} ${run.status}`);

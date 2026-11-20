@@ -1055,6 +1055,18 @@ CREATE TABLE IF NOT EXISTS vortex_agents (
   UNIQUE (vortex_group_id, agent_key)
 );
 
+-- A machine of a group (src/vortex/dbMachines.ts): the mods are shared, while
+-- the mods its staging holds, its load order, its game version and its paths
+-- are its own; a run records the machine it was made for. Mirrored in
+-- src/vortex/schemaMachines.ts, which also hands a group's earlier state to
+-- the machine seen last.
+ALTER TABLE vortex_agents ADD COLUMN IF NOT EXISTS staging_path TEXT;
+ALTER TABLE vortex_agents ADD COLUMN IF NOT EXISTS game_dir TEXT;
+ALTER TABLE vortex_agents ADD COLUMN IF NOT EXISTS export_order_json JSONB;
+ALTER TABLE vortex_agents ADD COLUMN IF NOT EXISTS present_mod_ids INTEGER[];
+ALTER TABLE vortex_agents ADD COLUMN IF NOT EXISTS game_release_id INTEGER REFERENCES vortex_game_releases(id) ON DELETE SET NULL;
+ALTER TABLE vortex_sync_runs ADD COLUMN IF NOT EXISTS agent_id INTEGER REFERENCES vortex_agents(id) ON DELETE SET NULL;
+
 ALTER TABLE mods ADD COLUMN IF NOT EXISTS origin TEXT NOT NULL DEFAULT 'manual';
 ALTER TABLE mods ADD COLUMN IF NOT EXISTS vortex_group_id INTEGER REFERENCES vortex_groups(id) ON DELETE SET NULL;
 ALTER TABLE mods ADD COLUMN IF NOT EXISTS channel TEXT;

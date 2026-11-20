@@ -23,6 +23,7 @@ import {
   setGroupExportOrder,
   upsertVortexAgent,
 } from '../../vortex/dbAgents';
+import { resolveVortexMachine, setMachineExportOrder } from '../../vortex/dbMachines';
 import { findActiveVortexRun, listVortexSyncRuns } from '../../vortex/dbRuns';
 import { isVortexExportOrder } from '../../vortex/exportOrder';
 import { vortexGroupKey, vortexGroupLabel } from '../../vortex/groupKey';
@@ -135,24 +136,26 @@ export const vortexAgentRoutes = async (app: FastifyInstance, db: Tx) => {
     });
   });
 
-  app.post<{ Params: { id: string }; Body: { exportOrder?: VortexExportOrder } }>(
-    '/api/vortex/groups/:id/export-order',
-    async (req, reply) => {
-      const id = parseRouteId(req.params.id);
-      if (id === null) return reply.code(400).send({ error: 'Invalid group id' });
-      if (!(await getVortexGroup(db, id)))
-        return reply.code(404).send({ error: 'Group not found' });
-      const order = req.body?.exportOrder;
-      if (!isVortexExportOrder(order))
-        return reply.code(400).send({ error: 'exportOrder is invalid' });
-      await setGroupExportOrder(db, id, order);
-      return reply.send({
-        ok: true,
-        plugins: order.plugins.length,
-        fileWinners: order.fileWinners.length,
-      });
-    },
-  );
+  app.post<{
+    Params: { id: string };
+    Body: { exportOrder?: VortexExportOrder; agentKey?: string };
+  }>('/api/vortex/groups/:id/export-order', async (req, reply) => {
+    const id = parseRouteId(req.params.id);
+    if (id === null) return reply.code(400).send({ error: 'Invalid group id' });
+    if (!(await getVortexGroup(db, id))) return reply.code(404).send({ error: 'Group not found' });
+    const order = req.body?.exportOrder;
+    if (!isVortexExportOrder(order))
+      return reply.code(400).send({ error: 'exportOrder is invalid' });
+    // The order is the machine's; the group keeps a copy for a run no machine is named for.
+    const machineId = await resolveVortexMachine(db, id, req.body?.agentKey);
+    if (machineId != null) await setMachineExportOrder(db, machineId, order);
+    await setGroupExportOrder(db, id, order);
+    return reply.send({
+      ok: true,
+      plugins: order.plugins.length,
+      fileWinners: order.fileWinners.length,
+    });
+  });
 
   app.get<{ Params: { id: string } }>('/api/vortex/groups/:id/state', async (req, reply) => {
     const id = parseRouteId(req.params.id);

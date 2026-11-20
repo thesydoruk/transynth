@@ -128,6 +128,8 @@ export type VortexPlanPayload = {
   game: GameId;
   stagingPath: string;
   gameDir: string;
+  /** The machine the plan is for; an agent older than machines sends none. */
+  agentKey?: string;
   channel: VortexChannel;
   srcLang: string;
   tgtLang: string;

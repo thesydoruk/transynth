@@ -1,4 +1,5 @@
 import type { Tx } from '../db';
+import { ensureVortexMachineSchema } from './schemaMachines';
 import { inferModVersionLabel } from './versionLabel';
 
 export const ensureVortexSchema = async (db: Tx): Promise<void> => {
@@ -91,6 +92,7 @@ export const ensureVortexSchema = async (db: Tx): Promise<void> => {
   await db.query(`ALTER TABLE mods ADD COLUMN IF NOT EXISTS vortex_plugin TEXT`);
   await db.query(VORTEX_PLUGIN_BACKFILL_SQL);
   await backfillVortexModVersions(db);
+  await ensureVortexMachineSchema(db);
 };
 
 // chr(92) is a backslash: an anchor path may come from Windows.

@@ -159,6 +159,8 @@ if (needInventory) {
       game: inventory.game,
       stagingPath: inventory.stagingPath,
       gameDir: inventory.gameDir,
+      // The same machine as the resident agent on this computer.
+      agentKey: os.hostname(),
       channel,
       srcLang: argv['src-lang'],
       tgtLang: argv['tgt-lang'],
@@ -287,7 +289,7 @@ const runFanOutStage = async (stage: VortexFanOutStage): Promise<void> => {
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ channel, startedBy: 'agent' }),
+      body: JSON.stringify({ channel, startedBy: 'agent', agentKey: os.hostname() }),
     },
   );
   log.info(`Started ${stage} run #${started.runId} (job #${started.jobId})`);

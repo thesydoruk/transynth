@@ -182,8 +182,11 @@ export const createAgentApi = (opts: { api: string; token?: string }) => {
     waitRun,
     heartbeat: (beat: VortexAgentHeartbeat) =>
       post<HeartbeatReply>('/api/vortex/agent/heartbeat', beat),
-    postExportOrder: (groupId: number, exportOrder: VortexExportOrder) =>
-      post<{ ok: boolean }>(`/api/vortex/groups/${groupId}/export-order`, { exportOrder }),
+    postExportOrder: (groupId: number, exportOrder: VortexExportOrder, agentKey?: string) =>
+      post<{ ok: boolean }>(`/api/vortex/groups/${groupId}/export-order`, {
+        exportOrder,
+        ...(agentKey ? { agentKey } : {}),
+      }),
     startRange: (runId: number, from: string, to: string, extra: Record<string, unknown> = {}) =>
       post<{ ok: boolean; jobId?: number; skipped?: boolean }>(`/api/vortex/sync/${runId}/start`, {
         from,

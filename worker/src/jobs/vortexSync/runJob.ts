@@ -15,9 +15,9 @@ import {
   getVortexSyncRun,
   listCurrentGroupModIds,
   updateVortexSyncRun,
-  upsertCurrentGameRelease,
   type VortexSyncRunRow,
 } from '../../../../src/vortex/db';
+import { upsertCurrentGameRelease } from '../../../../src/vortex/dbReleases';
 import { carryTargetIds, unitJobIds, unitsNeverUploaded } from '../../../../src/vortex/planUnits';
 import { findPreviousVortexMod, markCurrentVortexMods } from '../../../../src/vortex/dbFamily';
 import {
@@ -103,7 +103,7 @@ const runImportStage = async (db: Tx, run: VortexSyncRunRow): Promise<ImportedMo
   const hint = (run.plan_json as { gameRelease?: { versionLabel: string; releaseHash: string } })
     ?.gameRelease;
   if (hint?.releaseHash) {
-    const releaseId = await upsertCurrentGameRelease(db, run.vortex_group_id, hint);
+    const releaseId = await upsertCurrentGameRelease(db, run.vortex_group_id, hint, run.agent_id);
     if (releaseId) {
       await db.query(
         `UPDATE mods SET game_release_id = $1,
@@ -113,7 +113,7 @@ const runImportStage = async (db: Tx, run: VortexSyncRunRow): Promise<ImportedMo
       );
     }
   }
-  await markCurrentVortexMods(db, run.vortex_group_id, importedModIds);
+  await markCurrentVortexMods(db, run.vortex_group_id, importedModIds, run.agent_id);
   // The agent reads this to run TM for the new mods only.
   await db.query(
     `UPDATE vortex_sync_runs

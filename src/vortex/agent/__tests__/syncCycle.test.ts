@@ -143,6 +143,33 @@ describe('runSyncCycle after a failed cycle', () => {
     expect(calls.at(-1)).toBe('start tm all');
   });
 
+  it('names its machine in the plan, the load order and the TM start', async () => {
+    const config = parseAgentConfig({
+      api: 'http://localhost:1',
+      game: 'fo4',
+      stagingPath: path.join(root, 'staging'),
+      gameDir: path.join(root, 'game'),
+      downloadsDir: path.join(root, 'downloads'),
+      channel: 'mods',
+      autoStages: 'tm',
+    });
+    const { api } = makeApi({ imported: [254] });
+    const state = { ...emptyAgentState(), lastRunId: 5, groupId: 1 };
+
+    await runSyncCycle({ config, state, cache: {}, api, agentKey: 'desk' });
+
+    expect(api.post).toHaveBeenCalledWith(
+      '/api/vortex/sync/plan',
+      expect.objectContaining({ agentKey: 'desk' }),
+    );
+    expect(api.postExportOrder).toHaveBeenCalledWith(1, expect.anything(), 'desk');
+    expect(api.startStage).toHaveBeenCalledWith(
+      1,
+      'tm',
+      expect.objectContaining({ agentKey: 'desk', modIds: [254] }),
+    );
+  });
+
   it('otherwise treats a known inventory with nothing to upload as order-only', async () => {
     const state = { ...emptyAgentState(), lastRunId: 5, groupId: 1 };
     const { outcome, calls } = await run(state);

@@ -89,6 +89,26 @@ describe('vortex agent API', () => {
     expect(rows[0].export_order_json).toEqual(exportOrder);
   });
 
+  it('keeps each machine’s paths and load order on its own row', async () => {
+    const { groupId } = (await heartbeat(beat)).json();
+    await heartbeat({ ...beat, agentKey: 'laptop', gameDir: 'E:/Fallout4' });
+    const order = (plugin: string) => ({ plugins: [plugin], fileWinners: [] });
+    const post = (payload: object) =>
+      app().inject({ method: 'POST', url: `/api/vortex/groups/${groupId}/export-order`, payload });
+
+    await post({ exportOrder: order('Desk.esp'), agentKey: 'gaming-pc' });
+    await post({ exportOrder: order('Laptop.esp'), agentKey: 'laptop' });
+
+    const { rows } = await db().query(
+      `SELECT agent_key, game_dir, export_order_json->'plugins' AS plugins
+       FROM vortex_agents ORDER BY agent_key`,
+    );
+    expect(rows).toEqual([
+      { agent_key: 'gaming-pc', game_dir: 'D:/Games/Fallout4', plugins: ['Desk.esp'] },
+      { agent_key: 'laptop', game_dir: 'E:/Fallout4', plugins: ['Laptop.esp'] },
+    ]);
+  });
+
   it('rejects a malformed export order', async () => {
     const { groupId } = (await heartbeat(beat)).json();
     const res = await app().inject({

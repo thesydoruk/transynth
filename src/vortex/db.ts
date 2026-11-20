@@ -1,7 +1,6 @@
 import type { Tx } from '../db';
 import type { GameId } from '../types';
 import type { VortexChannel } from './stages';
-import type { VortexGameReleaseHint } from './types';
 
 export type VortexGroupRow = {
   id: number;
@@ -30,7 +29,15 @@ export type VortexSyncRunRow = {
   /** The stage a UI or agent start was for; null for a CLI plan run. */
   stage: string | null;
   started_by: string | null;
+  /** The machine the run was made for (`vortex_agents.id`); null when no machine was named. */
+  agent_id: number | null;
 };
+
+const GROUP_COLUMNS = `id, game, group_key, label, staging_path, game_dir`;
+
+const RUN_COLUMNS = `id, vortex_group_id, game, src_lang, tgt_lang, channel, status,
+  current_stage, last_completed_stage, current_mod_id, job_id,
+  export_archive_id, error, plan_json, stage, started_by, agent_id`;
 
 export const getOrCreateVortexGroup = async (
   db: Tx,
@@ -50,7 +57,7 @@ export const getOrCreateVortexGroup = async (
        staging_path = EXCLUDED.staging_path,
        game_dir = EXCLUDED.game_dir,
        updated_at = NOW()
-     RETURNING id, game, group_key, label, staging_path, game_dir`,
+     RETURNING ${GROUP_COLUMNS}`,
     [params.game, params.groupKey, params.label, params.stagingPath, params.gameDir],
   );
   return rows[0]!;
@@ -59,22 +66,20 @@ export const getOrCreateVortexGroup = async (
 export const listVortexGroups = async (db: Tx, game?: string): Promise<VortexGroupRow[]> => {
   if (game) {
     const { rows } = await db.query<VortexGroupRow>(
-      `SELECT id, game, group_key, label, staging_path, game_dir
-       FROM vortex_groups WHERE game = $1 ORDER BY updated_at DESC`,
+      `SELECT ${GROUP_COLUMNS} FROM vortex_groups WHERE game = $1 ORDER BY updated_at DESC`,
       [game],
     );
     return rows;
   }
   const { rows } = await db.query<VortexGroupRow>(
-    `SELECT id, game, group_key, label, staging_path, game_dir
-     FROM vortex_groups ORDER BY updated_at DESC`,
+    `SELECT ${GROUP_COLUMNS} FROM vortex_groups ORDER BY updated_at DESC`,
   );
   return rows;
 };
 
 export const getVortexGroup = async (db: Tx, id: number): Promise<VortexGroupRow | undefined> => {
   const { rows } = await db.query<VortexGroupRow>(
-    `SELECT id, game, group_key, label, staging_path, game_dir FROM vortex_groups WHERE id = $1`,
+    `SELECT ${GROUP_COLUMNS} FROM vortex_groups WHERE id = $1`,
     [id],
   );
   return rows[0];
@@ -86,43 +91,10 @@ export const getVortexGroupByKey = async (
   groupKey: string,
 ): Promise<VortexGroupRow | undefined> => {
   const { rows } = await db.query<VortexGroupRow>(
-    `SELECT id, game, group_key, label, staging_path, game_dir
-     FROM vortex_groups WHERE game = $1 AND group_key = $2`,
+    `SELECT ${GROUP_COLUMNS} FROM vortex_groups WHERE game = $1 AND group_key = $2`,
     [game, groupKey],
   );
   return rows[0];
-};
-
-export const upsertCurrentGameRelease = async (
-  db: Tx,
-  groupId: number,
-  hint: VortexGameReleaseHint,
-): Promise<number | null> => {
-  if (!hint.releaseHash) return null;
-  await db.query(`UPDATE vortex_game_releases SET is_current = FALSE WHERE vortex_group_id = $1`, [
-    groupId,
-  ]);
-  const { rows } = await db.query<{ id: number }>(
-    `INSERT INTO vortex_game_releases (vortex_group_id, version_label, release_hash, is_current)
-     VALUES ($1, $2, $3, TRUE)
-     ON CONFLICT (vortex_group_id, release_hash) DO UPDATE SET
-       version_label = EXCLUDED.version_label,
-       is_current = TRUE
-     RETURNING id`,
-    [groupId, hint.versionLabel, hint.releaseHash],
-  );
-  return rows[0]?.id ?? null;
-};
-
-export const listGameReleases = async (db: Tx, groupId: number) => {
-  const { rows } = await db.query(
-    `SELECT id, version_label, release_hash, is_current, created_at
-     FROM vortex_game_releases
-     WHERE vortex_group_id = $1
-     ORDER BY created_at DESC`,
-    [groupId],
-  );
-  return rows;
 };
 
 export const insertVortexSyncRun = async (
@@ -137,15 +109,16 @@ export const insertVortexSyncRun = async (
     /** The stage a UI or agent start is for; a CLI plan leaves it empty. */
     stage?: string | null;
     startedBy?: 'agent' | 'ui' | 'cli' | null;
+    /** The machine the run is for. */
+    agentId?: number | null;
   },
 ): Promise<VortexSyncRunRow> => {
   const { rows } = await db.query<VortexSyncRunRow>(
     `INSERT INTO vortex_sync_runs
-       (vortex_group_id, game, src_lang, tgt_lang, channel, status, plan_json, stage, started_by)
-     VALUES ($1, $2, $3, $4, $5, 'planning', $6::jsonb, $7, $8)
-     RETURNING id, vortex_group_id, game, src_lang, tgt_lang, channel, status,
-               current_stage, last_completed_stage, current_mod_id, job_id,
-               export_archive_id, error, plan_json, stage, started_by`,
+       (vortex_group_id, game, src_lang, tgt_lang, channel, status, plan_json, stage, started_by,
+        agent_id)
+     VALUES ($1, $2, $3, $4, $5, 'planning', $6::jsonb, $7, $8, $9)
+     RETURNING ${RUN_COLUMNS}`,
     [
       params.groupId,
       params.game,
@@ -155,6 +128,7 @@ export const insertVortexSyncRun = async (
       JSON.stringify(params.plan),
       params.stage ?? null,
       params.startedBy ?? null,
+      params.agentId ?? null,
     ],
   );
   return rows[0]!;
@@ -165,10 +139,7 @@ export const getLatestVortexSyncRun = async (
   groupId: number,
 ): Promise<VortexSyncRunRow | undefined> => {
   const { rows } = await db.query<VortexSyncRunRow>(
-    `SELECT id, vortex_group_id, game, src_lang, tgt_lang, channel, status,
-            current_stage, last_completed_stage, current_mod_id, job_id,
-            export_archive_id, error, plan_json, stage, started_by
-     FROM vortex_sync_runs WHERE vortex_group_id = $1
+    `SELECT ${RUN_COLUMNS} FROM vortex_sync_runs WHERE vortex_group_id = $1
      ORDER BY id DESC LIMIT 1`,
     [groupId],
   );
@@ -180,10 +151,7 @@ export const getVortexSyncRun = async (
   id: number,
 ): Promise<VortexSyncRunRow | undefined> => {
   const { rows } = await db.query<VortexSyncRunRow>(
-    `SELECT id, vortex_group_id, game, src_lang, tgt_lang, channel, status,
-            current_stage, last_completed_stage, current_mod_id, job_id,
-            export_archive_id, error, plan_json, stage, started_by
-     FROM vortex_sync_runs WHERE id = $1`,
+    `SELECT ${RUN_COLUMNS} FROM vortex_sync_runs WHERE id = $1`,
     [id],
   );
   return rows[0];
