@@ -39,6 +39,7 @@ import {
   QUEUE_NAME_BY_ID,
 } from './core/jobKinds';
 import { migrateJobsToDedicatedQueues } from './core/migrateJobQueues';
+import { recoverExportForFailedJob, recoverInterruptedExports } from './core/recoverExports';
 import { recoverOrphanedLlmJobs, requeueStalledLlmJob } from './core/recoverLlmJobs';
 import {
   recoverOrphanedVoiceGenerateJobs,
@@ -46,7 +47,7 @@ import {
 } from './core/recoverVoiceJobs';
 import { failVortexRunForJob, recoverInterruptedVortexRuns } from './core/recoverVortexRuns';
 import type { JobData } from './types';
-import { cancelAllActiveRuns, controlActiveRun, processJob } from './processor';
+import { cancelAllActiveRuns, controlActiveRun, isActiveRun, processJob } from './processor';
 
 ensureDataDirs();
 const db = openDb();
@@ -85,6 +86,9 @@ if (servedIds.includes('llm')) {
 if (servedIds.includes(queueIdForKind('vortex-sync'))) {
   await recoverInterruptedVortexRuns(db);
 }
+if (servedIds.includes(queueIdForKind('langpack-export'))) {
+  await recoverInterruptedExports(db);
+}
 
 const startQueueWorker = (
   queueName: string,
@@ -112,6 +116,7 @@ const startQueueWorker = (
       void requeueStalledVoiceGenerate(job, err);
       void requeueStalledLlmJob(job, err);
       void failVortexRunForJob(db, job, err);
+      void recoverExportForFailedJob(db, job, err, isActiveRun);
     }
   });
   return worker;

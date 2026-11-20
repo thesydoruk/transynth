@@ -39,6 +39,9 @@ export const controlActiveRun = (jobId: number, action: 'cancel' | 'pause'): voi
   else run.pause();
 };
 
+/** True while this process still runs the job's handler. */
+export const isActiveRun = (jobId: number): boolean => activeRuns.has(jobId);
+
 /** Abort every in-flight job (worker shutdown). */
 export const cancelAllActiveRuns = (): void => {
   for (const run of activeRuns.values()) run.cancel();
