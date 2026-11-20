@@ -68,7 +68,12 @@ const mod = (
   name: string,
   strings: number,
   translated: number,
-  extra: { content_kind?: string; vortex_group_id?: number | null; version_label?: string } = {},
+  extra: {
+    content_kind?: string;
+    vortex_group_id?: number | null;
+    version_label?: string;
+    machines?: string[];
+  } = {},
 ) => ({
   id,
   name,
@@ -103,7 +108,15 @@ const mods = [
   mod(4, 'Fallout4', 120000, 120000, { content_kind: 'base', version_label: '1.10.163' }),
   mod(5, 'DLCRobot', 9000, 4500, { content_kind: 'dlc' }),
   mod(6, 'ccBGSFO4001-PipBoy(Black)', 40, 10, { content_kind: 'addon' }),
-  mod(7, 'Workshop Framework', 2300, 2300, { vortex_group_id: 1 }),
+  // Two machines on one Vortex group: a mod both hold, and one only the laptop has.
+  mod(7, 'Workshop Framework', 2300, 2300, {
+    vortex_group_id: 1,
+    machines: ['gaming-pc', 'living-room-laptop'],
+  }),
+  mod(8, 'Settlement Menu Manager', 310, 310, {
+    vortex_group_id: 1,
+    machines: ['living-room-laptop'],
+  }),
 ];
 
 const stats = {

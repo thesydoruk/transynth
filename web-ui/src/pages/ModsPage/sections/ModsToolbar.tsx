@@ -15,10 +15,10 @@ const CONTENT: ModsContent[] = ['all', 'game', 'mods'];
 const STATUS: ModsStatusFilter[] = ['all', 'todo', 'review', 'done'];
 const GROUP: ModsGroupBy[] = ['none', 'source', 'status'];
 
-/** Upload bar, then search and the view selects (source, content, status, grouping). */
+/** Upload bar, then search and the view selects (source, machine, content, status, grouping). */
 export const ModsToolbar = ({ view, onChange, showFilters }: ModsToolbarProps) => {
   const { t } = useTranslation();
-  const { vortexGroups } = useModsWorkspace();
+  const { vortexGroups, machineNames } = useModsWorkspace();
 
   return (
     <>
@@ -50,6 +50,21 @@ export const ModsToolbar = ({ view, onChange, showFilters }: ModsToolbarProps) =
               {vortexGroups.map((group) => (
                 <option key={group.id} value={group.id}>
                   {group.label}
+                </option>
+              ))}
+            </select>
+          )}
+          {machineNames.length > 1 && (
+            <select
+              className={s.select}
+              aria-label={t('mods.view.machineLabel')}
+              value={view.machine}
+              onChange={(e) => onChange({ machine: e.target.value })}
+            >
+              <option value="">{t('mods.view.machine.all')}</option>
+              {machineNames.map((name) => (
+                <option key={name} value={name}>
+                  {name}
                 </option>
               ))}
             </select>

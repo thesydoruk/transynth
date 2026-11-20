@@ -30,10 +30,15 @@ const createdAt = (mod: Mod): number => {
   return Number.isFinite(ts) ? ts : 0;
 };
 
+const onMachine = (mod: Mod): boolean => (mod.machines?.length ?? 0) > 0;
+
 /**
  * Current version first; older siblings of the same source / plugin / Nexus id / name go
  * under it. Families keep the order their current version has in `mods`, so the caller
  * decides how the list is sorted.
+ *
+ * Two Vortex machines may run different versions of one mod: each of those is in use, so
+ * each gets a row of its own, and the versions no machine holds go under the newest.
  */
 export const groupModVersions = (mods: Mod[]): ModVersionGroup[] => {
   const buckets = new Map<string, Mod[]>();
@@ -49,10 +54,13 @@ export const groupModVersions = (mods: Mod[]): ModVersionGroup[] => {
   for (const family of buckets.values()) {
     const sorted = [...family].sort((a, b) => createdAt(b) - createdAt(a));
     const current = sorted.find((mod) => mod.is_current !== false) ?? sorted[0]!;
-    const previous = sorted
-      .filter((mod) => mod.id !== current.id)
-      .sort((a, b) => createdAt(b) - createdAt(a));
+    const alsoInUse = sorted.filter(
+      (mod) => mod.id !== current.id && mod.is_current !== false && onMachine(mod),
+    );
+    const heads = onMachine(current) ? [current, ...alsoInUse] : [current];
+    const previous = sorted.filter((mod) => !heads.includes(mod));
     groups.push({ current, previous });
+    for (const head of heads.slice(1)) groups.push({ current: head, previous: [] });
   }
 
   return groups.sort((a, b) => position.get(a.current.id)! - position.get(b.current.id)!);

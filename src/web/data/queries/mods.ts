@@ -58,6 +58,8 @@ export const listMods = async (
       version_label: string | null;
       vortex_plugin: string | null;
       is_current: boolean;
+      /** Host names of the Vortex machines whose staging holds this mod. */
+      machines: string[];
       created_at: Date;
       record_count: string;
       string_count: string;
@@ -82,6 +84,11 @@ export const listMods = async (
         m.version_label,
         m.vortex_plugin,
         COALESCE(m.is_current, TRUE) AS is_current,
+        COALESCE((
+          SELECT array_agg(a.agent_key ORDER BY a.agent_key)
+            FROM vortex_agents a
+           WHERE a.vortex_group_id = m.vortex_group_id AND m.id = ANY(a.present_mod_ids)
+        ), '{}') AS machines,
         m.created_at,
         COALESCE(st.record_count, 0)::bigint AS record_count,
         COALESCE(st.string_count, 0)::bigint AS string_count,

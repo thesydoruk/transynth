@@ -15,6 +15,8 @@ export type ModsView = {
   status: ModsStatusFilter;
   q: string;
   group: ModsGroupBy;
+  /** Host name of one Vortex machine; empty for every machine. */
+  machine: string;
 };
 
 export const DEFAULT_MODS_VIEW: ModsView = {
@@ -23,6 +25,7 @@ export const DEFAULT_MODS_VIEW: ModsView = {
   status: 'all',
   q: '',
   group: 'none',
+  machine: '',
 };
 
 export type ModGroup = { key: string; label?: string; mods: Mod[] };
@@ -48,6 +51,7 @@ export const parseModsView = (params: URLSearchParams): ModsView => {
     status: pick(params.get('status'), STATUS_VALUES, 'all'),
     q: params.get('q') ?? '',
     group: pick(params.get('group'), GROUP_VALUES, 'none'),
+    machine: params.get('machine') ?? '',
   };
 };
 
@@ -79,6 +83,10 @@ export const modStatus = (mod: Mod): ModStatus => {
   return stats.approved >= stats.total ? 'done' : 'review';
 };
 
+/** The Vortex machines the listed mods are on, by name. */
+export const machineNamesOf = (mods: Mod[]): string[] =>
+  [...new Set(mods.flatMap((mod) => mod.machines ?? []))].sort((a, b) => a.localeCompare(b));
+
 const sourceKey = (mod: Mod): string =>
   mod.vortex_group_id == null ? 'manual' : String(mod.vortex_group_id);
 
@@ -88,6 +96,7 @@ const matches = (mod: Mod, view: ModsView): boolean => {
   if (view.content === 'game' && !isGameContent(mod)) return false;
   if (view.content === 'mods' && isGameContent(mod)) return false;
   if (view.status !== 'all' && modStatus(mod) !== view.status) return false;
+  if (view.machine && !(mod.machines ?? []).includes(view.machine)) return false;
   const needle = view.q.trim().toLowerCase();
   return !needle || formatModDisplayName(mod).toLowerCase().includes(needle);
 };

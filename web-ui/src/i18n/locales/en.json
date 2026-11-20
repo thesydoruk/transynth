@@ -154,6 +154,7 @@
       "mod": "Mod"
     },
     "vortexChip": "Vortex",
+    "machineChip": "In the Vortex staging of {{name}}",
     "contentType": "Content type",
     "contentAuto": "Auto",
     "contentAutoKind": "Auto ({{kind}})",
@@ -170,6 +171,10 @@
       "source": {
         "all": "All sources",
         "manual": "Local imports"
+      },
+      "machineLabel": "Machine",
+      "machine": {
+        "all": "All machines"
       },
       "contentLabel": "Content",
       "content": {

@@ -84,6 +84,22 @@
   cursor: help;
 }
 
+/* A Vortex machine whose staging holds this version; shown once the game has two. */
+.machineChip {
+  display: inline-block;
+  max-width: 14ch;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--bg-hover, var(--border-light));
+  color: var(--text-muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+  cursor: help;
+}
+
 .kindField {
   display: flex;
   flex-direction: column;

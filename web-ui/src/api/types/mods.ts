@@ -21,6 +21,8 @@ export type Mod = {
   /** Lower-cased plugin a Vortex mod is anchored on; null without one. */
   vortex_plugin?: string | null;
   is_current?: boolean;
+  /** Host names of the Vortex machines whose staging holds this mod. */
+  machines?: string[];
   created_at: string;
   record_count: number;
   string_count: number;

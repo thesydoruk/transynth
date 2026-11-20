@@ -18,6 +18,8 @@ export type ModsWorkspace = {
   targetLang: string;
   /** Vortex groups of the game; the source filter only exists when there are any. */
   vortexGroups: Array<{ id: number; label: string }>;
+  /** Vortex machines the game's mods are on; chips and the filter show from two up. */
+  machineNames: string[];
   /** Label of a Vortex group, undefined for manual uploads or an unknown group. */
   vortexGroupLabel: (groupId: number | null | undefined) => string | undefined;
   selection: ReturnType<typeof useModSelection>;

@@ -31,6 +31,7 @@ export const ModWorkspaceList = ({ mods }: { mods: Mod[] }) => {
     openMod,
     openAiPanel,
     vortexGroupLabel,
+    machineNames,
     setContentKind,
   } = useModsWorkspace();
   const groups = groupModVersions(mods);
@@ -104,6 +105,7 @@ export const ModWorkspaceList = ({ mods }: { mods: Mod[] }) => {
         onExportLangpack={exportSelected}
         exportingLangpack={exportingLangpack}
         vortexLabel={vortexGroupLabel(mod.vortex_group_id)}
+        machines={machineNames.length > 1 ? mod.machines : undefined}
         onContentKindChange={(kind) => void setContentKind(mod.id, kind)}
       />
     );

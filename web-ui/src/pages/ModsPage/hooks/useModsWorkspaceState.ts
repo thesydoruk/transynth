@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { api, type Mod, type ModContentKind, type PreviousVersionRow } from '../../../api';
 import { useToast } from '../../../components/Toast';
 import type { ModsWorkspace } from '../ModsWorkspaceContext';
+import { machineNamesOf } from '../modsView';
 import type { useModsPageData } from './useModsPageData';
 import { useJobQueueSubscriptions } from './useJobQueueSubscriptions';
 import { useImportJobRunner } from './useImportJobRunner';
@@ -53,6 +54,8 @@ export const useModsWorkspaceState = ({
       groupId == null ? undefined : vortexGroups.find((group) => group.id === groupId)?.label,
     [vortexGroups],
   );
+
+  const machineNames = useMemo(() => machineNamesOf(pageData.mods ?? []), [pageData.mods]);
 
   const { nexusDownloads, appJobs } = useJobQueueSubscriptions();
   const importRunner = useImportJobRunner({
@@ -103,6 +106,7 @@ export const useModsWorkspaceState = ({
     srcLang,
     targetLang,
     vortexGroups,
+    machineNames,
     vortexGroupLabel,
     selection,
     deleteActions,

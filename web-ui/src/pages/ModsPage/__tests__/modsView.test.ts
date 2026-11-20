@@ -5,6 +5,7 @@ import {
   aggregateProgress,
   filterMods,
   groupMods,
+  machineNamesOf,
   modStatus,
   parseModsView,
   sortGameContent,
@@ -73,7 +74,9 @@ describe('parseModsView / writeModsView', () => {
       status: 'all',
       q: 'ui',
       group: 'status',
+      machine: '',
     });
+    expect(parseModsView(new URLSearchParams('machine=desk')).machine).toBe('desk');
     expect(parseModsView(new URLSearchParams('source=manual')).source).toBe('manual');
     expect(parseModsView(new URLSearchParams('source=abc')).source).toBe('all');
   });
@@ -115,6 +118,17 @@ describe('filterMods', () => {
   it('keeps older versions with a matching current version', () => {
     const old = mod({ id: 4, name: 'Hud Tweaks', is_current: false, created_at: '2025-01-01' });
     expect(ids(filterMods([...mods, old], view({ status: 'done' })))).toEqual([3, 4]);
+  });
+
+  it('filters by the machine whose staging holds the mod', () => {
+    const onBoth = mod({ id: 5, name: 'Shared', vortex_group_id: 5, machines: ['desk', 'laptop'] });
+    const onDesk = mod({ id: 6, name: 'Desk Only', vortex_group_id: 5, machines: ['desk'] });
+    const all = [...mods, onBoth, onDesk];
+
+    expect(machineNamesOf(all)).toEqual(['desk', 'laptop']);
+    expect(ids(filterMods(all, view({ machine: 'laptop' })))).toEqual([5]);
+    expect(ids(filterMods(all, view({ machine: 'desk' })))).toEqual([5, 6]);
+    expect(ids(filterMods(all, view({})))).toEqual([1, 2, 3, 5, 6]);
   });
 });
 
