@@ -10,6 +10,8 @@ jest.unstable_mockModule('../../../services/kindHealth', () => ({
 const { vortexAgentRoutes } = await import('../vortexAgent');
 const { useTestDb } = await import('../../../testing/testDb');
 const { useTestApp } = await import('../../../testing/testApp');
+const { insertVortexSyncRun, updateVortexSyncRun } = await import('../../../vortex/db');
+const { finalizeExportArchive, insertExportArchive } = await import('../../data/queries');
 
 const beat = {
   game: 'fo4',
@@ -81,12 +83,76 @@ describe('vortex agent API', () => {
     expect(state).toMatchObject({
       group: { id: groupId },
       agent: { agent_key: 'gaming-pc' },
+      machines: [
+        {
+          agent_key: 'gaming-pc',
+          game_dir: 'D:/Games/Fallout4',
+          mod_count: null,
+          game_version: null,
+          latestLangpack: null,
+        },
+      ],
       currentRun: null,
       latestLangpack: null,
       services: { llm: false, embed: false, tts: true },
     });
-    const { rows } = await db().query(`SELECT export_order_json FROM vortex_groups`);
-    expect(rows[0].export_order_json).toEqual(exportOrder);
+    // An agent older than machines names none: the order goes to the group's only machine.
+    const { rows } = await db().query(
+      `SELECT a.export_order_json AS machine, g.export_order_json AS grp
+       FROM vortex_agents a JOIN vortex_groups g ON g.id = a.vortex_group_id`,
+    );
+    expect(rows).toEqual([{ machine: exportOrder, grp: null }]);
+  });
+
+  it('offers a machine the langpack made for it, not another machine’s', async () => {
+    const desk = (await heartbeat(beat)).json();
+    const laptop = (await heartbeat({ ...beat, agentKey: 'laptop' })).json();
+    const archive = await insertExportArchive(db(), {
+      game: 'fo4',
+      srcLang: 'en',
+      tgtLang: 'uk',
+      label: `vortex-${desk.groupId}`,
+      fileName: 'fo4_uk_langpack.zip',
+      modIds: [],
+      totalCount: 0,
+    });
+    await finalizeExportArchive(db(), archive.id, {
+      status: 'completed',
+      relPath: `${archive.id}/fo4_uk_langpack.zip`,
+      byteSize: 11,
+    });
+    const run = await insertVortexSyncRun(db(), {
+      groupId: desk.groupId,
+      game: 'fo4',
+      srcLang: 'en',
+      tgtLang: 'uk',
+      channel: 'all',
+      plan: {},
+      stage: 'export',
+      agentId: desk.agentId,
+    });
+    await updateVortexSyncRun(db(), run.id, { status: 'completed', export_archive_id: archive.id });
+
+    expect((await heartbeat(beat)).json().latestLangpack).toMatchObject({ archiveId: archive.id });
+    expect((await heartbeat({ ...beat, agentKey: 'laptop' })).json().latestLangpack).toBeNull();
+
+    const state = (await app().inject({ url: `/api/vortex/groups/${desk.groupId}/state` })).json();
+    const byKey = Object.fromEntries(
+      state.machines.map((m: { agent_key: string; latestLangpack: unknown }) => [
+        m.agent_key,
+        m.latestLangpack,
+      ]),
+    );
+    expect(byKey).toEqual({
+      'gaming-pc': {
+        archiveId: archive.id,
+        runId: run.id,
+        fileName: 'fo4_uk_langpack.zip',
+        byteSize: 11,
+      },
+      laptop: null,
+    });
+    expect(laptop.agentId).not.toBe(desk.agentId);
   });
 
   it('keeps each machine’s paths and load order on its own row', async () => {
@@ -98,6 +164,8 @@ describe('vortex agent API', () => {
 
     await post({ exportOrder: order('Desk.esp'), agentKey: 'gaming-pc' });
     await post({ exportOrder: order('Laptop.esp'), agentKey: 'laptop' });
+    // With two machines an order that names none cannot be told apart: it stays the group's.
+    await post({ exportOrder: order('Unnamed.esp') });
 
     const { rows } = await db().query(
       `SELECT agent_key, game_dir, export_order_json->'plugins' AS plugins

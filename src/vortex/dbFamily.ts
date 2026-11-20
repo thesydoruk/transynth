@@ -1,6 +1,6 @@
 /** Version families of Vortex mods: plan targets, carry sources, the current version. */
 import type { Tx } from '../db';
-import { setMachinePresentMods } from './dbMachines';
+import { markCurrentAcrossMachines, setMachinePresentMods } from './dbMachines';
 import { modFamilySql, paramFamilySql, vortexPluginKey } from './family';
 import { scopedVortexFileHash } from './groupKey';
 import type { VortexPlanPayload, VortexPlanUnit } from './types';
@@ -107,7 +107,8 @@ export const findPreviousVortexMod = async (
 
 /**
  * Mark staging-present mods as current; older siblings in the same family stay
- * archived. With a machine, the mods are also recorded as the ones it holds.
+ * archived. With a machine, the mods are recorded as the ones it holds and the
+ * mark is taken over every machine of the group (see markCurrentAcrossMachines).
  */
 export const markCurrentVortexMods = async (
   db: Tx,
@@ -116,7 +117,11 @@ export const markCurrentVortexMods = async (
   machineId: number | null = null,
 ): Promise<void> => {
   if (presentModIds.length === 0) return;
-  if (machineId != null) await setMachinePresentMods(db, machineId, presentModIds);
+  if (machineId != null) {
+    await setMachinePresentMods(db, machineId, presentModIds);
+    await markCurrentAcrossMachines(db, groupId);
+    return;
+  }
   await db.query(
     `WITH present AS (
        SELECT id, vortex_plugin, nexus_mod_id, name, channel, created_at
