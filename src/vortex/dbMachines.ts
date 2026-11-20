@@ -86,6 +86,25 @@ export const resolveStageMachine = async (
   return { machineId: rows[0]?.id ?? null };
 };
 
+/**
+ * Forget a machine that no longer syncs (a retired computer, a renamed host):
+ * the versions only it held are archived again where another machine holds a
+ * sibling. Its runs stay, without a machine. False when the group has no such machine.
+ */
+export const forgetVortexMachine = async (
+  db: Tx,
+  groupId: number,
+  machineId: number,
+): Promise<boolean> => {
+  const { rowCount } = await db.query(
+    `DELETE FROM vortex_agents WHERE id = $1 AND vortex_group_id = $2`,
+    [machineId, groupId],
+  );
+  if (!rowCount) return false;
+  await markCurrentAcrossMachines(db, groupId);
+  return true;
+};
+
 export const setMachineExportOrder = async (
   db: Tx,
   machineId: number,

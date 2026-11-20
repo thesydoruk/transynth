@@ -1,14 +1,18 @@
 import { useTranslation } from 'react-i18next';
-import type { VortexRun, VortexRunStatus, VortexStage } from '../../api';
+import type { VortexMachine, VortexRun, VortexRunStatus, VortexStage } from '../../api';
 import { Button } from '../../components/Button';
-import { STAGE_BUTTONS } from './useVortexPage';
+import { STAGE_BUTTONS, type StageGate } from './useVortexPage';
 import s from './VortexPage.module.scss';
 
 type Props = {
   run: VortexRunStatus | null;
   runActive: boolean;
   history: VortexRun[];
-  canStart: (stage: VortexStage) => { ok: boolean; missing: string | null };
+  machines: VortexMachine[];
+  /** The machine the buttons work for; null covers every machine. */
+  machineId: number | null;
+  onMachine: (machineId: number | null) => void;
+  canStart: (stage: VortexStage) => StageGate;
   onStart: (stage: VortexStage) => void;
   onStop: (runId: number) => void;
 };
@@ -21,7 +25,17 @@ const STATUS_CLASS: Record<string, string> = {
 };
 
 /** Stage buttons, the live run with its per-mod jobs, and the run history. */
-export const VortexRunPanel = ({ run, runActive, history, canStart, onStart, onStop }: Props) => {
+export const VortexRunPanel = ({
+  run,
+  runActive,
+  history,
+  machines,
+  machineId,
+  onMachine,
+  canStart,
+  onStart,
+  onStop,
+}: Props) => {
   const { t } = useTranslation();
   const statusClass = (status: string) => s[STATUS_CLASS[status] ?? 'badgeInfo'];
 
@@ -33,14 +47,36 @@ export const VortexRunPanel = ({ run, runActive, history, canStart, onStart, onS
         </h2>
       </div>
       <p className={s.hint}>{t('vortex.stages.hint')}</p>
+      {machines.length > 1 && (
+        <>
+          <label className={s.filterLabel}>
+            {t('vortex.machines.label')}
+            <select
+              className={s.select}
+              value={machineId ?? ''}
+              onChange={(e) => onMachine(e.target.value ? Number(e.target.value) : null)}
+            >
+              <option value="">{t('vortex.machines.all')}</option>
+              {machines.map((machine) => (
+                <option key={machine.id} value={machine.id}>
+                  {machine.agent_key}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className={s.hint}>{t('vortex.machines.hint')}</p>
+        </>
+      )}
       <div className={s.stageButtons}>
         {STAGE_BUTTONS.map((stage) => {
           const gate = canStart(stage);
-          const title = gate.missing
-            ? t('vortex.stages.needsHost', { service: gate.missing.toUpperCase() })
-            : runActive
-              ? t('vortex.stages.busy')
-              : undefined;
+          const title = gate.needsMachine
+            ? t('vortex.stages.needsMachine')
+            : gate.missing
+              ? t('vortex.stages.needsHost', { service: gate.missing.toUpperCase() })
+              : runActive
+                ? t('vortex.stages.busy')
+                : undefined;
           return (
             <Button
               key={stage}

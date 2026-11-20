@@ -29,9 +29,19 @@ const ACTIVE_STATES = new Set(['queued', 'running', 'planning']);
 export const agentIsOffline = (lastSeenAt: string, pollSec: number | undefined, now = Date.now()) =>
   now - Date.parse(lastSeenAt) > 3 * Math.max(10, pollSec ?? 30) * 1000;
 
+export type StageGate = {
+  ok: boolean;
+  /** The service kind whose host is down. */
+  missing: string | null;
+  /** An export is one machine's: with several, one has to be chosen first. */
+  needsMachine: boolean;
+};
+
 export const useVortexPage = (gameId: string) => {
   const qc = useQueryClient();
   const [groupId, setGroupId] = useState<number | null>(null);
+  /** The machine the stage buttons work for; null covers every machine of the group. */
+  const [machineId, setMachineId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const groups = useQuery({
@@ -50,11 +60,15 @@ export const useVortexPage = (gameId: string) => {
     enabled: groupId != null,
     refetchInterval: (query) => {
       const data = query.state.data;
-      const busy = data?.currentRun != null || (data?.agent != null && data.agent.state !== 'idle');
+      const busy =
+        data?.currentRun != null || (data?.machines ?? []).some((m) => m.state !== 'idle');
       return busy ? 5000 : 15000;
     },
   });
   const currentRunId = state.data?.currentRun?.id ?? null;
+  const machines = state.data?.machines ?? [];
+  // A machine that was forgotten, or another group: back to the whole group.
+  const chosen = machines.some((m) => m.id === machineId) ? machineId : null;
 
   const run = useQuery({
     queryKey: ['vortex-run', currentRunId],
@@ -77,7 +91,7 @@ export const useVortexPage = (gameId: string) => {
 
   const start = useMutation({
     mutationFn: ({ stage, options }: { stage: VortexStage; options?: Record<string, unknown> }) =>
-      api.vortex.startStage(groupId!, stage, options),
+      api.vortex.startStage(groupId!, stage, options, chosen),
     onSuccess: () => {
       setError(null);
       invalidate();
@@ -91,12 +105,21 @@ export const useVortexPage = (gameId: string) => {
     onError: (err: Error) => setError(err.message),
   });
 
+  const forget = useMutation({
+    mutationFn: (id: number) => api.vortex.forgetMachine(groupId!, id),
+    onSuccess: invalidate,
+    onError: (err: Error) => setError(err.message),
+  });
+
   const services = state.data?.services ?? {};
   const runActive = currentRunId != null && ACTIVE_STATES.has(state.data?.currentRun?.status ?? '');
-  const canStart = (stage: VortexStage): { ok: boolean; missing: string | null } => {
-    if (runActive || start.isPending) return { ok: false, missing: null };
+  const canStart = (stage: VortexStage): StageGate => {
+    if (runActive || start.isPending) return { ok: false, missing: null, needsMachine: false };
+    if (stage === 'export' && machines.length > 1 && chosen == null) {
+      return { ok: false, missing: null, needsMachine: true };
+    }
     const missing = STAGE_NEEDS[stage].find((kind) => services[kind] === false);
-    return { ok: !missing, missing: missing ?? null };
+    return { ok: !missing, missing: missing ?? null, needsMachine: false };
   };
 
   return {
@@ -105,6 +128,9 @@ export const useVortexPage = (gameId: string) => {
     setGroupId,
     state: state.data ?? null,
     isLoading: groups.isLoading || (groupId != null && state.isLoading),
+    machines,
+    machineId: chosen,
+    setMachineId,
     run: run.data ?? null,
     runActive,
     history: runs.data?.runs ?? [],
@@ -112,6 +138,8 @@ export const useVortexPage = (gameId: string) => {
       start.mutate({ stage, options }),
     starting: start.isPending,
     stop: (runId: number) => stop.mutate(runId),
+    forget: (id: number) => forget.mutateAsync(id),
+    forgetting: forget.isPending,
     canStart,
     error,
     clearError: () => setError(null),

@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
+import type { VortexMachine } from '../../api';
+import { ConfirmModal } from '../../components/ConfirmModal';
 import { PageHeader } from '../../components/PageHeader';
 import { useVortexPage } from './useVortexPage';
 import { VortexAgentPanel } from './VortexAgentPanel';
@@ -7,13 +10,15 @@ import { VortexRunPanel } from './VortexRunPanel';
 import s from './VortexPage.module.scss';
 
 /**
- * The Vortex groups of a game: the resident agent's heartbeat, the stages the
- * user starts by hand, the live run and the langpack. Route: /games/:gameId/vortex.
+ * The Vortex groups of a game: the machines that sync into the group, each
+ * with its agent's heartbeat and its langpack, the stages the user starts by
+ * hand, and the live run. Route: /games/:gameId/vortex.
  */
 export const VortexPage = () => {
   const { t } = useTranslation();
   const { gameId = '' } = useParams<{ gameId: string }>();
   const p = useVortexPage(gameId);
+  const [forgetting, setForgetting] = useState<VortexMachine | null>(null);
 
   return (
     <div className={s.page}>
@@ -56,21 +61,46 @@ export const VortexPage = () => {
       ) : (
         p.state && (
           <div className={s.grid}>
-            <VortexAgentPanel
-              group={p.state.group}
-              agent={p.state.agent}
-              latestLangpack={p.state.latestLangpack}
-            />
+            <div className={s.machines}>
+              {p.machines.length === 0 ? (
+                <VortexAgentPanel group={p.state.group} machine={null} />
+              ) : (
+                p.machines.map((machine) => (
+                  <VortexAgentPanel
+                    key={machine.id}
+                    group={p.state!.group}
+                    machine={machine}
+                    onForget={p.machines.length > 1 ? setForgetting : undefined}
+                  />
+                ))
+              )}
+            </div>
             <VortexRunPanel
               run={p.run}
               runActive={p.runActive}
               history={p.history}
+              machines={p.machines}
+              machineId={p.machineId}
+              onMachine={p.setMachineId}
               canStart={p.canStart}
               onStart={(stage) => p.start(stage)}
               onStop={p.stop}
             />
           </div>
         )
+      )}
+
+      {forgetting && (
+        <ConfirmModal
+          title={t('vortex.agent.forgetTitle', { name: forgetting.agent_key })}
+          message={t('vortex.agent.forgetMessage')}
+          confirmLabel={t('vortex.agent.forgetConfirm')}
+          pending={p.forgetting}
+          onConfirm={() => {
+            void p.forget(forgetting.id).finally(() => setForgetting(null));
+          }}
+          onClose={() => setForgetting(null)}
+        />
       )}
     </div>
   );

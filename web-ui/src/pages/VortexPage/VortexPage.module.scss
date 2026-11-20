@@ -26,6 +26,19 @@
   padding: 14px 16px;
 }
 
+/* One panel per machine of the group, stacked beside the stages. */
+.machines {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.panelActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
 .panelHead {
   display: flex;
   align-items: center;

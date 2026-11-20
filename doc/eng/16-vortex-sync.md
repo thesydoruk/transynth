@@ -147,11 +147,21 @@ every tick: the Vortex page shows the state, the last sync, what is pending, the
 
 ## The Vortex page
 
-Game page → the **Vortex** link (`/games/<game>/vortex`): the agent panel, stage buttons
+Game page → the **Vortex** link (`/games/<game>/vortex`): a panel for every machine that
+syncs into the group (its agent's state, paths, mods in staging, game version and the
+langpack made for it), stage buttons
 (Re-run TM, LLM translate, Verify, Skip-detect, Gender-detect, Voice, Export langpack), the
 current run with per-mod progress and a Stop button, run history, the newest langpack to
 download. Each button creates its own run; while one is in progress the others are
 disabled.
+
+With two or more machines a **Stages for** list appears above the buttons: _all machines_
+or one of them. Export langpack needs one chosen — a langpack is one machine's mods in its
+load order; the other stages cover every machine's mods unless one is chosen. An offline
+machine has a **Forget this machine** button, for a computer that no longer syncs or whose
+host name changed (`DELETE /api/vortex/groups/:id/machines/:machineId`): the mods,
+translations and langpacks stay, and a version only that machine held is archived where
+another machine holds a different one.
 
 A `tm`, `llm`, `verify`, `skip`, `gender` or `voice` stage starts, for each mod of the
 group, the same job the editor would, one mod at a time: LLM and TTS see one job each, and

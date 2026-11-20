@@ -177,6 +177,22 @@ describe('vortex agent API', () => {
     ]);
   });
 
+  it('forgets a machine and leaves the others', async () => {
+    const desk = (await heartbeat(beat)).json();
+    const laptop = (await heartbeat({ ...beat, agentKey: 'laptop' })).json();
+    const forget = (machineId: number | string) =>
+      app().inject({
+        method: 'DELETE',
+        url: `/api/vortex/groups/${desk.groupId}/machines/${machineId}`,
+      });
+
+    expect((await forget(laptop.agentId)).json()).toEqual({ ok: true });
+    expect((await forget(laptop.agentId)).statusCode).toBe(404);
+    expect((await forget('abc')).statusCode).toBe(400);
+    const { rows } = await db().query(`SELECT agent_key FROM vortex_agents`);
+    expect(rows).toEqual([{ agent_key: 'gaming-pc' }]);
+  });
+
   it('rejects a malformed export order', async () => {
     const { groupId } = (await heartbeat(beat)).json();
     const res = await app().inject({
