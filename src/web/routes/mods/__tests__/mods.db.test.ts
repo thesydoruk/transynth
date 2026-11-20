@@ -55,6 +55,29 @@ describe('mods API', () => {
       expect((await app().inject({ url: '/api/mods?source=0' })).statusCode).toBe(400);
     });
 
+    it('names the Vortex machines whose staging holds a mod', async () => {
+      const group = await vortexMod('Shared');
+      await insertMod(db(), { name: 'Manual' });
+      const { rows } = await db().query<{ id: number }>(
+        `SELECT id FROM mods WHERE vortex_group_id = $1`,
+        [group],
+      );
+      await db().query(
+        `INSERT INTO vortex_agents(vortex_group_id, agent_key, present_mod_ids)
+         VALUES ($1, 'laptop', $2::int[]), ($1, 'desk', $2::int[]), ($1, 'new-pc', NULL)`,
+        [group, [rows[0]!.id]],
+      );
+
+      const list = (await app().inject({ url: '/api/mods?source=all' })).json() as Array<{
+        name: string;
+        machines: string[];
+      }>;
+      expect(Object.fromEntries(list.map((m) => [m.name, m.machines]))).toEqual({
+        Manual: [],
+        Shared: ['desk', 'laptop'],
+      });
+    });
+
     it('resolves the content kind from the anchor file and honours an override', async () => {
       const id = await insertMod(db(), { name: 'Base', absPath: '/data/Fallout4.esm' });
       const kindOf = async () =>

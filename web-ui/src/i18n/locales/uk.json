@@ -156,6 +156,7 @@
       "mod": "Мод"
     },
     "vortexChip": "Vortex",
+    "machineChip": "У стейджі Vortex на {{name}}",
     "contentType": "Тип вмісту",
     "contentAuto": "Авто",
     "contentAutoKind": "Авто ({{kind}})",
@@ -172,6 +173,10 @@
       "source": {
         "all": "Усі джерела",
         "manual": "Локальні імпорти"
+      },
+      "machineLabel": "Машина",
+      "machine": {
+        "all": "Усі машини"
       },
       "contentLabel": "Вміст",
       "content": {

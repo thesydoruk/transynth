@@ -95,6 +95,26 @@ describe('groupModVersions', () => {
     ]);
   });
 
+  // Two computers on one Vortex group, each on its own version of the mod.
+  it('gives every version a machine runs its own row', () => {
+    const plugin = { name: 'Workshop Plus', vortex_plugin: 'workshopplus.esp', vortex_group_id: 1 };
+    const onDesk = mod({ ...plugin, id: 3, machines: ['desk'], created_at: '2026-03-01' });
+    const onLaptop = mod({ ...plugin, id: 2, machines: ['laptop'], created_at: '2026-02-01' });
+    const archived = mod({ ...plugin, id: 1, is_current: false, created_at: '2026-01-01' });
+
+    expect(groupModVersions([archived, onLaptop, onDesk])).toEqual([
+      { current: onLaptop, previous: [] },
+      { current: onDesk, previous: [archived] },
+    ]);
+  });
+
+  // A hand-uploaded mod is never marked: its versions are all "current" and stay nested.
+  it('still nests versions no machine holds under the newest', () => {
+    const v2 = mod({ id: 2, name: 'Manual Mod', created_at: '2026-02-01' });
+    const v1 = mod({ id: 1, name: 'Manual Mod', created_at: '2026-01-01' });
+    expect(groupModVersions([v1, v2])).toEqual([{ current: v2, previous: [v1] }]);
+  });
+
   it('keeps the order of the input list', () => {
     const b = mod({ id: 1, name: 'B' });
     const a = mod({ id: 2, name: 'A' });

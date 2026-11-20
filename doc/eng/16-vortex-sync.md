@@ -217,6 +217,10 @@ host name, one `vortex_agents` row):
 - its load order and file winners (`export_order_json`);
 - its game release (`game_release_id`) and its paths.
 
+On the Mods page, once the game's mods are on two machines, each row shows a chip per
+machine that holds it and the toolbar gets a **Machine** filter; two versions of one mod
+that two machines run are two rows.
+
 A langpack is exported for one machine: its mods, its load order. The agent downloads only
 the langpack made for its own machine. With one machine nothing has to be chosen;
 `POST /api/vortex/groups/:id/stage/export` with two or more needs `agentId` (the page asks),

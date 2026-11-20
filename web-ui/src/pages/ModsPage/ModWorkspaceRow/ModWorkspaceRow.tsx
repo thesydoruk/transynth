@@ -25,6 +25,8 @@ export interface ModWorkspaceRowProps {
   mod: Mod;
   /** Label of the Vortex group the mod came from; shown as the chip's tooltip. */
   vortexLabel?: string;
+  /** Vortex machines whose staging holds this version; a chip each. */
+  machines?: string[];
   /** Sets the content kind by hand; null goes back to the detected one. */
   onContentKindChange?: (kind: ModContentKind | null) => void;
   importJob?: ModImportJob | null;
@@ -60,6 +62,7 @@ export interface ModWorkspaceRowProps {
 export const ModWorkspaceRow = ({
   mod,
   vortexLabel,
+  machines,
   onContentKindChange,
   importJob,
   exportActions,
@@ -151,6 +154,11 @@ export const ModWorkspaceRow = ({
                 {t('mods.vortexChip')}
               </span>
             ) : null}
+            {machines?.map((name) => (
+              <span key={name} className={s.machineChip} title={t('mods.machineChip', { name })}>
+                {name}
+              </span>
+            ))}
             {importJob?.is_localized ? (
               <span className={rowS.locBadge}>{t('modImport.localized')}</span>
             ) : null}
