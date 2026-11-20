@@ -113,7 +113,9 @@ server refused, the paths and settings in use and the newest journal entries. Fo
 - **Sync now** — plans with the server and runs the stages again without waiting for the
   settle window, the retry delay or the next full scan;
 - **Pause / Resume** — while paused the agent only sends heartbeats: no sync, no upload, no
-  delivery (Sync now still runs one). A restart resumes;
+  delivery (Sync now still runs one). The pause is kept in the state file: a restart, a
+  crash or a reboot leaves the agent paused until Resume. For an agent that is not
+  running, `npm run vortex:agent -- --pause` (or `--resume`) sets it;
 - **Deliver langpack again** — forgets which archive was delivered, so the newest one is
   put into Vortex's downloads again (a file that is already there is left alone);
 - **Stop agent** — the same as Ctrl+C: it ends after the step it is on.

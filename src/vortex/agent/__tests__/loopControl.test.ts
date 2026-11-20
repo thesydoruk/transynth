@@ -140,6 +140,29 @@ describe('the agent loop under the page’s commands', () => {
     expect(downloadLangpack).toHaveBeenCalledTimes(1);
   });
 
+  // The Startup launcher restarts a crashed agent, and a reboot starts it again:
+  // neither may turn a pause into a sync.
+  it('writes a pause down and comes back paused after a restart', async () => {
+    const before = setup();
+    before.control.command('pause');
+    expect(readAgentState(before.paths.state).paused).toBe(true);
+    expect(fs.readFileSync(before.paths.journal, 'utf8')).toContain('"command":"pause"');
+
+    // A new process: a fresh control and loop over the state file a pause was written to.
+    const { loop, control, plan, downloadLangpack, paths, status } = setup({ paused: true });
+    expect(control.paused).toBe(true);
+    await loop.tick();
+    await loop.tick();
+    expect(plan).not.toHaveBeenCalled();
+    expect(downloadLangpack).not.toHaveBeenCalled();
+    expect(status()).toMatchObject({ state: 'paused', paused: true });
+
+    control.command('resume');
+    expect(readAgentState(paths.state).paused).toBe(false);
+    await loop.tick();
+    expect(downloadLangpack).toHaveBeenCalledTimes(1);
+  });
+
   it('a sync request cuts a retry backoff short and runs the stages again', async () => {
     const retryAfter = new Date(Date.now() + 20 * 60_000).toISOString();
     const { loop, control, plan, paths, status } = setup({
