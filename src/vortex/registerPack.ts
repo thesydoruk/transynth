@@ -63,6 +63,19 @@ const asPackJobs = (jobs: ModImportJob[]): VortexPackJobs => ({
   jobs: jobs.map((job) => ({ plugin: job.esp_path ? path.basename(job.esp_path) : null, job })),
 });
 
+/**
+ * The jobs this content already has in the group, or null. Two machines may
+ * hold the same folder: the second upload has nothing left to register.
+ */
+export const findVortexPackJobs = async (
+  db: Tx,
+  groupId: number,
+  contentHash: string,
+): Promise<VortexPackJobs | null> => {
+  const jobs = await listFolderJobs(db, scopedVortexFileHash(groupId, contentHash));
+  return jobs.length > 0 ? asPackJobs(jobs) : null;
+};
+
 const choosePrimary = (plugins: string[], hinted?: string | null): string => {
   const hint = hinted?.toLowerCase();
   const byHint = hint ? plugins.find((p) => path.basename(p).toLowerCase() === hint) : undefined;

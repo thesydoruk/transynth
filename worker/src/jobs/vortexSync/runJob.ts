@@ -8,8 +8,6 @@ import type { Tx } from '../../../../src/db';
 import { carryOverTranslations } from '../../../../src/web/data/queries/importDiff';
 import { reuseSynthesizedVoice } from '../../../../src/voice/reuseSynthesizedVoice';
 import { invalidateVoiceListContext } from '../../../../src/web/voice/preview/voiceListContext';
-import { runModImport } from '../../../../src/import/mod/run/runImport';
-import { getModImportJob } from '../../../../src/import/mod/jobs';
 import { log } from '../../../../src/logger';
 import {
   getVortexSyncRun,
@@ -32,6 +30,7 @@ import { readJobSnapshot } from '../../core/snapshots';
 import type { JobResult } from '../../types';
 import { runExportStage, planUnits } from './exportStage';
 import { runFanOutStage, type FanOutStageOptions } from './fanOutStage';
+import { importOrAwait } from './importJob';
 
 export type VortexSyncJobParams = {
   runId: number;
@@ -74,19 +73,16 @@ const runImportStage = async (db: Tx, run: VortexSyncRunRow): Promise<ImportedMo
     }
     // A folder with several plugins registered one job per plugin.
     for (const jobId of unitJobIds(unit)) {
-      const job = await getModImportJob(db, jobId);
-      if (!job) continue;
-      // Completed already: an earlier attempt of this run imported it, and its
-      // carry may never have run.
-      if (job.status === 'completed' && job.mod_id) {
-        importedModIds.push(job.mod_id);
-        imported.push(job.mod_id);
-        continue;
-      }
-      const plugin = job.esp_path ? ` · ${path.basename(job.esp_path)}` : '';
-      log.info(`Vortex sync: importing ${unit.name}${plugin} (job #${job.id})`);
-      const result = await runModImport(db, job);
-      if (result.mod_id) {
+      // Complete already — an earlier attempt of this run, or another machine's
+      // run of the same folder — still counts as imported: its carry may never
+      // have run.
+      const result = await importOrAwait(db, jobId, {
+        onStart: (job) => {
+          const plugin = job.esp_path ? ` · ${path.basename(job.esp_path)}` : '';
+          log.info(`Vortex sync: importing ${unit.name}${plugin} (job #${job.id})`);
+        },
+      });
+      if (result?.mod_id) {
         importedModIds.push(result.mod_id);
         imported.push(result.mod_id);
       }

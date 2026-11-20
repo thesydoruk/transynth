@@ -17,13 +17,44 @@ const { getOrCreateVortexGroup, insertVortexSyncRun, updateVortexSyncRun } =
   await import('../../../vortex/db');
 const { finalizeExportArchive, insertExportArchive } = await import('../../data/queries');
 
+const { default: multipart } = await import('@fastify/multipart');
+await import('../../../games');
+const { ensureModImportSchema } = await import('../../../import/mod/schema');
+const { npcPlugin } = await import('../../../testing/espFixture');
+const { packFilesToZipPath } = await import('../../export/zipPack');
+
 const exportsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vortex-langpack-'));
 PATHS.exports = exportsDir;
+const uploadsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vortex-uploads-'));
+PATHS.vortexUploads = uploadsDir;
+
+/** A multipart body with one `file` field, as the agent's upload sends it. */
+const filePart = (fileName: string, content: Buffer) => {
+  const boundary = '----transynth-test-boundary';
+  const payload = Buffer.concat([
+    Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\n` +
+        'Content-Type: application/zip\r\n\r\n',
+    ),
+    content,
+    Buffer.from(`\r\n--${boundary}--\r\n`),
+  ]);
+  return { payload, headers: { 'content-type': `multipart/form-data; boundary=${boundary}` } };
+};
 
 describe('vortex API ids', () => {
   const db = useTestDb();
-  const app = useTestApp(db, vortexSyncRoutes);
-  afterAll(() => fs.rmSync(exportsDir, { recursive: true, force: true }));
+  const app = useTestApp(
+    db,
+    async (instance) => {
+      await instance.register(multipart);
+    },
+    vortexSyncRoutes,
+  );
+  afterAll(() => {
+    fs.rmSync(exportsDir, { recursive: true, force: true });
+    fs.rmSync(uploadsDir, { recursive: true, force: true });
+  });
 
   it.each([
     ['GET', '/api/vortex/groups/abc', 'Invalid group id'],
@@ -74,6 +105,64 @@ describe('vortex API ids', () => {
       { agent_key: 'desk', game_dir: 'C:/Games/desk', run_id: desk.run.id },
       { agent_key: 'laptop', game_dir: 'C:/Games/laptop', run_id: laptop.run.id },
     ]);
+  });
+
+  // Two machines of a group hold the same folder and sync at the same moment.
+  it('registers a folder once when two machines upload it together', async () => {
+    await ensureModImportSchema(db());
+    const zipPath = path.join(uploadsDir, 'shared.zip');
+    await packFilesToZipPath(
+      [{ name: 'Shared.esp', data: npcPlugin(['Jake', 'Sheffield']) }],
+      zipPath,
+    );
+    const zip = fs.readFileSync(zipPath);
+    const unit = {
+      unitId: 'mods:shared-1-0',
+      channel: 'mods',
+      name: 'Shared',
+      pluginStem: 'Shared',
+      pluginFileName: 'Shared.esp',
+      sourceFolder: 'Shared-1-0',
+      nexusModId: null,
+      nexusModName: null,
+      contentHash: 'dd44',
+    };
+    const plan = async (agentKey: string) =>
+      (
+        await app().inject({
+          method: 'POST',
+          url: '/api/vortex/sync/plan',
+          payload: {
+            groupKey: 'fo4:c:/vortex/fallout4/mods',
+            game: 'fo4',
+            stagingPath: 'C:/Vortex/fallout4/mods',
+            gameDir: 'C:/Games/Fallout 4',
+            agentKey,
+            units: [unit],
+          },
+        })
+      ).json();
+    const desk = await plan('desk');
+    const laptop = await plan('laptop');
+    expect(laptop.units[0].action).toBe('upload');
+    const upload = (runId: number) =>
+      app().inject({
+        method: 'PUT',
+        url: `/api/vortex/sync/${runId}/packs/${encodeURIComponent(unit.unitId)}`,
+        ...filePart('Shared.zip', zip),
+      });
+
+    const [first, second] = await Promise.all([upload(desk.run.id), upload(laptop.run.id)]);
+
+    expect([first.statusCode, second.statusCode]).toEqual([200, 200]);
+    expect(second.json().job.id).toBe(first.json().job.id);
+    const { rows } = await db().query(`SELECT file_hash FROM mod_imports`);
+    expect(rows).toEqual([{ file_hash: `v${desk.group.id}:dd44` }]);
+    // Each run knows the job, so each machine's import stage finds it.
+    const { rows: units } = await db().query(
+      `SELECT (plan_json->'units'->0->>'existingJobId')::int AS job_id FROM vortex_sync_runs ORDER BY id`,
+    );
+    expect(units).toEqual([{ job_id: first.json().job.id }, { job_id: first.json().job.id }]);
   });
 
   // The Vortex page links to this URL; the browser's download manager needs the size.

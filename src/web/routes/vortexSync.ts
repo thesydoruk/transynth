@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
@@ -7,6 +8,7 @@ import { CONFIG } from '../../config';
 import { log } from '../../logger';
 import { PATHS } from '../../paths';
 import { ensureDir } from '../../utils/file';
+import { withKeyedLock } from '../../utils/keyedLock';
 import { getExportArchive } from '../data/queries';
 import { sendExportArchive } from '../export/sendExportArchive';
 import { startBackgroundJob } from '../../../worker/src/api/startBackgroundJob';
@@ -26,7 +28,11 @@ import { listGameReleases } from '../../vortex/dbReleases';
 import { findPlanUnit, patchVortexPlanUnit } from '../../vortex/planUnits';
 import { markCurrentForSettledPlan, planVortexUnits } from '../../vortex/dbFamily';
 import { ensureVortexSchema } from '../../vortex/schema';
-import { registerVortexPack, vortexExtractDir } from '../../vortex/registerPack';
+import {
+  findVortexPackJobs,
+  registerVortexPack,
+  vortexExtractDir,
+} from '../../vortex/registerPack';
 import { scopedVortexFileHash, vortexGroupLabel } from '../../vortex/groupKey';
 import {
   isVortexChannel,
@@ -147,36 +153,47 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
       const groupRoot = path.join(PATHS.vortexUploads, String(run.vortex_group_id));
       ensureDir(groupRoot);
       const zipPath = path.join(groupRoot, `${scoped.replace(/[:\\/]+/g, '_')}.zip`);
-      await pipeline(data.file, fs.createWriteStream(zipPath));
-
       const extractDir = vortexExtractDir(groupRoot, scoped);
-      let registered: Awaited<ReturnType<typeof registerVortexPack>>;
-      try {
-        registered = await registerVortexPack(db, {
-          groupId: run.vortex_group_id,
-          fileName: data.filename || `${String(unit.name)}.zip`,
-          zipPath,
-          extractDir,
-          contentHash,
-          srcLang: run.src_lang,
-          tgtLang: run.tgt_lang,
-          game: run.game as GameId,
-          nexusModId: typeof unit.nexusModId === 'number' ? unit.nexusModId : null,
-          nexusModName: typeof unit.nexusModName === 'string' ? unit.nexusModName : null,
-          sourceFolder: typeof unit.sourceFolder === 'string' ? unit.sourceFolder : null,
-          plugins: Array.isArray(unit.plugins) ? unit.plugins.map(String) : null,
-          pluginFileName: typeof unit.pluginFileName === 'string' ? unit.pluginFileName : null,
-        });
-      } catch (err) {
-        // A unit the importer refuses leaves nothing behind: an unpacked tree
-        // next to the group's real mods would be found by sibling lookups.
-        fs.rmSync(extractDir, { recursive: true, force: true });
-        fs.rmSync(zipPath, { force: true });
-        // The run must know the unit was refused, not lost on the way.
-        const message = err instanceof Error ? err.message : String(err);
-        await patchVortexPlanUnit(db, run.id, unitId, { rejected: message });
-        throw err;
-      }
+
+      // Two machines of a group may send the same folder at the same time. One
+      // upload of a content at a time: the second would otherwise rewrite the
+      // zip the first is still unpacking and register the content twice.
+      const registered = await withKeyedLock(scoped, async () => {
+        const held = await findVortexPackJobs(db, run.vortex_group_id, contentHash);
+        if (held) {
+          // Already registered (by the other machine, or an earlier try): the
+          // bytes are not needed, but the request has to be read to its end.
+          await pipeline(data.file, new Writable({ write: (_chunk, _enc, done) => done() }));
+          return held;
+        }
+        await pipeline(data.file, fs.createWriteStream(zipPath));
+        try {
+          return await registerVortexPack(db, {
+            groupId: run.vortex_group_id,
+            fileName: data.filename || `${String(unit.name)}.zip`,
+            zipPath,
+            extractDir,
+            contentHash,
+            srcLang: run.src_lang,
+            tgtLang: run.tgt_lang,
+            game: run.game as GameId,
+            nexusModId: typeof unit.nexusModId === 'number' ? unit.nexusModId : null,
+            nexusModName: typeof unit.nexusModName === 'string' ? unit.nexusModName : null,
+            sourceFolder: typeof unit.sourceFolder === 'string' ? unit.sourceFolder : null,
+            plugins: Array.isArray(unit.plugins) ? unit.plugins.map(String) : null,
+            pluginFileName: typeof unit.pluginFileName === 'string' ? unit.pluginFileName : null,
+          });
+        } catch (err) {
+          // A unit the importer refuses leaves nothing behind: an unpacked tree
+          // next to the group's real mods would be found by sibling lookups.
+          fs.rmSync(extractDir, { recursive: true, force: true });
+          fs.rmSync(zipPath, { force: true });
+          // The run must know the unit was refused, not lost on the way.
+          const message = err instanceof Error ? err.message : String(err);
+          await patchVortexPlanUnit(db, run.id, unitId, { rejected: message });
+          throw err;
+        }
+      });
 
       const job = registered.primary;
       const jobs = registered.jobs.map((row) => ({ plugin: row.plugin, jobId: row.job.id }));
