@@ -177,6 +177,39 @@ describe('vortex agent API', () => {
     ]);
   });
 
+  // A moved staging folder, or a new name in the agent's `group` setting.
+  it('refuses to start a second group for a machine that already syncs into one', async () => {
+    const home = (await heartbeat(beat)).json();
+    const moved = { ...beat, stagingPath: 'E:/Mods/fallout4/mods' };
+
+    const refused = await heartbeat(moved);
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json()).toMatchObject({ groupId: home.groupId });
+    // The message carries the value that keeps the machine in its group.
+    expect(refused.json().error).toContain('set "group" to "d:/vortex/fallout4/mods"');
+    const named = await heartbeat({ ...beat, groupKey: 'fo4:home', label: 'Vortex · home' });
+    expect(named.statusCode).toBe(409);
+    const { rows } = await db().query(`SELECT group_key FROM vortex_groups`);
+    expect(rows).toEqual([{ group_key: 'fo4:d:/vortex/fallout4/mods' }]);
+
+    // With the group named, the moved folder keeps syncing where it did.
+    const kept = await heartbeat({ ...moved, groupKey: 'fo4:d:/vortex/fallout4/mods' });
+    expect(kept.json()).toMatchObject({ groupId: home.groupId, agentId: home.agentId });
+  });
+
+  it('lets another computer join a group by its key, or start its own first group', async () => {
+    const home = (await heartbeat(beat)).json();
+    const laptop = { ...beat, agentKey: 'laptop', stagingPath: 'C:/Users/bob/Vortex/mods' };
+
+    const joined = (await heartbeat({ ...laptop, groupKey: 'fo4:d:/vortex/fallout4/mods' })).json();
+    expect(joined.groupId).toBe(home.groupId);
+    expect(joined.agentId).not.toBe(home.agentId);
+
+    const own = await heartbeat({ ...laptop, agentKey: 'third-pc' });
+    expect(own.statusCode).toBe(200);
+    expect(own.json().groupId).not.toBe(home.groupId);
+  });
+
   it('forgets a machine and leaves the others', async () => {
     const desk = (await heartbeat(beat)).json();
     const laptop = (await heartbeat({ ...beat, agentKey: 'laptop' })).json();

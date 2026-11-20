@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { GameId } from '../types';
 import { resolveDirectoryInput } from '../utils/file';
-import { vortexGroupKey } from './groupKey';
+import { vortexGroupAnchor, vortexGroupKey } from './groupKey';
 import type { FileHasher } from './hashSubset';
 import { scanGameUnits } from './scanGame';
 import { scanStagingUnits, stagingPluginBasenames } from './scanStaging';
@@ -12,6 +12,8 @@ export const buildVortexInventory = async (opts: {
   game: GameId;
   stagingPath: string;
   gameDir: string;
+  /** The group to sync into when it is not the one of this staging path (vortexGroupAnchor). */
+  group?: string;
   channel?: VortexChannel;
   /** sha1 per file; the agent passes a size+mtime cache so archives hash once. */
   hashFile?: FileHasher;
@@ -40,7 +42,7 @@ export const buildVortexInventory = async (opts: {
     stagingPath,
     gameDir,
     dataDir: gameScan.dataDir,
-    groupKey: vortexGroupKey(opts.game, stagingPath),
+    groupKey: vortexGroupKey(opts.game, vortexGroupAnchor(stagingPath, opts.group)),
     gameRelease: gameScan.gameRelease,
     units: [...gameScan.units, ...modUnits],
   };

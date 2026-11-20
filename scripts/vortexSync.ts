@@ -25,6 +25,7 @@ import {
   buildVortexInventory,
   discoverVortexExportOrder,
   packVortexUnitZip,
+  vortexGroupAnchor,
   vortexGroupKey,
   vortexGroupLabel,
   vortexUnitZipName,
@@ -71,6 +72,11 @@ const argv = await yargs(hideBin(process.argv))
     type: 'boolean',
     default: true,
     describe: 'Apply Vortex load order and file overwrite winners when exporting the langpack',
+  })
+  .option('group', {
+    type: 'string',
+    describe:
+      'Group to sync into when it is not the one of --staging: a shared name, or the staging path of the computer to join',
   })
   .option('plugins-txt', {
     type: 'string',
@@ -133,6 +139,7 @@ if (needInventory) {
     game,
     stagingPath: argv.staging,
     gameDir: argv['game-dir'] as string,
+    group: argv.group,
     channel,
   });
 
@@ -155,7 +162,7 @@ if (needInventory) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       groupKey: inventory.groupKey,
-      label: vortexGroupLabel(inventory.stagingPath, inventory.game),
+      label: vortexGroupLabel(vortexGroupAnchor(inventory.stagingPath, argv.group), inventory.game),
       game: inventory.game,
       stagingPath: inventory.stagingPath,
       gameDir: inventory.gameDir,
@@ -185,7 +192,7 @@ if (needInventory) {
     log.info(`  ${unit.action.padEnd(7)} ${unit.name}`);
   }
 } else {
-  const groupKey = vortexGroupKey(game, argv.staging);
+  const groupKey = vortexGroupKey(game, vortexGroupAnchor(argv.staging, argv.group));
   const found = await apiJson<{ group: GroupRef }>(
     `/api/vortex/groups/by-key?game=${encodeURIComponent(game)}&key=${encodeURIComponent(groupKey)}`,
   );

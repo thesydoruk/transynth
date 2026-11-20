@@ -28,6 +28,13 @@ describe('agent config', () => {
     expect(config.downloadsDir).toMatch(/Vortex[\\/]downloads[\\/]fallout4$/);
   });
 
+  it('keeps the group to join only when one is set', () => {
+    const base = { game: 'fo4', gameDir: 'x' };
+    expect(parseAgentConfig({ ...base, group: ' home ' }, {}).group).toBe('home');
+    expect(parseAgentConfig({ ...base, group: '  ' }, {})).not.toHaveProperty('group');
+    expect(parseAgentConfig(base, {})).not.toHaveProperty('group');
+  });
+
   it('never lets autoStages go past TM, and needs a deployable game and a game dir', () => {
     expect(() => parseAgentConfig({ game: 'fo4', gameDir: 'x', autoStages: 'llm' }, {})).toThrow(
       /autoStages/,

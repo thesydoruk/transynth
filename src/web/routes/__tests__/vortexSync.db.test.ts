@@ -107,6 +107,34 @@ describe('vortex API ids', () => {
     ]);
   });
 
+  it('refuses a plan that would start a second group for the same machine', async () => {
+    const plan = (groupKey: string) =>
+      app().inject({
+        method: 'POST',
+        url: '/api/vortex/sync/plan',
+        payload: {
+          groupKey,
+          game: 'fo4',
+          stagingPath: 'C:/Vortex/fallout4/mods',
+          gameDir: 'C:/Games/Fallout 4',
+          agentKey: 'desk',
+          units: [],
+        },
+      });
+    const first = (await plan('fo4:c:/vortex/fallout4/mods')).json();
+
+    const second = await plan('fo4:new-name');
+
+    expect(second.statusCode).toBe(409);
+    expect(second.json()).toMatchObject({ groupId: first.group.id });
+    expect(second.json().error).toContain('set "group" to "c:/vortex/fallout4/mods"');
+    const { rows } = await db().query(
+      `SELECT (SELECT count(*)::int FROM vortex_groups) AS groups,
+              (SELECT count(*)::int FROM vortex_sync_runs) AS runs`,
+    );
+    expect(rows).toEqual([{ groups: 1, runs: 1 }]);
+  });
+
   // Two machines of a group hold the same folder and sync at the same moment.
   it('registers a folder once when two machines upload it together', async () => {
     await ensureModImportSchema(db());

@@ -27,9 +27,10 @@ describe('the agent loop under the page’s commands', () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  const setup = (saved: Partial<AgentState> = {}) => {
+  const setup = (saved: Partial<AgentState> = {}, settings: Record<string, unknown> = {}) => {
     const config = parseAgentConfig(
       {
+        ...settings,
         api: 'http://localhost:1',
         token: 'secret-token',
         game: 'fo4',
@@ -75,8 +76,33 @@ describe('the agent loop under the page’s commands', () => {
         control,
         view: () => loop.view(),
       });
-    return { loop, control, plan, downloadLangpack, paths, status };
+    return { loop, control, plan, downloadLangpack, paths, status, api };
   };
+
+  it('reports into the group its `group` setting names', async () => {
+    const { loop, api } = setup({ deliveredArchiveId: 22 }, { group: 'Home' });
+    await loop.tick();
+    expect(api.heartbeat).toHaveBeenCalledWith(
+      expect.objectContaining({ groupKey: 'fo4:home', label: 'Vortex · Home' }),
+    );
+  });
+
+  // The same staging, known to the old group: without this the agent would wait
+  // for the next change before the new group learns what this machine holds.
+  it('plans again when its heartbeat lands in another group than its last sync', async () => {
+    const { loop, api, paths } = setup({ deliveredArchiveId: 22, lastRunId: 5, groupId: 4 });
+    await loop.tick();
+    await loop.tick();
+
+    expect(api.startRange).toHaveBeenCalledWith(
+      7,
+      'import',
+      'carry',
+      expect.objectContaining({ allMods: true }),
+    );
+    expect(fs.readFileSync(paths.journal, 'utf8')).toContain('"event":"group-changed"');
+    expect(readAgentState(paths.state)).toMatchObject({ groupId: 1, resyncNeeded: false });
+  });
 
   it('syncs a changed staging folder once it has settled', async () => {
     const { loop, plan, status } = setup({ deliveredArchiveId: 22 });
