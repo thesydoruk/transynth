@@ -21,6 +21,11 @@ export type AgentConfig = {
   game: GameId;
   stagingPath: string;
   gameDir: string;
+  /**
+   * The group to sync into, when it is not the one of this staging path: a name
+   * several computers share, or the staging path of the computer to join.
+   */
+  group?: string;
   /** Vortex's downloads folder for the game; the langpack is dropped here. */
   downloadsDir: string;
   pluginsTxt?: string;
@@ -113,6 +118,7 @@ export const parseAgentConfig = (
     game,
     stagingPath: str('stagingPath') || template.stagingPath,
     gameDir: str('gameDir'),
+    ...(str('group') ? { group: str('group') } : {}),
     downloadsDir: str('downloadsDir') || template.downloadsDir,
     ...(str('pluginsTxt') ? { pluginsTxt: str('pluginsTxt') } : {}),
     ...(str('vortexProfile') ? { vortexProfile: str('vortexProfile') } : {}),

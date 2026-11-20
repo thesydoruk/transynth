@@ -10,6 +10,7 @@ export const AGENT_UI_SETTINGS_SCRIPT = `(function () {
       settings: 'Settings', save: 'Save', saved: 'Saved. The agent restarts its loop with the new settings after the current step.',
       autostart: 'Start the agent when I sign in to Windows', autostartFile: 'Launcher:',
       api: 'Server address', token: 'CLI token', game: 'Game', stagingPath: 'Vortex staging folder', gameDir: 'Game folder',
+      group: 'Group to join: a shared name, or the other computer’s staging folder (optional)',
       downloadsDir: 'Vortex downloads folder', pluginsTxt: 'plugins.txt (optional)', vortexProfile: 'Vortex profile (optional)',
       srcLang: 'Source language', tgtLang: 'Target language', channel: 'What to sync', autoStages: 'Runs on its own up to',
       pollSec: 'Poll every, s', settleSec: 'Quiet before a sync, s', fullScanEveryMin: 'Full scan every, min',
@@ -22,6 +23,7 @@ export const AGENT_UI_SETTINGS_SCRIPT = `(function () {
       settings: 'Налаштування', save: 'Зберегти', saved: 'Збережено. Агент перезапустить цикл із новими налаштуваннями після поточного кроку.',
       autostart: 'Запускати агента, коли я входжу у Windows', autostartFile: 'Файл запуску:',
       api: 'Адреса сервера', token: 'CLI-токен', game: 'Гра', stagingPath: 'Тека стейджа Vortex', gameDir: 'Тека гри',
+      group: 'Група, до якої приєднатися: спільна назва або тека стейджа іншого комп’ютера (необов’язково)',
       downloadsDir: 'Тека завантажень Vortex', pluginsTxt: 'plugins.txt (необов’язково)', vortexProfile: 'Профіль Vortex (необов’язково)',
       srcLang: 'Мова оригіналу', tgtLang: 'Мова перекладу', channel: 'Що синхронізувати', autoStages: 'Сам запускає до стадії',
       pollSec: 'Опитування кожні, с', settleSec: 'Тиша перед синком, с', fullScanEveryMin: 'Повний скан кожні, хв',
@@ -36,7 +38,7 @@ export const AGENT_UI_SETTINGS_SCRIPT = `(function () {
   function $(id) { return document.getElementById(id); }
   var FIELDS = [
     ['api', 'text'], ['token', 'password'], ['game', 'select'], ['gameDir', 'text'], ['stagingPath', 'text'],
-    ['downloadsDir', 'text'], ['pluginsTxt', 'text'], ['vortexProfile', 'text'], ['srcLang', 'text'], ['tgtLang', 'text'],
+    ['group', 'text'], ['downloadsDir', 'text'], ['pluginsTxt', 'text'], ['vortexProfile', 'text'], ['srcLang', 'text'], ['tgtLang', 'text'],
     ['channel', 'select', ['all', 'mods', 'game']], ['autoStages', 'select', ['import', 'carry', 'tm']],
     ['pollSec', 'number'], ['settleSec', 'number'], ['fullScanEveryMin', 'number'], ['uiPort', 'number'],
     ['deliverLangpack', 'checkbox'], ['videos', 'checkbox']

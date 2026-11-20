@@ -9,7 +9,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import { log } from '../../logger';
-import { vortexGroupKey, vortexGroupLabel } from '../groupKey';
+import { vortexGroupAnchor, vortexGroupKey, vortexGroupLabel } from '../groupKey';
 import type { VortexAgentHeartbeat, VortexAgentState } from '../types';
 import type { AgentApi } from './apiClient';
 import {
@@ -103,10 +103,11 @@ export class VortexAgentLoop {
 
   private heartbeatBody(): VortexAgentHeartbeat {
     const { config } = this.opts;
+    const anchor = vortexGroupAnchor(config.stagingPath, config.group);
     return {
       game: config.game,
-      groupKey: vortexGroupKey(config.game, config.stagingPath),
-      label: vortexGroupLabel(config.stagingPath, config.game),
+      groupKey: vortexGroupKey(config.game, anchor),
+      label: vortexGroupLabel(anchor, config.game),
       stagingPath: config.stagingPath,
       gameDir: config.gameDir,
       agentKey: os.hostname(),
@@ -137,6 +138,12 @@ export class VortexAgentLoop {
 
   private async heartbeat(): Promise<void> {
     const reply = await this.opts.api.heartbeat(this.heartbeatBody());
+    // Another group than the last sync went to (the `group` setting changed):
+    // this machine's mods are unknown there until it plans again.
+    if (this.state.groupId != null && reply.groupId !== this.state.groupId) {
+      this.state.resyncNeeded = true;
+      this.journal({ event: 'group-changed', from: this.state.groupId, to: reply.groupId });
+    }
     this.state.groupId = reply.groupId;
     this.control.heartbeatResult(null);
     this.control.latestLangpack = reply.latestLangpack;

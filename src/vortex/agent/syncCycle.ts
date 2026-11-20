@@ -10,7 +10,7 @@ import path from 'node:path';
 import { log } from '../../logger';
 import { buildVortexInventory } from '../buildInventory';
 import { discoverVortexExportOrder } from '../exportOrder';
-import { vortexGroupLabel } from '../groupKey';
+import { vortexGroupAnchor, vortexGroupLabel } from '../groupKey';
 import type { VideoManifest } from '../../video/manifest';
 import { packVortexUnitZip, vortexUnitZipName } from '../packUnit';
 import type {
@@ -113,6 +113,7 @@ export const scanForSync = async (ctx: SyncContext) => {
     game: ctx.config.game,
     stagingPath: ctx.config.stagingPath,
     gameDir: ctx.config.gameDir,
+    group: ctx.config.group,
     channel: ctx.config.channel,
     hashFile: cachedFileHasher(ctx.cache, undefined, counters),
     videos: ctx.config.videos,
@@ -159,7 +160,10 @@ export const runSyncCycle = async (ctx: SyncContext): Promise<SyncOutcome> => {
 
   const plan = await api.post<PlanResponse>('/api/vortex/sync/plan', {
     groupKey: scan.inventory.groupKey,
-    label: vortexGroupLabel(scan.inventory.stagingPath, config.game),
+    label: vortexGroupLabel(
+      vortexGroupAnchor(scan.inventory.stagingPath, config.group),
+      config.game,
+    ),
     game: config.game,
     stagingPath: scan.inventory.stagingPath,
     gameDir: scan.inventory.gameDir,

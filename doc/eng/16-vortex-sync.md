@@ -39,7 +39,8 @@ folder), `api` (the server) and `token` (the server's `TRANSYNTH_CLI_TOKEN`; an 
 variable of the same name wins over the file). `stagingPath` and `downloadsDir` default to
 where Vortex keeps them (`%APPDATA%\Vortex\<game>\mods` and
 `%APPDATA%\Vortex\downloads\<game>`); if you moved them in Vortex's settings, put the new
-paths in.
+paths in. On a second computer, `group` joins it to the first one's group — see
+[Several machines on one group](#several-machines-on-one-group).
 
 ```text
 npm run vortex:agent -- --dry-run     # inventory and load order, no server call
@@ -206,7 +207,20 @@ ships the official game channel and only the staging mods whose folder is in the
 ### Several machines on one group
 
 Two computers whose staging path is the same (the default path holds the Windows user
-name) sync into the same group. The mods are shared: a folder with the same content is one
+name) sync into the same group. A computer with another path joins through `group` in its
+agent's settings (`--group` for the CLI): the staging path of the computer whose group it
+joins, exactly as that computer's panel on the Vortex page shows it, or a name both
+computers set. The computer that already syncs needs no change when the other one names
+its path.
+
+A computer never starts a second group for the same game. If its staging folder moves, or
+its `group` names a group that does not exist, the server answers 409 and creates nothing
+(a second group would upload the whole load order again); the message carries the `group`
+value that keeps the computer where it is. Naming a group that exists moves the computer
+there: the agent then plans again so that group learns what this machine holds, and
+uploads only what the group lacks. Computers are told apart by host name.
+
+The mods are shared: a folder with the same content is one
 mod on the server, uploaded once, with one set of translations and takes, whichever
 computer brought it. What differs between computers belongs to the **machine** (the agent's
 host name, one `vortex_agents` row):

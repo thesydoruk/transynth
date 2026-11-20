@@ -18,7 +18,8 @@ import { log } from '../../logger';
 import { allGamePlugins } from '../../games/registry';
 import { probeKindsHealthy } from '../../services/kindHealth';
 import type { GameId } from '../../types';
-import { getVortexGroup, getOrCreateVortexGroup } from '../../vortex/db';
+import { resolveAgentGroup } from '../../vortex/agentGroup';
+import { getVortexGroup } from '../../vortex/db';
 import {
   getLatestGroupLangpack,
   getVortexAgentForGroup,
@@ -119,13 +120,12 @@ export const vortexAgentRoutes = async (app: FastifyInstance, db: Tx) => {
     const parsed = parseHeartbeat(req.body);
     if (!parsed.ok) return reply.code(400).send({ error: parsed.error });
     const { beat } = parsed;
-    const group = await getOrCreateVortexGroup(db, {
-      game: beat.game,
-      groupKey: beat.groupKey,
-      label: beat.label,
-      stagingPath: beat.stagingPath,
-      gameDir: beat.gameDir,
-    });
+    const resolved = await resolveAgentGroup(db, beat);
+    if ('refused' in resolved) {
+      log.warn(`Vortex agent ${beat.agentKey}: refused a second group (${beat.groupKey})`);
+      return reply.code(409).send({ error: resolved.refused, groupId: resolved.groupId });
+    }
+    const { group } = resolved;
     const agent = await upsertVortexAgent(db, group.id, beat);
     if (beat.state === 'error') {
       log.warn(`Vortex agent ${beat.agentKey} on group #${group.id}: ${beat.lastError ?? 'error'}`);

@@ -12,8 +12,8 @@ import { withKeyedLock } from '../../utils/keyedLock';
 import { getExportArchive } from '../data/queries';
 import { sendExportArchive } from '../export/sendExportArchive';
 import { startBackgroundJob } from '../../../worker/src/api/startBackgroundJob';
+import { resolveAgentGroup } from '../../vortex/agentGroup';
 import {
-  getOrCreateVortexGroup,
   getVortexGroup,
   getLatestVortexSyncRun,
   getVortexGroupByKey,
@@ -107,13 +107,18 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
     }
     const channel = isVortexChannel(body.channel) ? body.channel : 'all';
     const game = body.game as GameId;
-    const group = await getOrCreateVortexGroup(db, {
+    const resolved = await resolveAgentGroup(db, {
       game,
       groupKey: body.groupKey,
       label: body.label || vortexGroupLabel(body.stagingPath || body.groupKey, game),
       stagingPath: body.stagingPath,
       gameDir: body.gameDir,
+      agentKey: body.agentKey,
     });
+    if ('refused' in resolved) {
+      return reply.code(409).send({ error: resolved.refused, groupId: resolved.groupId });
+    }
+    const { group } = resolved;
     const machineId = await resolveVortexMachine(db, group.id, body.agentKey, {
       stagingPath: body.stagingPath,
       gameDir: body.gameDir,

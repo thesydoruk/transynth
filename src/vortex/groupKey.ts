@@ -19,6 +19,16 @@ export const vortexGroupKey = (game: string, stagingPath: string): string => {
   return `${game}:${normalized}`;
 };
 
+/**
+ * What an agent's group is keyed and labelled on: its `group` setting when it
+ * has one, else its own staging path. The setting is a name several computers
+ * share, or the staging path of the computer whose group this one joins, so a
+ * computer with another Windows user name or another staging folder still
+ * lands in the same group.
+ */
+export const vortexGroupAnchor = (stagingPath: string, group?: string | null): string =>
+  group?.trim() || stagingPath;
+
 export const scopedVortexFileHash = (groupId: number, contentHash: string): string =>
   `v${groupId}:${contentHash}`;
 

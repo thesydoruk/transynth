@@ -20,6 +20,7 @@ const FORM_KEYS = [
   'game',
   'stagingPath',
   'gameDir',
+  'group',
   'downloadsDir',
   'pluginsTxt',
   'vortexProfile',
@@ -116,7 +117,7 @@ export const saveConfigForm = (
     ...checked,
     token: typeof next.token === 'string' ? next.token : '',
   };
-  for (const key of ['pluginsTxt', 'vortexProfile'] as const) {
+  for (const key of ['group', 'pluginsTxt', 'vortexProfile'] as const) {
     if (!config[key]) delete out[key];
   }
   fs.mkdirSync(path.dirname(file), { recursive: true });

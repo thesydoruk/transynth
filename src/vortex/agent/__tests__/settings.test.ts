@@ -65,6 +65,12 @@ describe('the settings form', () => {
     expect(saved()).not.toHaveProperty('vortexProfile');
     expect(saved()).not.toHaveProperty('pluginsTxt');
 
+    expect(saveConfigForm(file, form({ group: ' home ' }), {}).group).toBe('home');
+    expect(saved().group).toBe('home');
+    expect(readConfigForm(file, {}).values.group).toBe('home');
+    saveConfigForm(file, form({ group: '' }), {});
+    expect(saved()).not.toHaveProperty('group');
+
     saveConfigForm(file, form({ token: 'new' }), {});
     expect(saved().token).toBe('new');
     saveConfigForm(file, form({ clearToken: true }), {});
