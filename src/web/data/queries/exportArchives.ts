@@ -75,6 +75,42 @@ export const findRunningExportArchive = async (db: Tx): Promise<ExportArchiveRow
   return rows[0] ?? null;
 };
 
+export const listRunningExportArchives = async (db: Tx): Promise<ExportArchiveRow[]> => {
+  const { rows } = await db.query<ExportArchiveRow>(
+    `SELECT * FROM export_archives WHERE status = 'running' ORDER BY id`,
+  );
+  return rows;
+};
+
+/** Close an archive nobody writes any more; false when it is no longer `running`. */
+export const failRunningExportArchive = async (
+  db: Tx,
+  id: number,
+  error: string,
+): Promise<boolean> => {
+  const { rowCount } = await db.query(
+    `UPDATE export_archives SET status = 'failed', error = $2, updated_at = NOW()
+      WHERE id = $1 AND status = 'running'`,
+    [id, error],
+  );
+  return (rowCount ?? 0) > 0;
+};
+
+/** Hand a running archive to the job that starts it again; false when it was already handed over. */
+export const moveExportArchiveToJob = async (
+  db: Tx,
+  id: number,
+  fromJobId: number,
+  toJobId: number,
+): Promise<boolean> => {
+  const { rowCount } = await db.query(
+    `UPDATE export_archives SET job_id = $3, done_count = 0, updated_at = NOW()
+      WHERE id = $1 AND status = 'running' AND job_id = $2`,
+    [id, fromJobId, toJobId],
+  );
+  return (rowCount ?? 0) > 0;
+};
+
 export const setExportArchiveJobId = async (
   db: Tx,
   id: number,

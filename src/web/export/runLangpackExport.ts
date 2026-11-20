@@ -17,6 +17,8 @@ export type LangpackExportJobParams = {
   targetLang: string;
   fileWinners?: VortexFileWinner[];
   sourceFolders?: Record<number, string | null>;
+  /** How many times a worker restart already cut this export short. */
+  restarts?: number;
 };
 
 export type LangpackExportRunResult = {

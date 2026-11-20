@@ -1,7 +1,10 @@
 /** The `export` stage of a Vortex run: one langpack of the mods a machine has deployed. */
 import type { Tx } from '../../../../src/db';
 import { log } from '../../../../src/logger';
-import { insertExportArchive } from '../../../../src/web/data/queries/exportArchives';
+import {
+  insertExportArchive,
+  setExportArchiveJobId,
+} from '../../../../src/web/data/queries/exportArchives';
 import {
   listVortexExportModRows,
   updateVortexSyncRun,
@@ -30,7 +33,7 @@ const planExportOrder = (run: VortexSyncRunRow): VortexExportOrder | null => {
 export const runExportStage = async (
   db: Tx,
   run: VortexSyncRunRow,
-  opts: { isCancelled: () => boolean },
+  opts: { jobId?: number; isCancelled: () => boolean },
 ): Promise<void> => {
   // A langpack is one machine's: the mods its staging holds, in its load order.
   const currentIds = await listRunModIds(db, run);
@@ -69,6 +72,8 @@ export const runExportStage = async (
     modIds,
     totalCount: modIds.length,
   });
+  // The archive names the job that writes it, so a worker restart can close it.
+  if (opts.jobId != null) await setExportArchiveJobId(db, archive.id, opts.jobId);
   const result = await executeLangpackExport(
     db,
     {
