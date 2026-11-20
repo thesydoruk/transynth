@@ -5,9 +5,10 @@
  *                                             the newest langpack to deliver (the dubbed
  *                                             videos travel in it) and the videos waiting
  *                                             for their file
- *   POST /api/vortex/groups/:id/export-order — the group's current load order (token)
- *   GET  /api/vortex/groups/:id/state        — group, agent, current run, langpack,
- *                                             which service kinds have a healthy host
+ *   POST /api/vortex/groups/:id/export-order — a machine's current load order (token)
+ *   GET  /api/vortex/groups/:id/state        — group, its machines (each with its own
+ *                                             langpack), current run, which service
+ *                                             kinds have a healthy host
  *   GET  /api/vortex/groups/:id/runs         — run history
  */
 import type { FastifyInstance } from 'fastify';
@@ -23,7 +24,11 @@ import {
   setGroupExportOrder,
   upsertVortexAgent,
 } from '../../vortex/dbAgents';
-import { resolveVortexMachine, setMachineExportOrder } from '../../vortex/dbMachines';
+import {
+  listVortexMachines,
+  resolveVortexMachine,
+  setMachineExportOrder,
+} from '../../vortex/dbMachines';
 import { findActiveVortexRun, listVortexSyncRuns } from '../../vortex/dbRuns';
 import { isVortexExportOrder } from '../../vortex/exportOrder';
 import { vortexGroupKey, vortexGroupLabel } from '../../vortex/groupKey';
@@ -123,8 +128,9 @@ export const vortexAgentRoutes = async (app: FastifyInstance, db: Tx) => {
     if (beat.state === 'error') {
       log.warn(`Vortex agent ${beat.agentKey} on group #${group.id}: ${beat.lastError ?? 'error'}`);
     }
+    // The langpack made for this machine: another one's follows another load order.
     const [latestLangpack, videoUploads] = await Promise.all([
-      getLatestGroupLangpack(db, group.id),
+      getLatestGroupLangpack(db, group.id, agent.id),
       gameHasMedia(beat.game) ? listVideoUploadTasks(db, group.id) : Promise.resolve([]),
     ]);
     return reply.send({
@@ -146,10 +152,10 @@ export const vortexAgentRoutes = async (app: FastifyInstance, db: Tx) => {
     const order = req.body?.exportOrder;
     if (!isVortexExportOrder(order))
       return reply.code(400).send({ error: 'exportOrder is invalid' });
-    // The order is the machine's; the group keeps a copy for a run no machine is named for.
+    // The order is the machine's; only one that cannot be told goes to the group.
     const machineId = await resolveVortexMachine(db, id, req.body?.agentKey);
     if (machineId != null) await setMachineExportOrder(db, machineId, order);
-    await setGroupExportOrder(db, id, order);
+    else await setGroupExportOrder(db, id, order);
     return reply.send({
       ok: true,
       plugins: order.plugins.length,
@@ -162,15 +168,23 @@ export const vortexAgentRoutes = async (app: FastifyInstance, db: Tx) => {
     if (id === null) return reply.code(400).send({ error: 'Invalid group id' });
     const group = await getVortexGroup(db, id);
     if (!group) return reply.code(404).send({ error: 'Group not found' });
-    const [agent, currentRun, latestLangpack, services] = await Promise.all([
+    const [agent, machineRows, currentRun, latestLangpack, services] = await Promise.all([
       getVortexAgentForGroup(db, id),
+      listVortexMachines(db, id),
       findActiveVortexRun(db, id),
       getLatestGroupLangpack(db, id),
       probeKindsHealthy(STATE_SERVICE_KINDS),
     ]);
+    const machines = await Promise.all(
+      machineRows.map(async (row) => ({
+        ...row,
+        latestLangpack: await getLatestGroupLangpack(db, id, row.id),
+      })),
+    );
     return {
       group,
       agent,
+      machines,
       currentRun,
       latestLangpack,
       services,

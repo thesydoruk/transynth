@@ -82,7 +82,7 @@ while `/api/services` sees no healthy host of the kind the stage needs.
 
 ### The langpack
 
-When the server has a new finished langpack, the agent downloads it into `downloadsDir`
+When the server has a new finished langpack for this machine, the agent downloads it into `downloadsDir`
 as `Transynth_<game>_<lang>_langpack_r<N>.zip` (written as `.part`, then renamed), and
 Vortex lists the archive on its Downloads tab and offers to install it. The agent never
 writes into staging and never deletes anything in the downloads folder. Switch it off with
@@ -193,11 +193,36 @@ ships the official game channel and only the staging mods whose folder is in the
 (the mod is enabled in Vortex). With synthesis present, `UASoundPack.esp` and
 `UASoundPack - Main.ba2` are added.
 
+### Several machines on one group
+
+Two computers whose staging path is the same (the default path holds the Windows user
+name) sync into the same group. The mods are shared: a folder with the same content is one
+mod on the server, uploaded once, with one set of translations and takes, whichever
+computer brought it. What differs between computers belongs to the **machine** (the agent's
+host name, one `vortex_agents` row):
+
+- the mods its staging holds (`present_mod_ids`) — a version is current (`is_current`)
+  while some machine holds it, so a computer that stays on an older version of a mod does
+  not lose it when another one updates;
+- its load order and file winners (`export_order_json`);
+- its game release (`game_release_id`) and its paths.
+
+A langpack is exported for one machine: its mods, its load order. The agent downloads only
+the langpack made for its own machine. With one machine nothing has to be chosen;
+`POST /api/vortex/groups/:id/stage/export` with two or more needs `agentId` (the page asks),
+and answers 400 without it. `tm`, `llm`, `verify`, `skip`, `gender` and `voice` cover the
+mods of every machine unless `agentId` narrows them to one.
+
+Restart the agent on every computer after updating: an agent that does not name its machine
+is taken for the group's only machine, and with two machines its load order cannot be told
+apart. A group synced before machines existed hands its state to the machine seen last,
+once, when the server starts.
+
 ## Game releases
 
 Official ESMs from `Game\Data` that are not in staging are collected in
 `vortex_game_releases`. The label is the ProductVersion of `Fallout4.exe`. A new patch is a
-new release; the previous one stays.
+new release; the previous one stays, and stays current while a machine still runs it.
 
 ## Token
 

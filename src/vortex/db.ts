@@ -39,6 +39,10 @@ const RUN_COLUMNS = `id, vortex_group_id, game, src_lang, tgt_lang, channel, sta
   current_stage, last_completed_stage, current_mod_id, job_id,
   export_archive_id, error, plan_json, stage, started_by, agent_id`;
 
+/**
+ * The group of a game and a staging path. Its paths are the ones it was made
+ * with: every machine of the group keeps its own on its `vortex_agents` row.
+ */
 export const getOrCreateVortexGroup = async (
   db: Tx,
   params: {
@@ -54,8 +58,8 @@ export const getOrCreateVortexGroup = async (
      VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (game, group_key) DO UPDATE SET
        label = EXCLUDED.label,
-       staging_path = EXCLUDED.staging_path,
-       game_dir = EXCLUDED.game_dir,
+       staging_path = COALESCE(vortex_groups.staging_path, EXCLUDED.staging_path),
+       game_dir = COALESCE(vortex_groups.game_dir, EXCLUDED.game_dir),
        updated_at = NOW()
      RETURNING ${GROUP_COLUMNS}`,
     [params.game, params.groupKey, params.label, params.stagingPath, params.gameDir],
@@ -205,24 +209,11 @@ export const listCurrentGroupModIds = async (
   const conds = ['m.vortex_group_id = $1'];
   const params: unknown[] = [groupId];
   if (channel === 'mods') conds.push(`m.channel = 'mods'`);
-  if (channel === 'game') {
-    conds.push(`m.channel = 'game'`);
-    conds.push(`(m.game_release_id IS NULL OR m.game_release_id = (
-      SELECT id FROM vortex_game_releases
-      WHERE vortex_group_id = $1 AND is_current = TRUE
-      ORDER BY created_at DESC LIMIT 1
-    ))`);
-  } else {
-    conds.push(`(
-      m.channel IS DISTINCT FROM 'game'
-      OR m.game_release_id IS NULL
-      OR m.game_release_id = (
-        SELECT id FROM vortex_game_releases
-        WHERE vortex_group_id = $1 AND is_current = TRUE
-        ORDER BY created_at DESC LIMIT 1
-      )
-    )`);
-  }
+  // Several releases are current when the group's machines run different game versions.
+  const ofCurrentRelease = `(m.game_release_id IS NULL OR m.game_release_id IN (
+    SELECT id FROM vortex_game_releases WHERE vortex_group_id = $1 AND is_current))`;
+  if (channel === 'game') conds.push(`m.channel = 'game'`, ofCurrentRelease);
+  else conds.push(`(m.channel IS DISTINCT FROM 'game' OR ${ofCurrentRelease})`);
   conds.push(`COALESCE(m.is_current, TRUE)`);
   const { rows } = await db.query<{ id: number }>(
     `SELECT m.id FROM mods m WHERE ${conds.join(' AND ')} ORDER BY m.name`,

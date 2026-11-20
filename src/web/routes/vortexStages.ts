@@ -2,7 +2,9 @@
  * The Vortex page's buttons: start one stage for a group, stop a run, read a run.
  *
  *   POST /api/vortex/groups/:id/stage/:stage — a new run for one stage; refused when a
- *        run is active or the stage needs a service kind without a healthy host
+ *        run is active or the stage needs a service kind without a healthy host.
+ *        `agentId` / `agentKey` name the machine it is for: its mods, its load order.
+ *        An export is always one machine's; any other stage without one covers the group
  *   POST /api/vortex/sync/:runId/stop
  *   GET  /api/vortex/sync/:runId                — the run row with live per-mod progress
  */
@@ -16,7 +18,7 @@ import { startBackgroundJob } from '../../../worker/src/api/startBackgroundJob';
 import { requestJobStop } from '../../../worker/src/core/queue';
 import type { VortexModJob } from '../../../worker/src/jobs/vortexSync/fanOutStage';
 import { getVortexGroup, getVortexSyncRun, insertVortexSyncRun } from '../../vortex/db';
-import { getGroupExportOrder } from '../../vortex/dbAgents';
+import { getExportOrderFor, resolveStageMachine } from '../../vortex/dbMachines';
 import { findActiveVortexRun } from '../../vortex/dbRuns';
 import {
   STAGE_JOB_KIND,
@@ -46,6 +48,9 @@ type StageBody = {
   modIds?: number[];
   options?: Record<string, unknown>;
   startedBy?: 'ui' | 'agent';
+  /** The machine the stage is for: by id from the page, by key from the agent. */
+  agentId?: number;
+  agentKey?: string;
 };
 
 const modJobsOf = (run: { plan_json: unknown }): VortexModJob[] => {
@@ -115,6 +120,12 @@ export const vortexStagesRoutes = async (app: FastifyInstance, db: Tx) => {
         }
       }
       const body = req.body ?? {};
+      const machine = await resolveStageMachine(db, id, {
+        agentId: body.agentId,
+        agentKey: body.agentKey,
+        required: stage === 'export',
+      });
+      if ('error' in machine) return reply.code(400).send({ error: machine.error });
       const channel = body.channel && isVortexChannel(body.channel) ? body.channel : 'all';
       const modIds = Array.isArray(body.modIds)
         ? body.modIds.filter((n) => Number.isInteger(n) && n > 0)
@@ -131,10 +142,11 @@ export const vortexStagesRoutes = async (app: FastifyInstance, db: Tx) => {
         channel,
         stage,
         startedBy: body.startedBy === 'agent' ? 'agent' : 'ui',
+        agentId: machine.machineId,
         plan: {
           modIds,
           options: body.options ?? {},
-          exportOrder: await getGroupExportOrder(db, id),
+          exportOrder: await getExportOrderFor(db, id, machine.machineId),
         },
       });
       const params = isFanOutStage(stage)

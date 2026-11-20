@@ -13,10 +13,10 @@ import { getModImportJob } from '../../../../src/import/mod/jobs';
 import { log } from '../../../../src/logger';
 import {
   getVortexSyncRun,
-  listCurrentGroupModIds,
   updateVortexSyncRun,
   type VortexSyncRunRow,
 } from '../../../../src/vortex/db';
+import { listRunModIds } from '../../../../src/vortex/dbMachines';
 import { upsertCurrentGameRelease } from '../../../../src/vortex/dbReleases';
 import { carryTargetIds, unitJobIds, unitsNeverUploaded } from '../../../../src/vortex/planUnits';
 import { findPreviousVortexMod, markCurrentVortexMods } from '../../../../src/vortex/dbFamily';
@@ -151,14 +151,7 @@ const runCarryStage = async (
 };
 
 const stageMods = async (db: Tx, run: VortexSyncRunRow, modIds?: number[]) => {
-  const ids =
-    modIds && modIds.length > 0
-      ? modIds
-      : await listCurrentGroupModIds(
-          db,
-          run.vortex_group_id,
-          run.channel as 'all' | 'mods' | 'game',
-        );
+  const ids = modIds && modIds.length > 0 ? modIds : await listRunModIds(db, run);
   if (ids.length === 0) return [];
   const { rows } = await db.query<{ id: number; name: string; game: string }>(
     `SELECT id, name, game FROM mods WHERE id = ANY($1::int[]) ORDER BY name`,
@@ -244,11 +237,7 @@ export const runVortexSyncJob = async (
         const targets =
           mods.present.length > 0
             ? carryTargetIds(mods.present, mods.imported, params.allMods === true)
-            : await listCurrentGroupModIds(
-                db,
-                run.vortex_group_id,
-                run.channel as 'all' | 'mods' | 'game',
-              );
+            : await listRunModIds(db, run);
         await runCarryStage(db, run, targets, opts);
       }
       if (stage === 'export') await runExportStage(db, run, opts);

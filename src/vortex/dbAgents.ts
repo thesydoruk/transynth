@@ -20,7 +20,7 @@ export type VortexAgentRow = {
   game_dir: string | null;
 };
 
-const AGENT_COLUMNS = `id, vortex_group_id, agent_key, agent_version, state, state_json,
+export const AGENT_COLUMNS = `id, vortex_group_id, agent_key, agent_version, state, state_json,
   last_error, last_sync_at, last_seen_at, staging_path, game_dir`;
 
 export const upsertVortexAgent = async (
@@ -89,21 +89,14 @@ export const setGroupExportOrder = async (
   ]);
 };
 
-export const getGroupExportOrder = async (
-  db: Tx,
-  groupId: number,
-): Promise<VortexExportOrder | null> => {
-  const { rows } = await db.query<{ export_order_json: VortexExportOrder | null }>(
-    `SELECT export_order_json FROM vortex_groups WHERE id = $1`,
-    [groupId],
-  );
-  return rows[0]?.export_order_json ?? null;
-};
-
-/** The newest completed export archive any run of this group produced. */
+/**
+ * The newest completed export archive of this group: the one made for the
+ * given machine, or any when no machine is named.
+ */
 export const getLatestGroupLangpack = async (
   db: Tx,
   groupId: number,
+  machineId: number | null = null,
 ): Promise<VortexLatestLangpack | null> => {
   const { rows } = await db.query<{
     archive_id: number;
@@ -115,8 +108,9 @@ export const getLatestGroupLangpack = async (
      FROM vortex_sync_runs r
      JOIN export_archives a ON a.id = r.export_archive_id
      WHERE r.vortex_group_id = $1 AND a.status = 'completed' AND a.rel_path IS NOT NULL
+       AND ($2::int IS NULL OR r.agent_id = $2)
      ORDER BY a.id DESC LIMIT 1`,
-    [groupId],
+    [groupId, machineId],
   );
   const row = rows[0];
   if (!row) return null;

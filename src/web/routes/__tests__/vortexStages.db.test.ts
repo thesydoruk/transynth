@@ -108,6 +108,69 @@ describe('vortex stage API', () => {
     );
   });
 
+  const beat = (agentKey: string) =>
+    app().inject({
+      method: 'POST',
+      url: '/api/vortex/agent/heartbeat',
+      payload: {
+        game: 'fo4',
+        stagingPath: 'D:/Vortex/fallout4/mods',
+        gameDir: 'D:/Games/Fallout4',
+        agentKey,
+        state: 'idle',
+      },
+    });
+  const runOf = async (runId: number) => {
+    const { rows } = await db().query(
+      `SELECT agent_id, plan_json->'exportOrder'->'plugins' AS plugins
+       FROM vortex_sync_runs WHERE id = $1`,
+      [runId],
+    );
+    return rows[0];
+  };
+
+  it('exports for the group’s only machine, with that machine’s load order', async () => {
+    const groupId = await makeGroup();
+    const { agentId } = (await beat('pc')).json();
+    await app().inject({
+      method: 'POST',
+      url: `/api/vortex/groups/${groupId}/export-order`,
+      payload: { exportOrder: { plugins: ['Pc.esp'], fileWinners: [] }, agentKey: 'pc' },
+    });
+
+    const res = await start(groupId, 'export');
+
+    expect(res.statusCode).toBe(201);
+    expect(await runOf(res.json().runId)).toEqual({ agent_id: agentId, plugins: ['Pc.esp'] });
+  });
+
+  it('asks which machine an export is for once the group has two', async () => {
+    const groupId = await makeGroup();
+    const laptop = (await beat('laptop')).json().agentId as number;
+
+    const unnamed = await start(groupId, 'export');
+    expect(unnamed.statusCode).toBe(400);
+    expect(unnamed.json().error).toMatch(/name the one/);
+    expect((await start(groupId, 'export', { agentId: 999 })).statusCode).toBe(400);
+    expect(startBackgroundJob).not.toHaveBeenCalled();
+
+    const named = await start(groupId, 'export', { agentId: laptop });
+    expect(named.statusCode).toBe(201);
+    expect(await runOf(named.json().runId)).toEqual({ agent_id: laptop, plugins: null });
+  });
+
+  it('runs any other stage over the group unless a machine is named', async () => {
+    const groupId = await makeGroup();
+    const { agentId } = (await beat('pc')).json();
+
+    const whole = await start(groupId, 'tm');
+    expect(await runOf(whole.json().runId)).toMatchObject({ agent_id: null });
+    await db().query(`UPDATE vortex_sync_runs SET status = 'completed'`);
+
+    const own = await start(groupId, 'tm', { startedBy: 'agent', agentKey: 'pc' });
+    expect(await runOf(own.json().runId)).toMatchObject({ agent_id: agentId });
+  });
+
   it('answers 400 for unknown or agent-only stages and bad ids', async () => {
     const groupId = await makeGroup();
 
