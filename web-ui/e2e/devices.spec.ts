@@ -48,7 +48,8 @@ const PAGES: PageCase[] = [
   { name: 'diff', path: '/games/fo4/diff', ready: heading },
   { name: 'coherence', path: '/games/fo4/coherence', ready: heading },
   { name: 'reference', path: '/games/fo4/reference', ready: text('Settler 1') },
-  { name: 'vortex', path: '/games/fo4/vortex', ready: text('gaming-pc · 0.10.0') },
+  // The second machine's panel: both are on the page once its game version shows.
+  { name: 'vortex', path: '/games/fo4/vortex', ready: text('1.10.163') },
   {
     name: 'glossary',
     path: '/games/fo4/glossary',

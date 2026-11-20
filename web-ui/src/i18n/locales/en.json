@@ -1571,7 +1571,10 @@
       "never": "never reported",
       "staging": "Staging",
       "gameDir": "Game",
-      "machine": "Machine",
+      "mods": "Mods in staging",
+      "modsUnknown": "not synced yet",
+      "gameVersion": "Game version",
+      "version": "Agent",
       "lastSeen": "Last seen",
       "lastSync": "Last sync",
       "pending": "Pending",
@@ -1581,6 +1584,10 @@
       "lastError": "Last error",
       "delivered": "Delivered",
       "howToStart": "Run npm run vortex:agent on the machine with Vortex; the first heartbeat registers it here.",
+      "forget": "Forget this machine",
+      "forgetTitle": "Forget {{name}}?",
+      "forgetMessage": "For a computer that no longer syncs, or one whose host name changed. The mods, their translations and the langpacks stay. A version of a mod only this machine held is archived where another machine holds a different one. A machine that is still running registers again on its next heartbeat.",
+      "forgetConfirm": "Forget",
       "states": {
         "idle": "idle",
         "scanning": "scanning",
@@ -1591,6 +1598,11 @@
         "error": "error"
       }
     },
+    "machines": {
+      "label": "Stages for",
+      "all": "all machines",
+      "hint": "A langpack is built for one machine: its mods, in its load order. The other stages cover the mods of every machine unless one is chosen."
+    },
     "langpack": {
       "latest": "Latest langpack",
       "none": "none exported yet"
@@ -1599,6 +1611,7 @@
       "title": "Stages",
       "hint": "The agent runs import, carry-over and TM by itself. Everything below needs a host that may be switched off, so it only starts from here.",
       "needsHost": "No healthy {{service}} host — start it, then retry",
+      "needsMachine": "Choose the machine to export for",
       "busy": "A run is still in progress",
       "names": {
         "tm": "Re-run TM",

@@ -1,35 +1,45 @@
 import { useTranslation } from 'react-i18next';
-import { api, type VortexAgent, type VortexGroup, type VortexLatestLangpack } from '../../api';
+import { api, type VortexGroup, type VortexMachine } from '../../api';
+import { Button } from '../../components/Button';
 import { agentIsOffline } from './useVortexPage';
 import s from './VortexPage.module.scss';
 
 type Props = {
   group: VortexGroup;
-  agent: VortexAgent | null;
-  latestLangpack: VortexLatestLangpack | null;
+  /** One machine of the group; null while no agent has reported yet. */
+  machine: VortexMachine | null;
+  /** Offered for an offline machine when the group has another one. */
+  onForget?: (machine: VortexMachine) => void;
 };
 
 const when = (iso: string | null | undefined): string =>
   iso ? new Date(iso).toLocaleString() : '—';
 
-/** The resident agent's heartbeat: where it watches, what it waits for, what it last did. */
-export const VortexAgentPanel = ({ group, agent, latestLangpack }: Props) => {
+/**
+ * One machine of the group: where its agent watches, what it holds, what it
+ * waits for, what it last did, and the langpack made for it.
+ */
+export const VortexAgentPanel = ({ group, machine, onForget }: Props) => {
   const { t } = useTranslation();
-  const offline = agent ? agentIsOffline(agent.last_seen_at, agent.state_json?.pollSec) : true;
-  const pending = agent?.state_json?.pending ?? null;
-  const delivered = agent?.state_json?.delivered ?? null;
+  const offline = machine
+    ? agentIsOffline(machine.last_seen_at, machine.state_json?.pollSec)
+    : true;
+  const pending = machine?.state_json?.pending ?? null;
+  const delivered = machine?.state_json?.delivered ?? null;
+  const langpack = machine?.latestLangpack ?? null;
+  const titleId = `vortex-agent-title-${machine?.id ?? 'none'}`;
 
   return (
-    <section className={s.panel} aria-labelledby="vortex-agent-title">
+    <section className={s.panel} aria-labelledby={titleId}>
       <div className={s.panelHead}>
-        <h2 id="vortex-agent-title" className={s.panelTitle}>
-          {t('vortex.agent.title')}
+        <h2 id={titleId} className={s.panelTitle}>
+          {machine ? machine.agent_key : t('vortex.agent.title')}
         </h2>
-        {agent ? (
+        {machine ? (
           <span className={offline ? s.badgeError : s.badgeOk}>
             {offline
               ? t('vortex.agent.offline')
-              : t(`vortex.agent.states.${agent.state}`, agent.state)}
+              : t(`vortex.agent.states.${machine.state}`, machine.state)}
           </span>
         ) : (
           <span className={s.badgeMuted}>{t('vortex.agent.never')}</span>
@@ -37,20 +47,29 @@ export const VortexAgentPanel = ({ group, agent, latestLangpack }: Props) => {
       </div>
       <dl className={s.facts}>
         <dt>{t('vortex.agent.staging')}</dt>
-        <dd className={s.mono}>{group.staging_path ?? '—'}</dd>
+        <dd className={s.mono}>{machine?.staging_path ?? group.staging_path ?? '—'}</dd>
         <dt>{t('vortex.agent.gameDir')}</dt>
-        <dd className={s.mono}>{group.game_dir ?? '—'}</dd>
-        {agent && (
+        <dd className={s.mono}>{machine?.game_dir ?? group.game_dir ?? '—'}</dd>
+        {machine && (
           <>
-            <dt>{t('vortex.agent.machine')}</dt>
-            <dd>
-              {agent.agent_key}
-              {agent.agent_version ? ` · ${agent.agent_version}` : ''}
-            </dd>
+            <dt>{t('vortex.agent.mods')}</dt>
+            <dd>{machine.mod_count ?? t('vortex.agent.modsUnknown')}</dd>
+            {machine.game_version && (
+              <>
+                <dt>{t('vortex.agent.gameVersion')}</dt>
+                <dd>{machine.game_version}</dd>
+              </>
+            )}
+            {machine.agent_version && (
+              <>
+                <dt>{t('vortex.agent.version')}</dt>
+                <dd>{machine.agent_version}</dd>
+              </>
+            )}
             <dt>{t('vortex.agent.lastSeen')}</dt>
-            <dd>{when(agent.last_seen_at)}</dd>
+            <dd>{when(machine.last_seen_at)}</dd>
             <dt>{t('vortex.agent.lastSync')}</dt>
-            <dd>{when(agent.last_sync_at)}</dd>
+            <dd>{when(machine.last_sync_at)}</dd>
             {pending && (
               <>
                 <dt>{t('vortex.agent.pending')}</dt>
@@ -64,10 +83,10 @@ export const VortexAgentPanel = ({ group, agent, latestLangpack }: Props) => {
                 </dd>
               </>
             )}
-            {agent.last_error && (
+            {machine.last_error && (
               <>
                 <dt>{t('vortex.agent.lastError')}</dt>
-                <dd className={s.errorText}>{agent.last_error}</dd>
+                <dd className={s.errorText}>{machine.last_error}</dd>
               </>
             )}
             {delivered && (
@@ -82,15 +101,15 @@ export const VortexAgentPanel = ({ group, agent, latestLangpack }: Props) => {
         )}
         <dt>{t('vortex.langpack.latest')}</dt>
         <dd>
-          {latestLangpack ? (
+          {langpack ? (
             <a
               className={s.linkButton}
-              href={api.vortex.langpackUrl(latestLangpack.runId)}
-              download={latestLangpack.fileName}
+              href={api.vortex.langpackUrl(langpack.runId)}
+              download={langpack.fileName}
             >
-              {latestLangpack.fileName}
-              {latestLangpack.byteSize != null
-                ? ` (${(latestLangpack.byteSize / 1048576).toFixed(0)} MiB)`
+              {langpack.fileName}
+              {langpack.byteSize != null
+                ? ` (${(langpack.byteSize / 1048576).toFixed(0)} MiB)`
                 : ''}
             </a>
           ) : (
@@ -98,7 +117,14 @@ export const VortexAgentPanel = ({ group, agent, latestLangpack }: Props) => {
           )}
         </dd>
       </dl>
-      {!agent && <p className={s.hint}>{t('vortex.agent.howToStart')}</p>}
+      {!machine && <p className={s.hint}>{t('vortex.agent.howToStart')}</p>}
+      {machine && offline && onForget && (
+        <div className={s.panelActions}>
+          <Button variant="dangerGhost" size="sm" onClick={() => onForget(machine)}>
+            {t('vortex.agent.forget')}
+          </Button>
+        </div>
+      )}
     </section>
   );
 };

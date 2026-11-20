@@ -19,15 +19,23 @@ export const vortexEndpoints = {
   runs: (id: number, limit = 20) =>
     req<{ runs: VortexRun[] }>(`/api/vortex/groups/${id}/runs?limit=${limit}`),
   run: (runId: number) => req<VortexRunStatus>(`/api/vortex/sync/${runId}`),
-  startStage: (id: number, stage: VortexStage, options: Record<string, unknown> = {}) =>
+  /** `agentId` names the machine the stage is for; without it the stage covers the group. */
+  startStage: (
+    id: number,
+    stage: VortexStage,
+    options: Record<string, unknown> = {},
+    agentId?: number | null,
+  ) =>
     req<{ ok: true; runId: number; jobId: number; stage: VortexStage }>(
       `/api/vortex/groups/${id}/stage/${stage}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ options, startedBy: 'ui' }),
+        body: JSON.stringify({ options, startedBy: 'ui', ...(agentId != null ? { agentId } : {}) }),
       },
     ),
+  forgetMachine: (id: number, machineId: number) =>
+    req<{ ok: true }>(`/api/vortex/groups/${id}/machines/${machineId}`, { method: 'DELETE' }),
   stopRun: (runId: number) =>
     req<{ ok: true; stopped: number[] }>(`/api/vortex/sync/${runId}/stop`, { method: 'POST' }),
   /** The run's finished langpack, for a download link. */

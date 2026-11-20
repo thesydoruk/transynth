@@ -9,6 +9,7 @@
  *   GET  /api/vortex/groups/:id/state        — group, its machines (each with its own
  *                                             langpack), current run, which service
  *                                             kinds have a healthy host
+ *   DELETE /api/vortex/groups/:id/machines/:machineId — forget a machine that is gone
  *   GET  /api/vortex/groups/:id/runs         — run history
  */
 import type { FastifyInstance } from 'fastify';
@@ -25,6 +26,7 @@ import {
   upsertVortexAgent,
 } from '../../vortex/dbAgents';
 import {
+  forgetVortexMachine,
   listVortexMachines,
   resolveVortexMachine,
   setMachineExportOrder,
@@ -191,6 +193,23 @@ export const vortexAgentRoutes = async (app: FastifyInstance, db: Tx) => {
       probedAt: new Date().toISOString(),
     };
   });
+
+  // The page's button for a machine that no longer syncs; open like its other buttons.
+  app.delete<{ Params: { id: string; machineId: string } }>(
+    '/api/vortex/groups/:id/machines/:machineId',
+    async (req, reply) => {
+      const id = parseRouteId(req.params.id);
+      const machineId = parseRouteId(req.params.machineId);
+      if (id === null || machineId === null) {
+        return reply.code(400).send({ error: 'Invalid group or machine id' });
+      }
+      if (!(await forgetVortexMachine(db, id, machineId))) {
+        return reply.code(404).send({ error: 'Machine not found' });
+      }
+      log.info(`Vortex group #${id}: machine #${machineId} forgotten`);
+      return reply.send({ ok: true });
+    },
+  );
 
   app.get<{ Params: { id: string }; Querystring: { limit?: string } }>(
     '/api/vortex/groups/:id/runs',

@@ -83,9 +83,24 @@ export type VortexLatestLangpack = {
   byteSize: number | null;
 };
 
+/**
+ * One computer that syncs into the group. The mods are the group's; what the
+ * machine holds, its paths, its game version and its langpack are its own.
+ */
+export type VortexMachine = VortexAgent & {
+  staging_path: string | null;
+  game_dir: string | null;
+  /** Mods its staging holds; null before its first sync. */
+  mod_count: number | null;
+  game_version: string | null;
+  latestLangpack: VortexLatestLangpack | null;
+};
+
 export type VortexGroupState = {
   group: VortexGroup;
   agent: VortexAgent | null;
+  /** Every machine of the group, the one seen last first. */
+  machines: VortexMachine[];
   currentRun: VortexRun | null;
   latestLangpack: VortexLatestLangpack | null;
   services: Partial<Record<'llm' | 'embed' | 'tts', boolean>>;

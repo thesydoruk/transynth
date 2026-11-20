@@ -10,6 +10,7 @@ import { getOrCreateVortexGroup, insertVortexSyncRun } from '../db';
 import { markCurrentForSettledPlan, markCurrentVortexMods } from '../dbFamily';
 import {
   ensureVortexMachine,
+  forgetVortexMachine,
   getExportOrderFor,
   listMachineModIds,
   listRunModIds,
@@ -136,6 +137,11 @@ describe('vortex machines', () => {
     const v3 = await mod(groupId, 'A', 'a3');
     await markCurrentVortexMods(db(), groupId, [v3, deskOnly], desk);
     expect(await currentMods(groupId)).toEqual([v1, deskOnly, v3]);
+
+    // The laptop is retired: its version is archived, the desk's stay.
+    expect(await forgetVortexMachine(db(), groupId, laptop)).toBe(true);
+    expect(await currentMods(groupId)).toEqual([deskOnly, v3]);
+    expect(await forgetVortexMachine(db(), groupId, laptop)).toBe(false);
   });
 
   it('gives a run its machine’s mods, and the group’s when the machine is unknown', async () => {

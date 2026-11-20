@@ -272,6 +272,32 @@ const vortexGroup = {
   game_dir: 'C:\\Games\\Fallout 4',
 };
 
+const vortexLangpack = {
+  archiveId: 14,
+  runId: 7,
+  fileName: 'fo4_uk_langpack.zip',
+  byteSize: 2097152,
+};
+
+/** A machine of the group: the page stacks a panel for each beside the stages. */
+const vortexMachine = (id: number, agentKey: string, lastSeenAt: string, own: object = {}) => ({
+  id,
+  vortex_group_id: 1,
+  agent_key: agentKey,
+  agent_version: '0.10.0',
+  state: 'idle',
+  state_json: { pollSec: 30, pending: null, lastRunId: 7, delivered: null },
+  last_error: null,
+  last_sync_at: '2026-11-05T01:00:00Z',
+  last_seen_at: lastSeenAt,
+  staging_path: vortexGroup.staging_path,
+  game_dir: vortexGroup.game_dir,
+  mod_count: 26,
+  game_version: '1.10.984',
+  latestLangpack: null,
+  ...own,
+});
+
 const reference = Array.from({ length: 10 }, (_, i) => ({
   id: i + 1,
   game: 'fo4',
@@ -569,24 +595,19 @@ const routes: Array<[RegExp, Answer]> = [
     /^\/api\/vortex\/groups\/\d+\/state$/,
     {
       group: vortexGroup,
-      agent: {
-        id: 1,
-        vortex_group_id: 1,
-        agent_key: 'gaming-pc',
-        agent_version: '0.10.0',
-        state: 'idle',
-        state_json: { pollSec: 30, pending: null, lastRunId: 7, delivered: null },
-        last_error: null,
-        last_sync_at: '2026-11-05T01:00:00Z',
-        last_seen_at: new Date().toISOString(),
-      },
+      agent: vortexMachine(1, 'gaming-pc', new Date().toISOString()),
+      machines: [
+        vortexMachine(1, 'gaming-pc', new Date().toISOString(), {
+          latestLangpack: vortexLangpack,
+        }),
+        vortexMachine(2, 'living-room-laptop', '2026-11-01T01:00:00Z', {
+          game_dir: 'D:\\SteamLibrary\\steamapps\\common\\Fallout 4',
+          mod_count: 9,
+          game_version: '1.10.163',
+        }),
+      ],
       currentRun: null,
-      latestLangpack: {
-        archiveId: 14,
-        runId: 7,
-        fileName: 'fo4_uk_langpack.zip',
-        byteSize: 2097152,
-      },
+      latestLangpack: vortexLangpack,
       services: { llm: true, embed: true, tts: false },
       probedAt: new Date().toISOString(),
     },
