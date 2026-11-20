@@ -4,7 +4,7 @@ import type { VortexSyncRunRow } from './db';
 
 const RUN_COLUMNS = `id, vortex_group_id, game, src_lang, tgt_lang, channel, status,
   current_stage, last_completed_stage, current_mod_id, job_id,
-  export_archive_id, error, plan_json, stage, started_by, created_at, updated_at`;
+  export_archive_id, error, plan_json, stage, started_by, agent_id, created_at, updated_at`;
 
 export type VortexSyncRunHistoryRow = VortexSyncRunRow & {
   stage: string | null;

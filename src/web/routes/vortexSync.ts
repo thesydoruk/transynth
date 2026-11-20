@@ -18,10 +18,11 @@ import {
   getVortexSyncRun,
   insertVortexSyncRun,
   listCurrentGroupModIds,
-  listGameReleases,
   listVortexGroups,
   updateVortexSyncRun,
 } from '../../vortex/db';
+import { resolveVortexMachine } from '../../vortex/dbMachines';
+import { listGameReleases } from '../../vortex/dbReleases';
 import { findPlanUnit, patchVortexPlanUnit } from '../../vortex/planUnits';
 import { markCurrentForSettledPlan, planVortexUnits } from '../../vortex/dbFamily';
 import { ensureVortexSchema } from '../../vortex/schema';
@@ -107,8 +108,12 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
       stagingPath: body.stagingPath,
       gameDir: body.gameDir,
     });
+    const machineId = await resolveVortexMachine(db, group.id, body.agentKey, {
+      stagingPath: body.stagingPath,
+      gameDir: body.gameDir,
+    });
     const units = await planVortexUnits(db, group.id, { ...body, channel, game });
-    await markCurrentForSettledPlan(db, group.id, units);
+    await markCurrentForSettledPlan(db, group.id, units, machineId);
     const run = await insertVortexSyncRun(db, {
       groupId: group.id,
       game,
@@ -116,6 +121,7 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
       tgtLang: body.tgtLang || CONFIG.defaultTgtLang,
       channel,
       plan: { ...body, units, gameRelease: body.gameRelease },
+      agentId: machineId,
     });
     log.info(`Vortex plan run=${run.id} group=${group.id} units=${units.length}`);
     return reply.code(201).send({ run, group, units });

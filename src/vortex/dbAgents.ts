@@ -15,10 +15,13 @@ export type VortexAgentRow = {
   last_error: string | null;
   last_sync_at: Date | null;
   last_seen_at: Date;
+  /** Where this machine keeps Vortex's staging folder and the game. */
+  staging_path: string | null;
+  game_dir: string | null;
 };
 
 const AGENT_COLUMNS = `id, vortex_group_id, agent_key, agent_version, state, state_json,
-  last_error, last_sync_at, last_seen_at`;
+  last_error, last_sync_at, last_seen_at, staging_path, game_dir`;
 
 export const upsertVortexAgent = async (
   db: Tx,
@@ -33,14 +36,17 @@ export const upsertVortexAgent = async (
   };
   const { rows } = await db.query<VortexAgentRow>(
     `INSERT INTO vortex_agents
-       (vortex_group_id, agent_key, agent_version, state, state_json, last_error, last_sync_at, last_seen_at)
-     VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, NOW())
+       (vortex_group_id, agent_key, agent_version, state, state_json, last_error, last_sync_at,
+        staging_path, game_dir, last_seen_at)
+     VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9, NOW())
      ON CONFLICT (vortex_group_id, agent_key) DO UPDATE SET
        agent_version = EXCLUDED.agent_version,
        state = EXCLUDED.state,
        state_json = EXCLUDED.state_json,
        last_error = EXCLUDED.last_error,
        last_sync_at = EXCLUDED.last_sync_at,
+       staging_path = EXCLUDED.staging_path,
+       game_dir = EXCLUDED.game_dir,
        last_seen_at = NOW()
      RETURNING ${AGENT_COLUMNS}`,
     [
@@ -51,6 +57,8 @@ export const upsertVortexAgent = async (
       JSON.stringify(stateJson),
       beat.lastError,
       beat.lastSyncAt,
+      beat.stagingPath,
+      beat.gameDir,
     ],
   );
   return rows[0]!;
