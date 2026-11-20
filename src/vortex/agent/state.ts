@@ -30,6 +30,11 @@ export type AgentState = {
    * runs the stages even when nothing is left to upload.
    */
   resyncNeeded: boolean;
+  /**
+   * Paused from the agent's page (or with `--pause`). Kept here so that a
+   * restart, a crash or a reboot does not start a sync nobody asked for.
+   */
+  paused: boolean;
 };
 
 export const emptyAgentState = (): AgentState => ({
@@ -45,6 +50,7 @@ export const emptyAgentState = (): AgentState => ({
   failures: 0,
   retryAfter: null,
   resyncNeeded: false,
+  paused: false,
 });
 
 export const readAgentState = (file: string): AgentState => {

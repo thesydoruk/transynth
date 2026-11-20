@@ -30,8 +30,10 @@ export type AgentScanSummary = {
 type Request = 'sync' | 'redeliver';
 
 export class AgentControl {
-  /** No sync, upload or delivery on the agent's own initiative; not kept across a restart. */
+  /** No sync, upload or delivery on the agent's own initiative; the loop keeps it across a restart. */
   paused = false;
+  /** Told when the page pauses or resumes, so the loop can write it to the state file. */
+  onPauseChange: ((paused: boolean) => void) | null = null;
   stopping = false;
   /** New settings were saved: the loop ends after its tick and starts again with them. */
   reloading = false;
@@ -49,9 +51,10 @@ export class AgentControl {
   private wake: (() => void) | null = null;
 
   command(command: AgentCommand): void {
-    if (command === 'pause') this.paused = true;
-    else if (command === 'resume') this.paused = false;
-    else if (command === 'stop') this.stopping = true;
+    if (command === 'pause' || command === 'resume') {
+      this.paused = command === 'pause';
+      this.onPauseChange?.(this.paused);
+    } else if (command === 'stop') this.stopping = true;
     else this.requests.add(command);
     this.wake?.();
   }

@@ -72,6 +72,10 @@ export class VortexAgentLoop {
     this.state = readAgentState(opts.paths.state);
     this.cache = loadHashCache(opts.paths.cache);
     this.control = opts.control ?? new AgentControl();
+    // A pause is the user's word: it holds across a restart and a reboot.
+    this.control.paused = this.control.paused || this.state.paused;
+    this.keepPause(this.control.paused);
+    this.control.onPauseChange = (paused) => this.keepPause(paused);
     this.videos = new AgentVideoSync({
       config: opts.config,
       api: opts.api,
@@ -91,6 +95,13 @@ export class VortexAgentLoop {
   /** What the loop knows right now, for the agent's page. */
   view() {
     return { state: this.state, agentState: this.agentState, settleUntil: this.settleUntil };
+  }
+
+  private keepPause(paused: boolean): void {
+    if (this.state.paused === paused) return;
+    this.state.paused = paused;
+    this.save();
+    this.journal({ event: 'command', command: paused ? 'pause' : 'resume' });
   }
 
   private journal(entry: Record<string, unknown>): void {

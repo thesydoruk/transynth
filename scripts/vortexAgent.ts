@@ -8,6 +8,7 @@
  *   npm run vortex:agent -- --dry-run              # inventory and load order, no server calls
  *   npm run vortex:agent -- --once                 # one tick, sync if anything changed, exit
  *   npm run vortex:agent                           # loop until SIGINT / SIGTERM
+ *   npm run vortex:agent -- --pause | --resume     # set the pause of an agent that is not running
  *
  * While it loops, its own page is at http://127.0.0.1:<uiPort>/ (3220 unless
  * the config says otherwise; 0 or --no-ui turns it off). The page also edits
@@ -32,7 +33,7 @@ import { defaultAgentPaths } from '../src/vortex/agent/loop';
 import { runAgent } from '../src/vortex/agent/runner';
 import { scanForSync } from '../src/vortex/agent/syncCycle';
 import { loadHashCache, saveHashCache } from '../src/vortex/agent/hashCache';
-import { emptyAgentState } from '../src/vortex/agent/state';
+import { emptyAgentState, readAgentState, writeAgentState } from '../src/vortex/agent/state';
 
 const argv = await yargs(hideBin(process.argv))
   .scriptName('vortex:agent')
@@ -41,6 +42,12 @@ const argv = await yargs(hideBin(process.argv))
   .option('once', { type: 'boolean', default: false, describe: 'One tick, then exit' })
   .option('dry-run', { type: 'boolean', default: false, describe: 'Scan only, no server calls' })
   .option('ui', { type: 'boolean', default: true, describe: 'Serve the agent page on 127.0.0.1' })
+  .option('pause', {
+    type: 'boolean',
+    describe: 'Mark the agent paused in its state file and exit: its next start stays paused',
+  })
+  .option('resume', { type: 'boolean', describe: 'Clear the pause in the state file and exit' })
+  .conflicts('pause', 'resume')
   .help()
   .parse();
 
@@ -49,6 +56,15 @@ const { version } = createRequire(import.meta.url)('../package.json') as { versi
 if (argv.init) {
   const file = writeConfigTemplate(argv.config);
   log.info(`Wrote ${file} — fill in gameDir (and api, token) before the first run`);
+  process.exit(0);
+}
+
+if (argv.pause || argv.resume) {
+  // For an agent that is not running or is about to be restarted: a running one
+  // holds its state in memory and is paused from its page.
+  const file = defaultAgentPaths().state;
+  writeAgentState(file, { ...readAgentState(file), paused: argv.pause === true });
+  log.info(`vortex-agent: ${argv.pause ? 'paused' : 'resumed'} in ${file}`);
   process.exit(0);
 }
 
