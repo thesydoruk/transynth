@@ -11,11 +11,12 @@
  *   npm run fonts:check -- --file <fonts_en.swf> [options]
  *
  * Required:
- *   --file <path>       SWF font library, `.ba2` archive, or folder holding either
+ *   --file <path>       SWF/GFX font library, `.ba2` archive, or folder holding either
  *                       (repeatable)
  *
  * Options:
  *   --chars <text>      Characters to test (default: Ukrainian-specific letters)
+ *   --lang <tag>        Test a language's whole alphabet and punctuation instead
  *   --config <path>     FontConfig.txt to resolve logical names to families
  *   --verbose           Also print each font's covered Unicode ranges
  *
@@ -23,12 +24,14 @@
  *   npm run fonts:check -- --file "D:\Games\Fallout4\Data" --config "D:\Games\Fallout4\Data\Interface\FontConfig.txt"
  *   npm run fonts:check -- --file "Fallout4 - Interface.ba2"
  *   npm run fonts:check -- --file fonts_en.swf --chars "іїєґ'—"
+ *   npm run fonts:check -- --file fonts_en.gfx --lang uk --config fontconfig_en.txt
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { getBa2Reader } from '../src/formats/ba2';
+import { languageGlyphs } from '../src/formats/swf';
 import {
   readSwfFonts,
   missingGlyphs,
@@ -52,6 +55,7 @@ const argv = await yargs(hideBin(process.argv))
     default: DEFAULT_CHARS,
     describe: 'Characters to test for coverage',
   })
+  .option('lang', { type: 'string', describe: "Test this language's letters and punctuation" })
   .option('config', { type: 'string', describe: 'FontConfig.txt mapping logical font names' })
   .option('verbose', { type: 'boolean', default: false, describe: "Print each font's ranges" })
   .strict()
@@ -59,15 +63,14 @@ const argv = await yargs(hideBin(process.argv))
 
 type FontSource = { label: string; load: () => Buffer };
 
-const isFontSwf = (name: string): boolean => /(^|[\\/])fonts[^\\/]*\.swf$/i.test(name);
+const isFontSwf = (name: string): boolean => /(^|[\\/])fonts[^\\/]*\.(swf|gfx)$/i.test(name);
 
 /** Texture archives hold no fonts and their file tables are huge. */
 const isTextureArchive = (name: string): boolean => /textures\w*\.ba2$/i.test(name);
 
 const collectFromBa2 = (ba2Path: string): FontSource[] => {
   const reader = getBa2Reader(ba2Path);
-  return reader
-    .listByExt('swf')
+  return [...reader.listByExt('swf'), ...reader.listByExt('gfx')]
     .filter((entry) => isFontSwf(entry.name))
     .map((entry) => ({
       label: `${path.basename(ba2Path)} → ${entry.name}`,
@@ -161,6 +164,13 @@ if (sources.length === 0) {
   process.exit(1);
 }
 
+const glyphSet = argv.lang ? languageGlyphs(argv.lang) : null;
+if (argv.lang && !glyphSet) {
+  console.error(`No alphabet known for "${argv.lang}".`);
+  process.exit(1);
+}
+const chars = glyphSet ? `${glyphSet.letters}${glyphSet.extra}` : argv.chars;
+
 const byFamily = argv.config ? readFontConfigMap(path.resolve(argv.config)) : null;
 let missingTotal = 0;
 
@@ -181,11 +191,15 @@ for (const source of sources) {
       console.log(`  ${label}: DefineFont4 (CFF) — coverage not decodable`);
       continue;
     }
-    const missing = missingGlyphs(font, argv.chars);
-    const placeholders = placeholderGlyphs(font, argv.chars);
+    const missing = missingGlyphs(font, chars);
+    const placeholders = placeholderGlyphs(font, chars);
     const status = missing.length === 0 ? 'OK' : `MISSING ${missing.join(' ')}`;
-    console.log(`  ${label}: ${font.codePoints.size} glyphs — ${status}`);
-    if (missing.length > 0 || placeholders.length > 0) missingTotal++;
+    // With a config, a family no logical font maps to is never drawn, so it cannot fail.
+    const unmapped = byFamily !== null && logicalNamesFor(font, byFamily) === '';
+    console.log(
+      `  ${label}: ${font.codePoints.size} glyphs — ${status}${unmapped ? ' (not mapped)' : ''}`,
+    );
+    if (!unmapped && (missing.length > 0 || placeholders.length > 0)) missingTotal++;
 
     for (const placeholder of placeholders) {
       console.log(
@@ -198,5 +212,5 @@ for (const source of sources) {
 }
 
 console.log(
-  `\n${missingTotal === 0 ? 'All fonts render' : `${missingTotal} font(s) cannot render`} "${argv.chars}".`,
+  `\n${missingTotal === 0 ? 'All fonts render' : `${missingTotal} font(s) cannot render`} "${chars}".`,
 );

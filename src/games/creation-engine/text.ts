@@ -16,14 +16,17 @@ import type { CreationEngineTitle } from './title';
 /** Subrecords of a RACE record that name a face-morph slider, not a thing. */
 const FACE_MORPH_FIELDS = new Set(['FMRN', 'MPPN', 'TTGP']);
 
-/** Records whose text is narration rather than something a character says. */
-const PROSE_GRUPS = new Set(['TERM', 'BOOK', 'NOTE']);
+/**
+ * Records whose text is narration rather than something a character says.
+ * Starfield moved a terminal's text out of `TERM` into its menus, `TMLM`.
+ */
+const PROSE_GRUPS = new Set(['TERM', 'TMLM', 'BOOK', 'NOTE']);
 
 /**
  * Record vocabulary shared by every Creation Engine title.
  *
- * A terminal is a terminal in Morrowind and in Fallout 76, so this is one
- * function for all eight rather than a per-title table.
+ * A terminal is a terminal in Morrowind and in Starfield, so this is one
+ * function for every title rather than a per-title table.
  */
 const creationEngineRecordKind = (
   grup: string | null | undefined,

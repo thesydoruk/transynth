@@ -3,7 +3,6 @@
  * its text, where its localized take goes, whether that take is on disk, and
  * the stamp it carries.
  */
-import fs from 'node:fs';
 import path from 'node:path';
 import type { Tx } from '../db';
 import { gamePlugin } from '../games/registry';
@@ -12,6 +11,8 @@ import { log } from '../logger';
 import { loadImportedMod } from '../modImport';
 import { prepareVoiceTtsText } from './prepareVoiceTtsText';
 import type { ReuseVoiceDestLine, ReuseVoiceLineKey } from './reuseSynthesizedVoiceMatch';
+import { voiceTakesOf } from './takeFormat';
+import { takeOnDisk } from './takeSidecars';
 import {
   loadVoiceSimilarityMap,
   loadVoiceSynthesisVersionMap,
@@ -79,6 +80,8 @@ export const loadVoiceReuseSnapshot = async (
   const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, lang);
   const storedSimilarities = await loadVoiceSimilarityMap(db, modId, lang);
   const localizeDir = paths.localizeDir;
+  // A take counts as there only with the files that travel with it.
+  const sidecarExtensions = voiceTakesOf(voice).sidecarExtensions;
 
   const takes = await voice.listTakes(db, {
     modId,
@@ -100,7 +103,7 @@ export const loadVoiceReuseSnapshot = async (
     sourceAbsPath: take.entry.absolutePath,
     sourceRelPath: take.entry.relPath,
     destRelPath: take.destRelPath,
-    hasLocalized: fs.existsSync(path.join(localizeDir, take.destRelPath)),
+    hasLocalized: takeOnDisk(path.join(localizeDir, take.destRelPath), sidecarExtensions),
     ttsTextVersion: lookupVoiceSynthesisVersion(
       storedVersions,
       take.speakerKey,

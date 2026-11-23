@@ -19,6 +19,7 @@
  */
 import { createCreationEnginePlugin } from './creation-engine/plugin';
 import { fallout3, fallout4, fallout76, falloutNewVegas } from './creation-engine/titles/fallout';
+import { starfield } from './creation-engine/titles/starfield';
 import {
   morrowind,
   oblivion,
@@ -35,6 +36,7 @@ for (const title of [
   fallout76,
   fallout3,
   falloutNewVegas,
+  starfield,
   oblivion,
   morrowind,
   skyrimSpecialEdition,

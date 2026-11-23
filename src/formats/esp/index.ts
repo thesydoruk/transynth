@@ -13,12 +13,21 @@ export type {
   EspRecordView,
   EspStringRow,
   EspSubrecordView,
+  InfoResponseVoiceTypes,
   QuestRecord,
   SceneAction,
   SceneActionKind,
   SceneRecord,
 } from './EspReader';
 export { patchEsp, patchStringsMap } from './espPatcher';
-export { readPluginMasterNames } from './pluginHeader';
+export {
+  formIdMasterIndex,
+  pluginKindFromFlags,
+  readMasterKinds,
+  readPluginHeader,
+  readPluginMasterNames,
+} from './pluginHeader';
+export { DEFAULT_ESP_RECORD_LAYOUT } from './recordLayout';
+export type { EspRecordLayout, PluginKind } from './recordLayout';
 export { parseSubrecordPath } from './subrecordPath';
 export type { SubrecordRef } from './subrecordPath';

@@ -11,14 +11,11 @@ import type { VortexGameReleaseHint, VortexInventoryFile, VortexInventoryUnit } 
 import { isTransynthPackFolderName } from './scanStaging';
 import { isVideoRelPath, VORTEX_BACKUP_SUFFIX } from './videoFiles';
 
-const resolveGameDataDir = (gameDir: string): string => {
+/** The folder given, when it already holds the game's main master; else its `Data`. */
+const resolveGameDataDir = (game: GameId, gameDir: string): string => {
   const direct = path.resolve(gameDir);
-  if (
-    fs.existsSync(path.join(direct, 'Fallout4.esm')) ||
-    fs.existsSync(path.join(direct, 'Skyrim.esm'))
-  ) {
-    return direct;
-  }
+  const mainMaster = officialMasterNames(game)[0];
+  if (mainMaster && fs.existsSync(path.join(direct, mainMaster))) return direct;
   const dataDir = path.join(direct, 'Data');
   if (fs.existsSync(dataDir)) return dataDir;
   return direct;
@@ -72,7 +69,7 @@ export const scanGameUnits = async (
   gameRelease: VortexGameReleaseHint;
   dataDir: string;
 }> => {
-  const dataDir = resolveGameDataDir(gameDir);
+  const dataDir = resolveGameDataDir(game, gameDir);
   const rootDir = path.basename(dataDir).toLowerCase() === 'data' ? path.dirname(dataDir) : gameDir;
 
   let dataEntries: string[] = [];

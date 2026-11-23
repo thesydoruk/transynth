@@ -12,7 +12,7 @@ First-class LLM prompts and glossaries are **Ukrainian** (`en → uk`). Other ta
 
 ## Games
 
-Fallout 4, 76, 3, New Vegas · Oblivion · Morrowind · Skyrim SE / LE · Disco Elysium Final Cut · The Witcher 3 (Remastered).
+Fallout 4, 76, 3, New Vegas · Starfield · Oblivion · Morrowind · Skyrim SE / LE · Disco Elysium Final Cut · The Witcher 3 (Remastered).
 
 A new game is one directory under `src/games/` implementing the plugin contract, plus one line registering it — see [Adding a Game](doc/eng/17-adding-a-game.md).
 

@@ -5,13 +5,11 @@ import type { Tx } from '../../db';
 import { resolveImportPackages } from '../../modImport/packages';
 import { resolveModImportExtractRoot } from '../../modStorage/paths';
 import type { GameId } from '../../types';
-import {
-  loadExportableVoiceKeys,
-  voiceKeyFromLocalizedRelPath,
-} from '../../voice/exportableVoiceKeys';
+import { loadExportableVoiceKeys } from '../../voice/exportableVoiceKeys';
+import { voiceTakeKeyResolver } from '../../voice/takeFormat';
 
 export type LocalizedVoiceExportEntry = {
-  /** Zip/install-relative path with forward slashes (e.g. `Sound/Voice/Mod.esp/00123456_1.fuz`). */
+  /** Zip/install-relative path with forward slashes (e.g. `Sound/Voice/Mod.esp/Npc/00123456_1.fuz`). */
   name: string;
   /** Path relative to the package / localize root (no `Data/` prefix when that is the package). */
   packageRel: string;
@@ -19,7 +17,7 @@ export type LocalizedVoiceExportEntry = {
 };
 
 export type CollectLocalizedVoiceOptions = {
-  /** File extensions to include (default: `.fuz` only). */
+  /** File extensions to include (default: {@link localizedVoiceExtensions} of the game). */
   extensions?: string[];
   /** Rewrite the zip-relative path after the package folder prefix. */
   zipPathTransform?: (relPath: string) => string;
@@ -35,10 +33,14 @@ const matchesExtension = (fileName: string, extensions: string[]): boolean => {
   return extensions.some((ext) => lower.endsWith(ext.toLowerCase()));
 };
 
-const isAllowedVoiceFile = (relPath: string, options: CollectLocalizedVoiceOptions): boolean => {
-  if (!options.exportableKeys) return true;
-  const key = voiceKeyFromLocalizedRelPath(relPath, options.game ?? DEFAULT_GAME_ID);
-  return key != null && options.exportableKeys.has(key);
+/**
+ * Extensions of the files a game's localized takes are made of: the take
+ * itself and whatever travels with it — Starfield ships a `.ffxanim` beside
+ * every `.wem`, and a pack with only one of the two is a pack of broken takes.
+ */
+export const localizedVoiceExtensions = (game: GameId | undefined): string[] => {
+  const voice = gamePlugin(game).voice;
+  return [voice?.sourceExtension ?? '.fuz', ...(voice?.takes?.sidecarExtensions ?? [])];
 };
 
 /**
@@ -56,14 +58,21 @@ export const collectLocalizedVoiceFiles = async (
   const extractRoot = resolveModImportExtractRoot(modPath);
   if (!extractRoot) return [];
 
-  const extensions = options.extensions ?? [
-    gamePlugin(options.game).voice?.sourceExtension ?? '.fuz',
-  ];
+  const extensions = options.extensions ?? localizedVoiceExtensions(options.game);
+  const voice = gamePlugin(options.game ?? DEFAULT_GAME_ID).voice;
   const packages = resolveImportPackages(extractRoot, targetLang, modPath);
   const files: LocalizedVoiceExportEntry[] = [];
 
   for (const pkg of packages) {
     if (!fs.existsSync(pkg.localizeDir)) continue;
+
+    // A take's key may only be readable against the package's own plugin.
+    const keyOf = voice ? voiceTakeKeyResolver(voice, pkg.pluginPath) : () => null;
+    const isAllowedVoiceFile = (relPath: string): boolean => {
+      if (!options.exportableKeys) return true;
+      const key = keyOf(relPath);
+      return key != null && options.exportableKeys.has(key);
+    };
 
     const zipPrefix = pkg.folder ? `${pkg.folder}/` : '';
     const walk = async (current: string, relDir: string): Promise<void> => {
@@ -75,7 +84,7 @@ export const collectLocalizedVoiceFiles = async (
           continue;
         }
         if (!matchesExtension(entry.name, extensions)) continue;
-        if (!isAllowedVoiceFile(relPath, options)) continue;
+        if (!isAllowedVoiceFile(relPath)) continue;
         const packageRel = normalizeZipPath(relPath);
         const transformed = options.zipPathTransform
           ? options.zipPathTransform(packageRel)

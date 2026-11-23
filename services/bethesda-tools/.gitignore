@@ -3,3 +3,4 @@ wine
 tools/*.exe
 tools/*.cdf
 tools/*.dll
+tools/starfield/

@@ -86,12 +86,14 @@ const pickFallback = (
  * @param source - Original `FontConfig.txt` contents.
  * @param readLibrary - Supplies the libraries the config declares, already repaired where possible.
  * @param targetLang - Language being exported, e.g. `uk`.
+ * @param preferred - Replacement family per family, tried before ranking by name.
  * @returns The patched file, or `null` when nothing needed changing.
  */
 export const patchFontConfigForLanguage = (
   source: Buffer,
   readLibrary: FontLibraryResolver,
   targetLang: string,
+  preferred: Readonly<Record<string, string>> = {},
 ): PatchedFontConfig | null => {
   const alphabet = languageAlphabet(targetLang);
   if (!alphabet) return null;
@@ -120,7 +122,10 @@ export const patchFontConfigForLanguage = (
     // Without the library we cannot tell whether the family is fine; leave it be.
     if (!current || canRender(current, alphabet)) continue;
 
-    const fallback = pickFallback(usable, line, mainFamily);
+    const wanted = preferred[line.family];
+    const fallback =
+      (wanted ? usable.find((font) => matchesFamily(font, wanted)) : undefined) ??
+      pickFallback(usable, line, mainFamily);
     if (!fallback || matchesFamily(fallback, line.family)) continue;
 
     remapped.push({ name: line.name, from: line.family, to: fallback.name });

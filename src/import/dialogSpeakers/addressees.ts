@@ -34,7 +34,7 @@ import type { AddresseeKind } from '../../dialog';
  * Scene alias of the player character: the action is played on, or at, the
  * player. xEdit reads `-2` as "Player" in every title but Skyrim.
  */
-const PLAYER_ALIAS_ID = -2;
+export const PLAYER_ALIAS_ID = -2;
 
 export type SpeakerNodeRow = {
   id: number;

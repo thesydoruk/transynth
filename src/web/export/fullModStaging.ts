@@ -20,7 +20,7 @@ import { gamePlugin } from '../../games/registry';
 import type { GameId } from '../../types';
 import { copyFileSafe, ensureDir } from '../../utils/file';
 import { applyLocalizationToPackage } from './fullModLocalization';
-import { collectExportableVoiceFiles } from './exportVoiceFiles';
+import { collectExportableVoiceFiles, localizedVoiceExtensions } from './exportVoiceFiles';
 
 const PLUGIN_EXTS = new Set(['.esp', '.esm', '.esl']);
 const SKIP_STAGING_NAMES = new Set(['import-manifest.json', 'localize']);
@@ -108,7 +108,7 @@ const applyExportableVoiceOverlay = async (
     srcLang,
     targetLang,
     game,
-    { extensions: [gamePlugin(game).voice?.sourceExtension ?? '.fuz'] },
+    { extensions: localizedVoiceExtensions(game) },
   );
   for (const file of voiceFiles) {
     writeBufferToPackage(packageDir, file.packageRel, fs.readFileSync(file.absPath));

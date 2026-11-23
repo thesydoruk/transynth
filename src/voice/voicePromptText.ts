@@ -67,7 +67,8 @@ export const loadVoicePromptSources = async (
     const source = normalizeVoiceText(row.source);
     if (!source) continue;
     const originPlugin = origins.originOfFormid(row.info_formid_hex);
-    const key = voiceTranslationMapKey(row.line_key, PROMPT_VOICE_VARIANT, originPlugin);
+    const lineKey = origins.lineKeyOfFormid(row.info_formid_hex);
+    const key = voiceTranslationMapKey(lineKey, PROMPT_VOICE_VARIANT, originPlugin);
     if (map.has(key)) continue;
     map.set(key, {
       source,
@@ -118,10 +119,11 @@ export const loadVoicePromptTranslations = async (
   const map = new Map<string, VoiceTranslationRow>();
   for (const row of rows) {
     const originPlugin = origins.originOfFormid(row.info_formid_hex);
-    const key = voiceTranslationMapKey(row.line_key, PROMPT_VOICE_VARIANT, originPlugin);
+    const lineKey = origins.lineKeyOfFormid(row.info_formid_hex);
+    const key = voiceTranslationMapKey(lineKey, PROMPT_VOICE_VARIANT, originPlugin);
     if (map.has(key)) continue;
     map.set(key, {
-      lineKey: row.line_key,
+      lineKey,
       infoFormidHex: row.info_formid_hex,
       originPlugin,
       voiceVariant: PROMPT_VOICE_VARIANT,

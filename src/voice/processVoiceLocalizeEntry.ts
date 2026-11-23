@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Tx } from '../db';
 import { log } from '../logger';
-import { toDiskPath, writeIfChanged } from '../modImport';
+import { toDiskPath } from '../modImport';
 import { isDependencyUnavailableError } from '../pipeline/errors';
 import { synthesizeWav, type TtsSynthesisParams } from '../tts/ttsClient';
 import { ensureDir } from '../utils/file';
@@ -13,8 +13,9 @@ import { lookupVoiceSynthesisVersion, voiceSynthesisStateKey } from './voiceSynt
 import { pickVoiceTtsReference, type SpeakerRefCacheEntry } from './pickVoiceTtsReference';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { stripVoiceNonSpeechBlocks, type PrepareVoiceTtsTextResult } from './prepareVoiceTtsText';
-import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
-import { outputLocalizedFuzRelPath } from './voiceFilePaths';
+import { FUZ_TAKES, type VoiceTakeFormat } from './takeFormat';
+import { takeOnDisk, writeVoiceTake, writeVoiceTakeIfChanged } from './takeSidecars';
+import type { TakeSpeakerSexResolver } from './takeSpeakerSex';
 import { recordVoiceTake, voiceTakeSource } from './referenceVoiceTakeHooks';
 import { voiceTtsPayloadVersionFromPrepared } from './voiceTtsPayloadVersion';
 import {
@@ -39,6 +40,10 @@ export type ProcessVoiceLocalizeEntryOptions = {
   prefix: string;
   tempRoot: string;
   game: GameId;
+  /** How the game stores takes; `.fuz` when omitted. */
+  takes?: VoiceTakeFormat;
+  /** Sex of a voice folder's speaker, for a take format that needs it. */
+  speakerSexOf?: TakeSpeakerSexResolver;
   ttsBaseUrl: string;
   referenceMode: TtsReferenceMode;
   synthesis: TtsSynthesisParams;
@@ -65,7 +70,7 @@ export type ProcessVoiceLocalizeEntryResult =
   | { kind: 'skipped'; relPath: string }
   | { kind: 'warning'; message: string };
 
-/** Synthesize one voice file entry into a localized `.fuz` under the mod tree. */
+/** Synthesize one voice file entry into a localized take under the mod tree. */
 export const processVoiceLocalizeEntry = async (
   entry: VoiceFileEntry,
   row: VoiceTranslationRow,
@@ -95,9 +100,10 @@ export const processVoiceLocalizeEntry = async (
     signal,
   } = options;
   const referenceSource = options.referenceSource ?? row.source;
+  const takes = options.takes ?? FUZ_TAKES;
 
-  const fuzRel = outputLocalizedFuzRelPath(entry);
-  const fuzDest = toDiskPath(localizeDir, fuzRel);
+  const takeRel = takes.localizedRelPath(entry);
+  const takeDest = toDiskPath(localizeDir, takeRel);
   let workDir: string | undefined;
 
   try {
@@ -125,9 +131,9 @@ export const processVoiceLocalizeEntry = async (
         originPlugin,
       ),
       payloadVersion,
-      fileExists: fs.existsSync(fuzDest),
+      fileExists: takeOnDisk(takeDest, takes.sidecarExtensions),
     });
-    if (!due) return { kind: 'skipped', relPath: prefix + fuzRel };
+    if (!due) return { kind: 'skipped', relPath: prefix + takeRel };
 
     workDir = path.join(
       tempRoot,
@@ -170,15 +176,17 @@ export const processVoiceLocalizeEntry = async (
       },
     );
 
-    const { fuzData } = await buildVoicedFuzFromTtsWav(
+    const built = await takes.build({
       game,
-      tts.wav,
+      ttsWav: tts.wav,
       workDir,
-      entry.fileName,
-      prepared.text,
-    );
+      fileName: entry.fileName,
+      text: prepared.text,
+      sourceTakePath: entry.absolutePath,
+      actor: options.speakerSexOf?.(speakerKey),
+    });
 
-    const reference = { ...voiceTakeSource(entry, row), takePath: fuzDest };
+    const reference = { ...voiceTakeSource(entry, row), takePath: takeDest };
     /** Stamp the take just written and keep a copy in the reference voice store. */
     const recordTake = async (): Promise<void> => {
       await recordVoiceTake(db, reference, {
@@ -208,17 +216,14 @@ export const processVoiceLocalizeEntry = async (
         resynth,
         take,
         { payloadVersion, newSimilarity: tts.voiceSimilarity },
-        () => {
-          ensureDir(path.dirname(fuzDest));
-          fs.writeFileSync(fuzDest, fuzData);
-        },
+        () => writeVoiceTake(takeDest, built),
         reference,
       );
       if (settled.kind === 'kept') {
-        log.info(`Voice ${prefix}${fuzRel} kept (${settled.reason})`);
+        log.info(`Voice ${prefix}${takeRel} kept (${settled.reason})`);
         return {
           kind: 'kept',
-          relPath: prefix + fuzRel,
+          relPath: prefix + takeRel,
           reason: settled.reason,
           voiceSimilarity:
             lookupVoiceResynthStamp(resynth, speakerKey, entry.lineKey, entry.variant, originPlugin)
@@ -226,26 +231,25 @@ export const processVoiceLocalizeEntry = async (
         };
       }
       storedVersions.set(versionKey, payloadVersion);
-      log.info(`Voice ${prefix}${fuzRel}`);
-      return { kind: 'written', relPath: prefix + fuzRel, voiceSimilarity: tts.voiceSimilarity };
+      log.info(`Voice ${prefix}${takeRel}`);
+      return { kind: 'written', relPath: prefix + takeRel, voiceSimilarity: tts.voiceSimilarity };
     }
 
-    const baselinePath = fs.existsSync(fuzDest) ? fuzDest : null;
-    if (!force && writeIfChanged(fuzDest, fuzData, baselinePath)) {
+    const baselinePath = fs.existsSync(takeDest) ? takeDest : null;
+    if (!force && writeVoiceTakeIfChanged(takeDest, built, baselinePath)) {
       await recordTake();
-      log.info(`Voice ${prefix}${fuzRel}`);
-      return { kind: 'written', relPath: prefix + fuzRel, voiceSimilarity: tts.voiceSimilarity };
+      log.info(`Voice ${prefix}${takeRel}`);
+      return { kind: 'written', relPath: prefix + takeRel, voiceSimilarity: tts.voiceSimilarity };
     }
     if (force) {
-      ensureDir(path.dirname(fuzDest));
-      fs.writeFileSync(fuzDest, fuzData);
+      writeVoiceTake(takeDest, built);
       await recordTake();
-      log.info(`Voice ${prefix}${fuzRel}`);
-      return { kind: 'written', relPath: prefix + fuzRel, voiceSimilarity: tts.voiceSimilarity };
+      log.info(`Voice ${prefix}${takeRel}`);
+      return { kind: 'written', relPath: prefix + takeRel, voiceSimilarity: tts.voiceSimilarity };
     }
-    return { kind: 'skipped', relPath: prefix + fuzRel };
+    return { kind: 'skipped', relPath: prefix + takeRel };
   } catch (err) {
-    if (signal?.aborted) return { kind: 'skipped', relPath: prefix + fuzRel };
+    if (signal?.aborted) return { kind: 'skipped', relPath: prefix + takeRel };
     if (isDependencyUnavailableError(err)) throw err;
     const message = `${prefix}${entry.relPath}: ${err instanceof Error ? err.message : String(err)}`;
     log.warn(`Voice synthesis failed ${message}`);

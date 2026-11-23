@@ -1,6 +1,8 @@
 FROM node:24-slim
 
-# wine32 runs FaceFX and xWMAEncode; wine64 runs RAD's radvideo64.exe (64-bit only).
+# wine32 runs FaceFX and xWMAEncode; wine64 runs RAD's radvideo64.exe (64-bit only)
+# and, in a WoW64 prefix, the Starfield Creation Kit's LipGenerator (32-bit) and
+# ffxc (64-bit) when the user has installed them into the tools mount.
 # xvfb gives that windowed tool a display: without one Wine cannot create its
 # window and the tool exits 0 having done nothing.
 RUN dpkg --add-architecture i386 \
@@ -73,7 +75,8 @@ RUN curl -fsSL --retry 3 -o /tmp/RADTools.7z "$RAD_TOOLS_URL" \
 WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev --ignore-scripts
-COPY server.ts wineSlots.ts faceFxServe.ts binkMix.ts binkMixRoute.ts ./
+COPY server.ts http.ts wineSlots.ts faceFxServe.ts binkMix.ts binkMixRoute.ts \
+  fonixText.ts starfieldTools.ts ffxanim.ts ffxanimRoute.ts ./
 
 ENV NODE_ENV=production
 ENV PORT=3210

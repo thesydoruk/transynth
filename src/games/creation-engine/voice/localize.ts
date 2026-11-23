@@ -4,18 +4,18 @@
  * Walks every source take in the mod's packages — its own, and the masters'
  * takes it borrows for lines it overrides with a different translation —
  * pairs each with the reviewed translation of its INFO line, and writes a
- * localized `.fuz` (plus lip-sync) into the localize tree. A take whose
+ * localized take (with its lip-sync) into the localize tree. A take whose
  * payload has not changed since the last run is skipped unless the job forces
  * it.
  */
-import fs from 'node:fs';
 import type { Tx } from '../../../db';
 import { resolveImportPackages, toDiskPath } from '../../../modImport';
 import { voiceTranslationMapKey } from '../../../voice/loadVoiceTranslations';
 import { localizeVoicePackage } from '../../../voice/localizeVoicePackage';
 import { canSynthesizeVoiceLine, prepareVoiceTtsText } from '../../../voice/prepareVoiceTtsText';
 import { voiceSpeakerKey } from '../../../voice/speakerReference';
-import { outputLocalizedFuzRelPath } from '../../../voice/voiceFilePaths';
+import type { VoiceTakeFormat } from '../../../voice/takeFormat';
+import { takeOnDisk } from '../../../voice/takeSidecars';
 import {
   loadVoiceSynthesisVersionMap,
   lookupVoiceSynthesisVersion,
@@ -28,6 +28,7 @@ import type { VoiceLocalizeRequest, VoiceLocalizeSink } from '../../contract';
 export const countCreationEngineVoiceWork = async (
   db: Tx,
   request: VoiceLocalizeRequest,
+  takes: VoiceTakeFormat,
 ): Promise<number> => {
   const { modId, extractDir, pluginPath, srcLang, tgtLang, scope, onlyKeys } = request;
   const packages = resolveImportPackages(extractDir, tgtLang, pluginPath);
@@ -46,6 +47,7 @@ export const countCreationEngineVoiceWork = async (
       pluginPath: pkg.pluginPath,
       srcLang,
       tgtLang,
+      takes,
     });
 
     for (const { entry, row, referenceSource } of work.items) {
@@ -67,7 +69,7 @@ export const countCreationEngineVoiceWork = async (
       if (prepared.action !== 'synthesize') continue;
 
       const speakerKey = voiceSpeakerKey(entry, work.voiceRootRel);
-      const fuzDest = toDiskPath(pkg.localizeDir, outputLocalizedFuzRelPath(entry));
+      const takeDest = toDiskPath(pkg.localizeDir, takes.localizedRelPath(entry));
       const due = voiceTakeNeedsWork({
         force: forceAll,
         resynth,
@@ -83,7 +85,7 @@ export const countCreationEngineVoiceWork = async (
           entry.originPlugin,
         ),
         payloadVersion: voiceTtsPayloadVersionFromPrepared(prepared, tgtLang),
-        fileExists: fs.existsSync(fuzDest),
+        fileExists: takeOnDisk(takeDest, takes.sidecarExtensions),
       });
       if (!due) continue;
       total += 1;
@@ -96,6 +98,7 @@ export const localizeCreationEngineVoice = async (
   db: Tx,
   request: VoiceLocalizeRequest,
   sink: VoiceLocalizeSink,
+  takes: VoiceTakeFormat,
 ): Promise<void> => {
   const packages = resolveImportPackages(request.extractDir, request.tgtLang, request.pluginPath);
 
@@ -109,6 +112,7 @@ export const localizeCreationEngineVoice = async (
       request.tgtLang,
       {
         game: request.game,
+        takes,
         ttsBaseUrl: request.ttsBaseUrl,
         dryRun: request.dryRun,
         force: request.force,

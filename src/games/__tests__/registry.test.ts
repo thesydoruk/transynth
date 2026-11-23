@@ -21,8 +21,43 @@ describe('registered plugins', () => {
     const ids = allGameIds();
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toEqual(
-      expect.arrayContaining(['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle', 'disco']),
+      expect.arrayContaining([
+        'fo4',
+        'fo76',
+        'fo3',
+        'fnv',
+        'sf1',
+        'ob',
+        'mw',
+        'sse',
+        'sle',
+        'disco',
+      ]),
     );
+  });
+
+  it('lists Starfield after the Fallout titles, as a Vortex-deployed Creation Engine game', () => {
+    const ids = allGameIds();
+    expect(ids.indexOf('sf1')).toBe(ids.indexOf('fnv') + 1);
+
+    const plugin = gamePlugin('sf1');
+    expect(plugin.catalogue).toMatchObject({
+      name: 'Starfield',
+      releaseYear: 2023,
+      localized: true,
+      nexus: { id: 4187, domain: 'starfield' },
+    });
+    expect(plugin.deployment).toMatchObject({
+      vortexId: 'starfield',
+      exeName: 'Starfield.exe',
+      localAppFolder: 'Starfield',
+    });
+    expect(plugin.deployment?.officialMasters[0]).toBe('Starfield.esm');
+    expect(plugin.import.uploadExtensions).toContain('.esm');
+    expect(plugin.prompts.glossary.length).toBeGreaterThan(0);
+    expect(plugin.prompts.translateUk()).toContain('Starfield');
+    expect(plugin.prompts.verifyUk()).toContain('Starfield');
+    expect(plugin.storageKeys).toEqual({ glossary: 'sf1', qaRules: 'sf1' });
   });
 
   it('gives every plugin the adapters the pipeline calls unconditionally', () => {

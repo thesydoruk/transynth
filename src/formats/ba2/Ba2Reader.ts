@@ -2,15 +2,19 @@
  * ba2Reader.ts
  *
  * Reader for Bethesda Archive 2 (BA2) files — GNRL (General) type only.
- * Supports versions 1 (Fallout 4 original) and 8 (Fallout 4 NG / Updated).
+ * Supports versions 1 (Fallout 4 original), 7 and 8 (Fallout 4 NG / Updated) and
+ * 2 and 3 (Starfield).
  *
  * Binary layout:
  *   Header (24 bytes):
  *     magic           : char[4]  = "BTDX"
- *     version         : uint32   — 1 (FO4) or 8 (FO4 NG)
+ *     version         : uint32   — 1 (FO4), 7/8 (FO4 NG), 2/3 (Starfield)
  *     type            : char[4]  = "GNRL"
  *     fileCount       : uint32
  *     nameTableOffset : uint64
+ *   Versions 2 and 3 add 8 bytes (uint64, always 1); version 3 adds a further
+ *   uint32 compression format (0 = zlib, 3 = LZ4), 36 bytes in all. Source: the
+ *   Rust `ba2` crate, src/fo4/archive.rs. The entry layout below is unchanged.
  *
  *   File entries (fileCount × 36 bytes each):
  *     nameHash    : uint32
@@ -37,10 +41,16 @@ import fs from 'fs';
 import { inflateSync } from 'zlib';
 import { log } from '../../logger';
 import type { Ba2FileEntry } from '../types';
-import { BA2_MAGIC, BA2_TYPE_GNRL, BA2_HEADER_SIZE, BA2_ENTRY_SIZE } from './utils/ba2Constants';
+import {
+  BA2_MAGIC,
+  BA2_TYPE_GNRL,
+  BA2_HEADER_SIZE,
+  BA2_ENTRY_SIZE,
+  BA2_GNRL_VERSIONS,
+  ba2HeaderSize,
+} from './utils/ba2Constants';
 
-const HEADER_SIZE = BA2_HEADER_SIZE;
-const ENTRY_SIZE = BA2_ENTRY_SIZE; // valid for both v1 and v8 GNRL format
+const ENTRY_SIZE = BA2_ENTRY_SIZE; // the same in every GNRL version
 
 /** Case-insensitive archive path key used by the name index and `extractByName`. */
 const normalizeBa2ArchivePath = (name: string): string => name.toLowerCase().replace(/\//g, '\\');
@@ -77,6 +87,7 @@ const readAt = (fd: number, offset: number, length: number): Buffer => {
 export class Ba2Reader {
   private fd = -1;
   private fileSize = 0;
+  private archiveVersion = 0;
   private entries: Ba2FileEntry[];
   private nameIndex: Map<string, Ba2FileEntry>;
 
@@ -110,9 +121,9 @@ export class Ba2Reader {
    * described in the module header comment.
    */
   private parse(): void {
-    if (this.fileSize < HEADER_SIZE) throw new Error('BA2: file too small');
+    if (this.fileSize < BA2_HEADER_SIZE) throw new Error('BA2: file too small');
 
-    const header = readAt(this.fd, 0, HEADER_SIZE);
+    const header = readAt(this.fd, 0, BA2_HEADER_SIZE);
 
     const magic = header.toString('ascii', 0, 4);
     if (magic !== BA2_MAGIC) throw new Error(`BA2: bad magic "${magic}"`);
@@ -122,14 +133,24 @@ export class Ba2Reader {
       throw new Error(`BA2: unsupported archive type "${archType}" (only GNRL supported)`);
     }
 
+    const version = header.readUInt32LE(4);
+    if (!BA2_GNRL_VERSIONS.includes(version)) {
+      throw new Error(
+        `BA2: unsupported version ${version} (supported: ${BA2_GNRL_VERSIONS.join(', ')})`,
+      );
+    }
+    this.archiveVersion = version;
+    const headerSize = ba2HeaderSize(version);
+    if (this.fileSize < headerSize) throw new Error('BA2: file too small');
+
     const fileCount = header.readUInt32LE(12);
     const nameTableOffset = Number(header.readBigUInt64LE(16));
 
-    if (nameTableOffset < HEADER_SIZE || nameTableOffset >= this.fileSize) {
+    if (nameTableOffset < headerSize || nameTableOffset >= this.fileSize) {
       throw new Error('BA2: invalid name table offset');
     }
 
-    const entriesBuf = readAt(this.fd, HEADER_SIZE, fileCount * ENTRY_SIZE);
+    const entriesBuf = readAt(this.fd, headerSize, fileCount * ENTRY_SIZE);
     const nameTableSize = this.fileSize - nameTableOffset;
     const nameTableBuf = readAt(this.fd, nameTableOffset, nameTableSize);
 
@@ -240,6 +261,11 @@ export class Ba2Reader {
       fs.closeSync(this.fd);
       this.fd = -1;
     }
+  }
+
+  /** Archive format version from the header (1, 7, 8 for Fallout; 2, 3 for Starfield). */
+  get version(): number {
+    return this.archiveVersion;
   }
 
   /**

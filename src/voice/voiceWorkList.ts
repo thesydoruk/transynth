@@ -13,12 +13,7 @@
 import path from 'node:path';
 import type { Tx } from '../db';
 import { pluginRelPath } from '../modImport/packages';
-import {
-  dedupeVoiceFiles,
-  discoverVoiceFiles,
-  resolveVoiceRootRel,
-  type VoiceFileEntry,
-} from './discoverVoiceFiles';
+import { resolveVoiceRootRel, type VoiceFileEntry } from './discoverVoiceFiles';
 import {
   findImportedMasterMods,
   loadInheritedVoiceLookup,
@@ -42,6 +37,7 @@ import {
   type VoiceTranslationRow,
 } from './loadVoiceTranslations';
 import { groupVoiceFilesBySpeaker, voiceSpeakerKey } from './speakerReference/grouping';
+import { FUZ_TAKES, type VoiceTakeFormat } from './takeFormat';
 import { fillMissingVoiceKeys } from './voiceTextRows';
 import { normalizeVoiceOrigin, splitOriginFormidKey } from './voiceOrigin';
 
@@ -102,17 +98,20 @@ export const loadVoiceWorkList = async (
     tgtLang: string;
     /** Prepended to every reported path (package folder). */
     prefix?: string;
+    /** How the game stores takes; `.fuz` when omitted. */
+    takes?: VoiceTakeFormat;
   },
 ): Promise<VoiceWorkList> => {
   const { modId, packageDir, pluginPath, srcLang, tgtLang } = input;
   const prefix = input.prefix ?? '';
+  const takes = input.takes ?? FUZ_TAKES;
   const pluginRel = pluginRelPath(packageDir, pluginPath);
   const voiceRootRel = resolveVoiceRootRel(pluginRel);
   const ownOrigin = normalizeVoiceOrigin(path.basename(pluginRel));
 
   const translations = await loadVoiceTranslations(db, modId, srcLang, tgtLang);
   const voiceSources = await loadVoiceSources(db, modId, srcLang);
-  const voiceFiles = dedupeVoiceFiles(discoverVoiceFiles(packageDir, pluginRel));
+  const voiceFiles = takes.discover(packageDir, pluginRel);
 
   const skipped: string[] = [];
   const items: VoiceWorkSource[] = [];
@@ -132,7 +131,7 @@ export const loadVoiceWorkList = async (
     for (const master of masters) {
       const origin = masterOrigin(master);
       if (!foreignOrigins.has(origin)) continue;
-      const ctx = loadMasterVoiceContext(master);
+      const ctx = loadMasterVoiceContext(master, takes);
       if (ctx) contexts.set(origin, ctx);
       const sources = inherited.sourcesByMod.get(master.modId);
       if (sources) {
@@ -210,7 +209,10 @@ export const loadVoiceWorkList = async (
       ? lookupOriginMasterLine(inherited, lineKey, variant, origin)
       : null;
     for (const take of masterTakes) {
-      const entry = asDubbingEntry(take, ctx, voiceRootRel);
+      const ownFileName = takes.ownTakeFileName?.(pluginPath, take);
+      // This plugin's own record names no file for the response: nothing to dub.
+      if (ownFileName === null) continue;
+      const entry = asDubbingEntry(take, ctx, voiceRootRel, ownFileName);
       masterOf.set(entry, ctx);
       items.push({
         entry,

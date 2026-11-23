@@ -4,6 +4,7 @@ export type {
   ScenePhaseRow,
   SpeakerNodeRow,
 } from './addressees';
+export { PLAYER_ALIAS_ID } from './addressees';
 
 export type {
   ActorSpeakerInfo,

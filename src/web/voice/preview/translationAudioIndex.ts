@@ -2,9 +2,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { GameVoiceAdapter } from '../../../games/contract';
 import { voiceTranslationMapKey } from '../../../voice/loadVoiceTranslations';
+import { voiceTakeKeyResolver } from '../../../voice/takeFormat';
 
-/** Key of one dubbed clip by FormID and response number, for games that use them. */
-const LOCALIZED_VOICE_RE = /^([0-9A-Fa-f]{8})_(\d+)\.(fuz|wav)$/i;
+/**
+ * A dubbed clip in a `Sound/Voice` tree: named by FormID and response number,
+ * or by WEM id.
+ */
+const LOCALIZED_VOICE_RE = /^[0-9A-Fa-f]{8}(?:_\d+\.(?:fuz|wav)|\.wem)$/i;
+
+const TAKE_EXTENSION_RE = /\.(fuz|wav|xwm|wem)$/i;
 
 /**
  * Key for one physical dubbed clip: its path under the localize tree, without
@@ -16,27 +22,27 @@ const LOCALIZED_VOICE_RE = /^([0-9A-Fa-f]{8})_(\d+)\.(fuz|wav)$/i;
  * The localize tree mirrors the source tree, so an entry's `relPath` is the key.
  */
 const audioPathKey = (relPath: string): string =>
-  relPath
-    .replace(/\\/g, '/')
-    .replace(/\.(fuz|wav|xwm)$/i, '')
-    .toLowerCase();
+  relPath.replace(/\\/g, '/').replace(TAKE_EXTENSION_RE, '').toLowerCase();
 
 /** Path key of the dubbed clip belonging to one source voice file. */
 export const voiceEntryAudioKey = (entry: { relPath: string }): string =>
   audioPathKey(entry.relPath);
 
 /**
- * Index every synthesized `.fuz`/`.wav` under the mod localize tree in one directory walk.
+ * Index every synthesized take under the mod localize tree in one directory walk.
  *
  * Replaces thousands of per-line `fs.existsSync` calls when listing voice lines.
- * Keys come from the game's own take-naming rules.
+ * Keys come from the game's own take-naming rules; `pluginPath` is the mod's
+ * plugin, for a game whose take names only resolve against it.
  */
 export const buildTranslationAudioSet = (
   localizeDir: string | null,
-  voice: Pick<GameVoiceAdapter, 'voiceKeyFromRelPath'>,
+  voice: Pick<GameVoiceAdapter, 'voiceKeyFromRelPath' | 'takes'>,
+  pluginPath?: string | null,
 ): Set<string> => {
   const keys = new Set<string>();
   if (!localizeDir || !fs.existsSync(localizeDir)) return keys;
+  const keyOf = voiceTakeKeyResolver(voice, pluginPath);
 
   const walk = (currentDir: string, relDir: string): void => {
     for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
@@ -46,7 +52,7 @@ export const buildTranslationAudioSet = (
         walk(fullPath, relPath);
         continue;
       }
-      const lineKey = voice.voiceKeyFromRelPath(relPath);
+      const lineKey = keyOf(relPath);
       if (!lineKey) continue;
       keys.add(lineKey);
       // Games whose takes mirror a source tree also need the path key, because
@@ -79,13 +85,10 @@ export const findLocalizedVoiceForEntry = (
   entry: { relPath: string },
 ): string | null => {
   if (!localizeDir) return null;
-  const segments = entry.relPath
-    .replace(/\\/g, '/')
-    .replace(/\.(fuz|wav|xwm)$/i, '')
-    .split('/');
+  const segments = entry.relPath.replace(/\\/g, '/').replace(TAKE_EXTENSION_RE, '').split('/');
   const stem = segments.pop();
   if (!stem) return null;
-  for (const ext of ['fuz', 'wav']) {
+  for (const ext of ['fuz', 'wav', 'wem']) {
     const candidate = path.join(localizeDir, ...segments, `${stem}.${ext}`);
     if (fs.existsSync(candidate)) return candidate;
   }

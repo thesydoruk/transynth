@@ -12,6 +12,13 @@ describe('exportLocaleSlots', () => {
     expect(exportLocaleSlots('ru', 'fo4')).toEqual(['ru']);
   });
 
+  it('writes an unofficial Starfield target into the en slot alone — there is no Russian', () => {
+    expect(exportLocaleSlots('uk', 'sf1')).toEqual(['en']);
+    expect(exportLocaleSlots('de', 'sf1')).toEqual(['de']);
+    expect(exportLocaleSlots('ru', 'sf1')).toEqual(['en']);
+    expect(isOfficialBethesdaLocale('ru', 'sf1')).toBe(false);
+  });
+
   it('uses target lang as-is for other games', () => {
     expect(exportLocaleSlots('uk', 'sse')).toEqual(['uk']);
   });

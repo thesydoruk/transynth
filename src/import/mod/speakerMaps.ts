@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { EspStringRow } from '../../formats/esp';
 import { logImport } from '../../logging/loggers';
 import { findDirAnyCase } from '../../voice/discoverVoiceFiles';
+import { loadInfoWemIndex, lookupWemTakeLine } from '../../voice/infoWemIds';
 
 const buildNpcNameMap = (
   espRows: EspStringRow[],
@@ -120,6 +121,57 @@ const buildVoiceFolderMap = (espPath: string): Map<string, string> => {
   return map;
 };
 
+/** Response number → voice folders holding a take of it, per lower-6 INFO FormID. */
+type TakeFoldersByLine = Map<string, Map<number, Set<string>>>;
+
+/**
+ * Voice folders of takes named by their WEM id (Starfield):
+ * `Sound/Voice/<Plugin>/<VoiceType>/<8 hex>.wem`. The name says nothing of the
+ * line, so the plugin's own WEM index (read only once a `.wem` turns up) maps
+ * each file to its INFO and response. Unlike {@link buildVoiceFolderMap} every
+ * folder is kept: one generic line is often recorded by dozens of voice types.
+ *
+ * @returns lower-6 INFO FormID → response number → folder names.
+ */
+const buildWemTakeFolders = (espPath: string): TakeFoldersByLine => {
+  const map: TakeFoldersByLine = new Map();
+  const pluginName = path.basename(espPath);
+  const voiceRoot = findDirAnyCase(path.dirname(espPath), `Sound/Voice/${pluginName}`);
+  if (!voiceRoot) return map;
+
+  let index: ReturnType<typeof loadInfoWemIndex> | null = null;
+  let dirs: fs.Dirent[];
+  try {
+    dirs = fs.readdirSync(voiceRoot, { withFileTypes: true });
+  } catch {
+    return map;
+  }
+  for (const dir of dirs) {
+    if (!dir.isDirectory()) continue;
+    let files: string[];
+    try {
+      files = fs.readdirSync(path.join(voiceRoot, dir.name));
+    } catch {
+      continue;
+    }
+    for (const file of files) {
+      const match = /^([0-9A-Fa-f]{8})\.wem$/i.exec(file);
+      if (!match) continue;
+      index ??= loadInfoWemIndex(espPath);
+      const line = lookupWemTakeLine(index, pluginName, match[1]!);
+      if (!line) continue;
+      let byVariant = map.get(line.lineKey);
+      if (!byVariant) map.set(line.lineKey, (byVariant = new Map()));
+      let folders = byVariant.get(line.variant);
+      if (!folders) byVariant.set(line.variant, (folders = new Set()));
+      folders.add(dir.name);
+    }
+  }
+
+  logImport.debug(`WEM take folders: ${map.size} line(s) from ${voiceRoot}`);
+  return map;
+};
+
 /** Turn a {@link buildVoiceFolderMap} result into display-ready speaker labels. */
 const voiceSpeakerNamesFromFolders = (folderMap: Map<string, string>): Map<string, string> =>
   new Map([...folderMap].map(([formId, folder]) => [formId, cleanVoiceFolderName(folder)]));
@@ -128,6 +180,8 @@ export {
   buildNpcNameMap,
   buildSpeakerFormIdMap,
   buildVoiceFolderMap,
+  buildWemTakeFolders,
   cleanVoiceFolderName,
   voiceSpeakerNamesFromFolders,
 };
+export type { TakeFoldersByLine };

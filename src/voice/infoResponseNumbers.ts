@@ -2,9 +2,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { inflateSync } from 'node:zlib';
 import type { Tx } from '../db';
-import { parseTes4MasterNames } from '../formats/esp/pluginHeader';
+import { parseTes4MasterNames, readMasterKinds } from '../formats/esp/pluginHeader';
+import type { EspRecordLayout } from '../formats/esp/recordLayout';
+import { gamePlugin } from '../games/registry';
 import { resolveModStoredPath } from '../modStorage';
-import { buildVoiceOriginResolver, originFormidKey, type VoiceOriginResolver } from './voiceOrigin';
+import {
+  buildVoiceOriginResolver,
+  originFormidKey,
+  type VoiceOriginFormIds,
+  type VoiceOriginResolver,
+} from './voiceOrigin';
 
 /**
  * FO4/Skyrim voice files are named `<FormID>_<responseNumber>.fuz`.
@@ -13,8 +20,21 @@ import { buildVoiceOriginResolver, originFormidKey, type VoiceOriginResolver } f
  *
  * Map value: response numbers for each non-empty NAM1, in ESP walk order
  * (same order as `ORDER BY strings.id` after import).
+ *
+ * Starfield's `TRDA` is a different, 12-byte struct with no response number,
+ * so there the value is the fallback every title has — the 1-based position of
+ * the `NAM1` in its INFO — and the file name comes from the WEM id the same
+ * struct carries ({@link InfoVoiceSlots.wemIds}, `infoWemIds.ts`).
  */
 export type InfoVoiceResponseMap = Map<string, number[]>;
+
+/** The WEM file a Starfield response plays. */
+export type InfoResponseWemId = {
+  /** `TRDA` "WEM File"; 0 when the response names none. */
+  id: number;
+  /** The response carries `TROI`: it replays another INFO's take under that id. */
+  borrowed: boolean;
+};
 
 /**
  * INFO records that reuse another INFO's responses through `DNAM`.
@@ -33,6 +53,12 @@ export type InfoVoiceSlots = {
   sharedFrom: InfoSharedResponseMap;
   /** Which plugin owns each FormID of this plugin. */
   origins: VoiceOriginResolver;
+  /**
+   * 8-hex INFO FormID → the WEM id of each kept response, parallel to
+   * `responses`. Only INFOs whose `TRDA` names a file are listed, so the map
+   * is empty for every title that names takes by FormID.
+   */
+  wemIds: Map<string, InfoResponseWemId[]>;
 };
 
 const RECORD_HEADER = 24;
@@ -40,6 +66,8 @@ const GRUP_HEADER = 24;
 const FLAG_COMPRESSED = 0x0004_0000;
 /** FO4 `TRDA` is a fixed 20-byte struct; the response number lives at offset 4. */
 const TRDA_SIZE = 20;
+/** Starfield `TRDA`: emotion FormID, WEM file id (offset 4), emotion-out float. */
+const WEM_TRDA_SIZE = 12;
 /**
  * Upper bound for a plausible response number, only to reject misaligned reads.
  *
@@ -63,8 +91,23 @@ const hex8 = (formId: number): string => formId.toString(16).toUpperCase().padSt
 /** `<origin>/<FORMID6>` of a raw FormID in the plugin being walked. */
 const originKeyOf = (origins: VoiceOriginResolver, formId: number): string => {
   const hex = hex8(formId);
-  return originFormidKey(origins.originOfFormid(hex), hex.substring(2));
+  return originFormidKey(origins.originOfFormid(hex), origins.lineKeyOfFormid(hex));
 };
+
+/**
+ * How FormIDs of a title's plugins name their master (`EspRecordLayout.plugin`).
+ * Omitted, the top byte indexes `MAST`, as for Fallout 4.
+ */
+export type VoicePluginFormIds = EspRecordLayout['plugin'];
+
+const formIdRule = (
+  pluginAbsPath: string,
+  masters: string[],
+  plugin: VoicePluginFormIds | undefined,
+): VoiceOriginFormIds | undefined =>
+  plugin?.formIdMasterSlots === 'byKind'
+    ? { slots: 'byKind', masterKinds: readMasterKinds(pluginAbsPath, masters, plugin) }
+    : undefined;
 
 const cache = new Map<string, CacheEntry>();
 
@@ -74,13 +117,18 @@ type ParsedInfo = {
   responses: number[];
   /** Raw FormID of the INFO this record borrows its responses from. */
   sharedFrom: number | null;
+  /** Parallel to `responses`; null when no `TRDA` of the record names a WEM file. */
+  wemIds: InfoResponseWemId[] | null;
 };
 
-const parseInfoResponses = (recordData: Buffer): ParsedInfo => {
+const parseInfoResponses = (recordData: Buffer, formId: number): ParsedInfo => {
   const responses: number[] = [];
+  let wemIds: InfoResponseWemId[] | null = null;
   let pos = 0;
   let nam1Ordinal = 0;
   let pendingResp: number | null = null;
+  let pendingWem: number | null = null;
+  let pendingBorrowed = false;
   let sharedFrom: number | null = null;
 
   while (pos + 6 <= recordData.length) {
@@ -96,6 +144,11 @@ const parseInfoResponses = (recordData: Buffer): ParsedInfo => {
     } else if (subSig === 'TRDA' && subSize >= TRDA_SIZE) {
       const raw = recordData.readUInt32LE(dataStart + 4);
       pendingResp = raw >= 1 && raw <= MAX_RESPONSE_NUMBER ? raw : null;
+    } else if (subSig === 'TRDA' && subSize === WEM_TRDA_SIZE) {
+      pendingWem = recordData.readUInt32LE(dataStart + 4);
+    } else if (subSig === 'TROI' && subSize === 4) {
+      const original = recordData.readUInt32LE(dataStart);
+      pendingBorrowed = original !== 0 && original !== formId;
     } else if (subSig === 'NAM1') {
       nam1Ordinal += 1;
       let keep = false;
@@ -106,14 +159,20 @@ const parseInfoResponses = (recordData: Buffer): ParsedInfo => {
         keep = text.length > 0;
       }
       if (keep) {
+        if (pendingWem != null && !wemIds) {
+          wemIds = responses.map(() => ({ id: 0, borrowed: false }));
+        }
+        wemIds?.push({ id: pendingWem ?? 0, borrowed: pendingBorrowed });
         responses.push(pendingResp != null ? pendingResp : nam1Ordinal);
       }
       pendingResp = null;
+      pendingWem = null;
+      pendingBorrowed = false;
     }
 
     pos = dataEnd;
   }
-  return { responses, sharedFrom };
+  return { responses, sharedFrom, wemIds };
 };
 
 const walkPlugin = (buf: Buffer, start: number, end: number, out: InfoVoiceSlots): void => {
@@ -143,9 +202,12 @@ const walkPlugin = (buf: Buffer, start: number, end: number, out: InfoVoiceSlots
           flags & FLAG_COMPRESSED
             ? inflateSync(buf.subarray(dataStart + 4, dataEnd))
             : buf.subarray(dataStart, dataEnd);
-        const parsed = parseInfoResponses(recordData);
+        const parsed = parseInfoResponses(recordData, formId);
         if (parsed.responses.length > 0) {
           out.responses.set(hex8(formId), parsed.responses);
+          if (parsed.wemIds?.some((wem) => wem.id !== 0)) {
+            out.wemIds.set(hex8(formId), parsed.wemIds);
+          }
         } else if (parsed.sharedFrom != null) {
           out.sharedFrom.set(
             originKeyOf(out.origins, formId),
@@ -161,14 +223,30 @@ const walkPlugin = (buf: Buffer, start: number, end: number, out: InfoVoiceSlots
 };
 
 /** Slots for a plugin that cannot be read: no responses, every FormID its own. */
-const emptySlots = (pluginAbsPath: string, masters: string[] = []): InfoVoiceSlots => ({
+const emptySlots = (
+  pluginAbsPath: string,
+  masters: string[] = [],
+  plugin?: VoicePluginFormIds,
+): InfoVoiceSlots => ({
   responses: new Map(),
   sharedFrom: new Map(),
-  origins: buildVoiceOriginResolver(pluginAbsPath, masters),
+  origins: buildVoiceOriginResolver(
+    pluginAbsPath,
+    masters,
+    formIdRule(pluginAbsPath, masters, plugin),
+  ),
+  wemIds: new Map(),
 });
 
-/** Parse (or return cached) voiced INFO slots — response numbers and DNAM aliases. */
-const loadInfoVoiceSlots = (pluginAbsPath: string): InfoVoiceSlots => {
+/**
+ * Parse (or return cached) voiced INFO slots — response numbers, DNAM aliases, WEM ids.
+ *
+ * @param plugin - The title's FormID rule; omitted, read as Fallout 4.
+ */
+export const loadInfoVoiceSlots = (
+  pluginAbsPath: string,
+  plugin?: VoicePluginFormIds,
+): InfoVoiceSlots => {
   let abs: string;
   try {
     abs = fs.realpathSync(path.resolve(pluginAbsPath));
@@ -180,25 +258,27 @@ const loadInfoVoiceSlots = (pluginAbsPath: string): InfoVoiceSlots => {
   try {
     st = fs.statSync(abs);
   } catch {
-    return emptySlots(pluginAbsPath);
+    return emptySlots(pluginAbsPath, [], plugin);
   }
 
-  const hit = cache.get(abs);
+  // The FormID rule changes every origin and line key, so it is part of the key.
+  const cacheKey = plugin?.formIdMasterSlots === 'byKind' ? `${abs}\0byKind` : abs;
+  const hit = cache.get(cacheKey);
   if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) {
-    cache.delete(abs);
-    cache.set(abs, hit);
+    cache.delete(cacheKey);
+    cache.set(cacheKey, hit);
     return hit.slots;
   }
 
   const buf = fs.readFileSync(abs);
-  if (buf.length < RECORD_HEADER + 4) return emptySlots(pluginAbsPath);
+  if (buf.length < RECORD_HEADER + 4) return emptySlots(pluginAbsPath, [], plugin);
   const tes4Size = buf.readUInt32LE(4);
   const tes4End = Math.min(RECORD_HEADER + tes4Size, buf.length);
   const masters =
     readSig(buf, 0) === 'TES4' ? parseTes4MasterNames(buf.subarray(RECORD_HEADER, tes4End)) : [];
-  const slots = emptySlots(pluginAbsPath, masters);
+  const slots = emptySlots(pluginAbsPath, masters, plugin);
   walkPlugin(buf, RECORD_HEADER + tes4Size, buf.length, slots);
-  cache.set(abs, { mtimeMs: st.mtimeMs, size: st.size, slots });
+  cache.set(cacheKey, { mtimeMs: st.mtimeMs, size: st.size, slots });
   while (cache.size > MAX_CACHED_PLUGINS) {
     const oldest = cache.keys().next().value;
     if (oldest == null) break;
@@ -217,16 +297,22 @@ export const loadInfoVoiceResponseNumbers = (pluginAbsPath: string): InfoVoiceRe
  * A mod without a plugin file still gets an origin resolver named after its
  * stored path, so its rows and its takes on disk agree on the origin.
  */
-export const loadModInfoVoiceSlots = async (db: Tx, modId: number): Promise<InfoVoiceSlots> => {
-  const { rows } = await db.query<{ abs_path: string | null }>(
-    `SELECT abs_path FROM mods WHERE id = $1`,
+export const loadModInfoVoiceSlots = async (
+  db: Tx,
+  modId: number,
+  plugin?: VoicePluginFormIds,
+): Promise<InfoVoiceSlots> => {
+  const { rows } = await db.query<{ abs_path: string | null; game: string | null }>(
+    `SELECT game, abs_path FROM mods WHERE id = $1`,
     [modId],
   );
+  // The rule the mod's take files are read with, so rows and files agree on keys.
+  const formIds = plugin ?? gamePlugin(rows[0]?.game).voice?.takes?.pluginFormIds;
   const stored = rows[0]?.abs_path?.trim();
-  if (!stored) return emptySlots('');
+  if (!stored) return emptySlots('', [], formIds);
   const pluginPath = resolveModStoredPath(stored);
-  if (!fs.existsSync(pluginPath)) return emptySlots(pluginPath);
-  return loadInfoVoiceSlots(pluginPath);
+  if (!fs.existsSync(pluginPath)) return emptySlots(pluginPath, [], formIds);
+  return loadInfoVoiceSlots(pluginPath, formIds);
 };
 
 /** Resolve `mods.abs_path` for a mod and load its INFO→response# map (empty if missing). */

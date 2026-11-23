@@ -24,6 +24,8 @@ import {
   type StoredReferenceVoiceTake,
 } from './referenceVoiceTakes';
 import { isReusableVoiceText } from './reuseSynthesizedVoiceMatch';
+import { voiceTakesForGame } from './takeFormat';
+import { copyTakeSidecars, takeOnDisk } from './takeSidecars';
 import { resolveVoiceSourceFileHashes, voiceSourceHashMapKey } from './voiceSourceFileHashes';
 import { upsertVoiceSynthesisState } from './voiceSynthesisState';
 import {
@@ -106,14 +108,18 @@ export const reuseReferenceVoiceTakes = async (
       tgtLang: lang,
       keys: keyed,
     });
+    const sidecarExtensions = voiceTakesForGame(dest.game).sidecarExtensions;
     for (const item of keyed) {
       const take = storedTakeOf(stored, item);
       if (!referenceTakeFitsLine(take, item.line.destRelPath)) continue;
+      // A stored take that lost what travels with it would land incomplete.
+      if (!takeOnDisk(take.absPath, sidecarExtensions)) continue;
       const destAbs = path.join(dest.localizeDir, item.line.destRelPath);
       try {
         if (!fs.existsSync(destAbs)) {
           ensureDir(path.dirname(destAbs));
           await fs.promises.copyFile(take.absPath, destAbs);
+          await copyTakeSidecars(take.absPath, destAbs, sidecarExtensions);
           await upsertVoiceSynthesisState(db, {
             modId: dest.modId,
             lineKey: item.line.lineKey,

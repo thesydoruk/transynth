@@ -6,6 +6,10 @@ import { log } from '../../../logger';
 import { sha1Hex, sha1HexFile } from '../../../utils/hash';
 import { ensureDir } from '../../../utils/file';
 import { convertToFo4Wav } from '../../../voice/ffmpegAudio';
+import { decodeWemTakeToWav } from '../../../voice/wemTakeAudio';
+
+/** Rate of the browser copy of a `.wem` take; Wwise voice audio is 48 kHz or below. */
+const WEM_PREVIEW_SAMPLE_RATE = 48000;
 
 const cacheKeyForSource = async (sourcePath: string): Promise<string> => {
   const stat = fs.statSync(sourcePath);
@@ -19,6 +23,10 @@ export const convertAudioToPreviewWav = async (
   const ext = path.extname(sourcePath).toLowerCase();
   if (ext === '.wav') {
     await convertToFo4Wav(sourcePath, destWav);
+    return;
+  }
+  if (ext === '.wem') {
+    await decodeWemTakeToWav(sourcePath, destWav, WEM_PREVIEW_SAMPLE_RATE);
     return;
   }
 

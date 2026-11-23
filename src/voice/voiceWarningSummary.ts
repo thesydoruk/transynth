@@ -7,7 +7,7 @@
  */
 
 /** Leading `Sound/Voice/…/0002CBA_1.fuz: ` part of a per-entry warning. */
-const ENTRY_PREFIX_RE = /^\S*?\.(?:fuz|wav|xwm):\s*/i;
+const ENTRY_PREFIX_RE = /^\S*?\.(?:fuz|wav|xwm|wem):\s*/i;
 const PATH_RE = /(?:[A-Za-z]:)?[\\/][^\s"']*[\\/][^\s"']*/g;
 const VOICE_ID_RE = /\b[0-9A-Fa-f]{6,8}_\d+\b/g;
 const LONG_NUMBER_RE = /\b\d{3,}\b/g;

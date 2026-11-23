@@ -84,10 +84,13 @@ re-import the updated mod and redo the export after a mod update.
 
 ---
 
-## BA2 Archive (Fallout 4 / Fallout 76)
+## BA2 Archive (Fallout 4 / Fallout 76 / Starfield)
 
 The tool can pack the generated STRINGS files into a `.ba2` archive,
-which is the format Fallout 4 and Fallout 76 use for mod assets.
+which is the format Fallout 4, Fallout 76 and Starfield use for mod assets.
+Starfield keeps a plugin's string tables in `{PluginStem} - Localization.ba2`;
+when the source tables came from such an archive, the export writes them back
+under the same name and puts scripts into `{PluginStem} - Main.ba2`.
 
 The generated BA2 uses the standard Fallout 4 naming convention:
 
@@ -117,6 +120,38 @@ Only **changed or new** artifacts are included:
 - patched ESP/ESM — only when the binary differs from the imported original;
 - `Scripts\*.pex` — only scripts with translated string literals;
 - FO4 synthesized voice — `UASoundPack.esp` and an **uncompressed** GNRL `UASoundPack - Main.ba2` (`packedSize = 0`). Loose `Sound\Voice\` files are not added to the ZIP. In a single-mod langpack both files carry the mod's name (`UASoundPack - <mod>.esp`, `UASoundPack - <mod> - Main.ba2`), so packs of different mods do not overwrite each other.
+- `Interface\fonts_<slot>.swf` / `.gfx` and the font config — only for a language the game never shipped, when its fonts cannot draw it (see [Interface fonts](#interface-fonts)).
+
+### Interface fonts
+
+A language the game never shipped is written into another locale's slot (`en` and `ru` on
+Fallout 4, `en` alone on Starfield), and that slot's fonts only draw the letters its own
+language needs. The export repairs them in the font libraries the mod itself ships — for a
+base game imported as a mod, that includes its `- Interface.ba2`:
+
+- **Fallout 4** (and every title without `interfaceFonts` in its title file): glyphs that the
+  vanilla fonts list but draw as a placeholder box are rebuilt from letters the same font
+  already has — «і/ї» from Latin, «є» from a mirrored «э», «ґ» from «г» — and
+  `Interface\FontConfig.txt` moves logical fonts with no Cyrillic at all to a family that has it.
+- **Starfield**: `fonts_en` has no Cyrillic at all, but the game's own Japanese set
+  (`fonts_ja.swf`) draws Russian Cyrillic in the same faces. For every font that has a
+  same-design counterpart there (matched by its Latin letters, not by name), the letters are
+  added to both `fonts_en.swf` and `fonts_en.gfx`: Latin twins («А», «і», «р»…) are copied from
+  the font itself, the rest are borrowed and fitted to the font's cap height, stem weight and
+  spacing (centred in the cell of a monospaced face), «Є» is a mirrored «Э», «Ґ» gets an upturn,
+  and the hand-lettered face builds its dashes and ellipsis from its own hyphen and period.
+  `fontconfig_en.txt` then maps the faces with no counterpart — the extended display face,
+  Arial, Consolas — to `NB Grotesk R Bold`, `NB Grotesk R Semibold` and `NB Architekt`, and lets
+  the player type Ukrainian letters in names. No font file outside the game is used.
+
+Check a font library before shipping it:
+
+```bash
+npm run fonts:check -- --file fonts_en.gfx --lang uk --config fontconfig_en.txt
+```
+
+Which of `fonts_en.swf` / `fonts_en.gfx` Starfield loads, and whether it picks up loose
+`Interface\` files without an archive, is not confirmed yet; the langpack carries both.
 
 **Disco Elysium** uses the same Langpack ZIP action. The zip is a Final Cut
 pack: updated `.po` files plus localized `Audio/*.wav` when voice was
@@ -173,7 +208,7 @@ identically to BA2 archives. The tool writes BSA v105 (Skyrim SE format)
 archives with uncompressed data blocks for maximum compatibility.
 
 The export format is selected **automatically** based on the game type
-stored with the mod. Fallout 4 and Fallout 76 mods produce BA2; Skyrim SE/LE,
+stored with the mod. Fallout 4, Fallout 76 and Starfield mods produce BA2; Skyrim SE/LE,
 Fallout 3, and Fallout: New Vegas mods produce BSA. No manual selection is needed.
 
 ---

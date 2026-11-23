@@ -15,3 +15,26 @@ describe('Creation Engine content classifier', () => {
     expect(classify(name)).toBe(kind);
   });
 });
+
+describe('Starfield content classifier', () => {
+  const classify = (name: string) => gamePlugin('sf1').content!.classify(name);
+
+  it.each([
+    ['Starfield.esm', 'base'],
+    ['ShatteredSpace.esm', 'dlc'],
+    ['SFBGS050.esm', 'dlc'],
+    ['sfbgs003.esm', 'dlc'],
+    ['Constellation.esm', 'dlc'],
+    ['BlueprintShips-Starfield.esm', 'dlc'],
+    ['sfbgs009.esm', 'addon'],
+    ['sfbgs00a_a.esm', 'addon'],
+    ['SFTA01.esm', 'addon'],
+    ['blueprintships-sfta03.esm', 'addon'],
+    ['StarfieldCommunityPatch.esm', 'mod'],
+    // `cc` is Fallout 4 and Skyrim's store, not Starfield's.
+    ['ccSomeMod.esm', 'mod'],
+    ['sfbgs009 - Main.ba2', 'mod'],
+  ])('%s is %s', (name, kind) => {
+    expect(classify(name)).toBe(kind);
+  });
+});

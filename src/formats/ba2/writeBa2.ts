@@ -1,14 +1,16 @@
 /**
- * BA2 (GNRL, version 1) archive writer.
+ * BA2 (GNRL) archive writer: version 1 (Fallout 4 / 76, the default) or 2 (Starfield).
  *
  * Binary layout:
  *
- *   Header (24 bytes):
+ *   Header (24 bytes; 32 in version 2):
  *     magic           : char[4]  = 'BTDX'
- *     version         : uint32   = 1
+ *     version         : uint32   = 1, or 2 for Starfield
  *     type            : char[4]  = 'GNRL'
  *     fileCount       : uint32
  *     nameTableOffset : uint64   (absolute offset to the name table)
+ *     (version 2 only) one : uint64 = 1 — as in the Rust `ba2` crate, src/fo4/archive.rs.
+ *   Entries, zlib file data and the name table are the same in both versions.
  *
  *   File entries (36 bytes each), in name order as Archive2 writes them:
  *     nameHash   : uint32   Archive2's CRC-32 of the lowercased stem (see utils/crc32)
@@ -36,10 +38,10 @@ import {
   BA2_ENTRY_ALIGN,
   BA2_ENTRY_FLAGS,
   BA2_ENTRY_SIZE,
-  BA2_HEADER_SIZE,
   BA2_MAGIC,
   BA2_TYPE_GNRL,
   BA2_VERSION,
+  ba2HeaderSize,
 } from './utils/ba2Constants';
 import { crc32 } from './utils/crc32';
 import { getBa2PathParts } from './utils/getBa2PathParts';
@@ -106,18 +108,27 @@ const prepareEntry = (file: Ba2InputFile, streamFromDisk: boolean): PreparedEntr
   return { name, packedSize: 0, realSize: raw.length, storedSize: raw.length, payload: raw };
 };
 
+/** Versions this writer produces: 1 (Fallout 4 / 76) and 2 (Starfield GNRL). */
+const assertWritableVersion = (version: number): void => {
+  if (version !== 1 && version !== 2) {
+    throw new Error(`BA2: cannot write version ${version} (supported: 1, 2)`);
+  }
+};
+
 const buildHeaderAndEntries = (
   prepared: readonly PreparedEntry[],
   offsets: readonly number[],
   nameTableOffset: number,
+  version: number,
 ): { header: Buffer; entries: Buffer } => {
   const fileCount = prepared.length;
-  const header = Buffer.alloc(BA2_HEADER_SIZE);
+  const header = Buffer.alloc(ba2HeaderSize(version));
   header.write(BA2_MAGIC, 0, 4, 'ascii');
-  header.writeUInt32LE(BA2_VERSION, 4);
+  header.writeUInt32LE(version, 4);
   header.write(BA2_TYPE_GNRL, 8, 4, 'ascii');
   header.writeUInt32LE(fileCount, 12);
   header.writeBigUInt64LE(BigInt(nameTableOffset), 16);
+  if (version === 2) header.writeBigUInt64LE(1n, 24);
 
   const entries = Buffer.alloc(fileCount * BA2_ENTRY_SIZE);
   for (let i = 0; i < fileCount; i++) {
@@ -163,14 +174,15 @@ const copyFileToFd = (fd: number, absPath: string): void => {
 /** Header, entry table and name table for `prepared`, laid out in entry order. */
 const layoutArchive = (
   prepared: readonly PreparedEntry[],
+  version: number,
 ): { header: Buffer; entries: Buffer; nameTable: Buffer } => {
   const offsets: number[] = [];
-  let currentOffset = BA2_HEADER_SIZE + prepared.length * BA2_ENTRY_SIZE;
+  let currentOffset = ba2HeaderSize(version) + prepared.length * BA2_ENTRY_SIZE;
   for (const entry of prepared) {
     offsets.push(currentOffset);
     currentOffset += entry.storedSize;
   }
-  const { header, entries } = buildHeaderAndEntries(prepared, offsets, currentOffset);
+  const { header, entries } = buildHeaderAndEntries(prepared, offsets, currentOffset, version);
   const nameChunks: Buffer[] = [];
   writeNameTable(
     (buf) => {
@@ -182,19 +194,31 @@ const layoutArchive = (
 };
 
 /**
- * Build a BA2 (GNRL, version 1) archive.
+ * Build a BA2 (GNRL) archive; `version` is 1 (default, Fallout 4 / 76) or 2 (Starfield).
  *
  * Pass `destPath` to stream onto disk (needed for archives larger than ~4 GiB).
  * Compression still follows each file's `compressed` flag, except STRINGS and `Sound\`.
  * Both forms block the event loop for the whole write; a worker building a
  * large archive should use `writeBa2File`.
  */
-export function writeBa2(files: readonly Ba2InputFile[]): Buffer;
-export function writeBa2(files: readonly Ba2InputFile[], destPath: string): number;
-export function writeBa2(files: readonly Ba2InputFile[], destPath?: string): Buffer | number {
+export function writeBa2(files: readonly Ba2InputFile[], version?: number): Buffer;
+export function writeBa2(
+  files: readonly Ba2InputFile[],
+  destPath: string,
+  version?: number,
+): number;
+export function writeBa2(
+  files: readonly Ba2InputFile[],
+  destPathOrVersion?: string | number,
+  versionArg?: number,
+): Buffer | number {
+  const destPath = typeof destPathOrVersion === 'string' ? destPathOrVersion : undefined;
+  const version =
+    typeof destPathOrVersion === 'number' ? destPathOrVersion : (versionArg ?? BA2_VERSION);
+  assertWritableVersion(version);
   const streamFromDisk = Boolean(destPath);
   const prepared = files.map((file) => prepareEntry(file, streamFromDisk));
-  const { header, entries, nameTable } = layoutArchive(prepared);
+  const { header, entries, nameTable } = layoutArchive(prepared, version);
 
   if (destPath) {
     const fd = fs.openSync(destPath, 'w');
@@ -258,7 +282,7 @@ const copyFileToHandle = async (out: fs.promises.FileHandle, absPath: string): P
 };
 
 /**
- * Stream a BA2 (GNRL, version 1) archive onto disk without holding the event loop.
+ * Stream a BA2 (GNRL, version 1 by default, 2 for Starfield) archive onto disk without holding the event loop.
  *
  * Byte-for-byte the same archive as `writeBa2(files, destPath)`, but every stat,
  * read and write yields, so a worker's job-lock heartbeat and other jobs keep
@@ -267,9 +291,11 @@ const copyFileToHandle = async (out: fs.promises.FileHandle, absPath: string): P
 export const writeBa2File = async (
   files: readonly Ba2InputFile[],
   destPath: string,
+  version: number = BA2_VERSION,
 ): Promise<number> => {
+  assertWritableVersion(version);
   const prepared = await prepareEntriesAsync(files);
-  const { header, entries, nameTable } = layoutArchive(prepared);
+  const { header, entries, nameTable } = layoutArchive(prepared, version);
   const out = await fs.promises.open(destPath, 'w');
   try {
     await out.write(header);

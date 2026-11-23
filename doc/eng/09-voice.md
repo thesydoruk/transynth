@@ -19,6 +19,8 @@ tools. See [THIRD_PARTY.md](../THIRD_PARTY.md).
 - [Disco: what gets spoken](#disco-what-gets-spoken)
 - [Disco: which line a take belongs to](#disco-which-line-a-take-belongs-to)
 - [The Witcher 3: voice](#the-witcher-3-voice)
+- [Starfield takes](#starfield-takes)
+- [Starfield lip animation](#starfield-lip-animation)
 - [Settings](#settings)
 - [Clip and response index](#clip-and-response-index)
 - [Known limitations](#known-limitations)
@@ -51,6 +53,13 @@ tools. See [THIRD_PARTY.md](../THIRD_PARTY.md).
    `FonixData.cdf` is yours to supply: `npm run tools:install --game-dir …` (or
    the `tools` Compose profile) copies it into `data/tools/voice/` for the
    sidecar to mount.
+7. **Starfield lip animation** (`.ffxanim`, not `.lip`) comes from two console
+   programs of the Starfield Creation Kit, which you supply too:
+   `npm run tools:install -- --game-dir <Starfield folder with its Creation Kit>`
+   copies its `Tools/LipGenerator` and `Tools/FaceFX` into
+   `data/tools/voice/starfield/`. Starfield's own `FonixData.cdf` stays in that
+   `LipGenerator` folder, apart from the Fallout one. See
+   [Starfield lip animation](#starfield-lip-animation).
 
 Disco Elysium does not use FaceFX. Synthesized lines are WAV files inside the
 exported Final Cut langpack. Per-line regenerate also goes through WAV, not
@@ -235,6 +244,71 @@ choose Brazilian Portuguese as the voice language (or set `SpeechLanguage=BR`
 under `[Localization]` in `Documents/The Witcher 3/user.settings`). The file
 contains the game's own audio for every line not replaced: it is for your own
 install, not for redistribution.
+
+---
+
+## Starfield takes
+
+A Starfield take is `Sound/Voice/<Plugin>/<VoiceType>/<WEM id>.wem` with a sibling
+`<WEM id>.ffxanim` — no `.fuz`, and no response number in the name. The WEM id is
+the number the response's `TRDA` carries in the plugin, so a file is matched to
+its line through an index of the plugin's INFO records, and a dub is written
+under the same id beside the same voice type. Everything else — speakers, the
+reference store, reuse, stamps, the Voice tab — works on the same keys as for
+Fallout 4; a take without its `.ffxanim` counts as missing, and the langpack
+ships the pairs as loose files.
+
+**Codec.** The game's takes are Wwise Vorbis (`fmt ` tag 0xFFFF, the layout of
+Wwise 2012 and later): nine in ten mono at 44.1 kHz, the rest at 32 or 48 kHz or
+in stereo. Transynth reads and writes them without Wwise. A Wwise Vorbis take
+carries no codebooks — it names them by index into a table built into the Wwise
+runtime — so reading one rebuilds the Ogg Vorbis stream from the take and that
+table (`src/formats/wem/data/packed_codebooks_aoTuV_603.bin`, from ww2ogg) and
+decodes it with ffmpeg; the WAV is exactly as long as the take states. Writing is
+the same rewrite backwards: ffmpeg's libvorbis encodes the WAV (quality 1, mono,
+at the sample rate of the take being replaced), and the stream is packed into
+the game's layout. That works because every codebook libvorbis uses is in the
+runtime's table; a stream with one that is not is refused. The new take states
+exactly the length of the WAV its lip animation was timed on. A source take in
+another Wwise codec, or in an older Wwise Vorbis layout, is skipped with a
+warning that names it. ffmpeg must be built with libvorbis (the distro package
+is). Not yet checked in the running game: that it plays loose takes made here.
+At 32 kHz their Vorbis setup is the game's own byte for byte; at 44.1 and 48 kHz
+it differs from the game's in five positions of the floor curve, which any
+Vorbis decoder reads from the take.
+
+## Starfield lip animation
+
+Starfield plays a FaceFX runtime animation, `<WEM id>.ffxanim`, beside each voice
+take. `bethesda-tools` makes it with the Creation Kit's own two programs under
+64-bit Wine (`POST /v1/ffxanim`), the way the Creation Kit does:
+
+1. `LipGenerator.exe` analyses the WAV and the line with its Fonix data and writes
+   an `.animset` for the human male or female face rig (the voice type's sex).
+2. `ffxc.exe` compiles that into the `.ffxanim`. The take's WEM id names the WAV,
+   the animation and its group inside the file.
+
+Both programs report success when they fail, so the service checks each output
+file and returns the tool's own output (LipGenerator's text, the end of ffxc's
+log) when one is missing. The result is byte-identical to a native Windows run
+of the same tools on the same WAV, name, text and rig.
+
+**Text.** Fonix reads English phonemes only: Cyrillic is dropped, and the
+analysis falls back to the audio. So the service handles the line as
+FaceFXWrapper does for Fallout: `[tags]` are removed and Ukrainian is respelled
+into English-phoneme spelling (`привіт` → `prihveet`). A line with nothing left
+to read (`[Laughs]`, `...`) is analysed from the audio alone.
+
+**Tools.** `npm run tools:install -- --game-dir <Starfield>` copies
+`Tools/LipGenerator` and `Tools/FaceFX` (about 40 MB) into
+`data/tools/voice/starfield/`; the sidecar mounts them and copies them once into
+the container, because Wine cannot run them from a Windows bind mount. Without
+them `/v1/ffxanim` answers 503 "Starfield lip tools are not installed" and the
+rest of the service works as before; `GET /health` shows `tools.starfield`.
+
+**Throughput.** About 0.4 s for LipGenerator and 3 s for ffxc per take on one
+core. The takes run in one win64 prefix, as many at once as the FaceFX pool has
+slots (`BETHESDA_TOOLS_WINE_SERVERS` × `BETHESDA_TOOLS_PER_WINE`).
 
 ---
 

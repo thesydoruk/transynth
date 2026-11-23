@@ -16,7 +16,7 @@ import {
   encodeAudioToOpusWemWithPcm,
   opusWemDuration,
   parseOpusWem,
-} from '../audio/opusWem';
+} from '../../../formats/wem';
 import { buildW3SpeechAudio, parseW3SpeechAudio } from '../w3speech';
 import { retimeLipsync } from '../w3speech/lipsync';
 

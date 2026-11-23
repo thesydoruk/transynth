@@ -1,8 +1,6 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import type { Tx } from '../../db';
-import { PATHS } from '../../paths';
 import { ensureDir } from '../../utils/file';
 import { toDiskPath, resolveImportPackages } from '../../modImport';
 import { modImportLocalizeDir, resolveModImportExtractRoot } from '../../modStorage';
@@ -14,34 +12,28 @@ import { recordVoiceTakeByLineKey } from '../../voice/referenceVoiceTakeHooks';
 import { getAllProjectSettings } from '../services/projectSettings';
 import { convertAudioToPreviewWav } from './preview/audioCache';
 import { resolveModVoiceContext } from './preview';
+import {
+  commitPreviewTake,
+  discardVoiceRegenerateSession,
+  PREVIEW_ID_RE,
+  previewArtifact,
+  readSessionMeta,
+  SESSION_ID_RE,
+  sessionDir,
+  writePreviewTake,
+  writeSessionMeta,
+  type VoiceRegenerateParams,
+  type VoiceRegeneratePreviewMeta,
+} from './voiceRegenerateSession';
+
+export {
+  discardVoiceRegenerateSession,
+  getVoiceRegeneratePreviewWav,
+  listVoiceRegenerateSession,
+  type VoiceRegenerateParams,
+} from './voiceRegenerateSession';
 
 const VOICE_REGENERATE_KEEP_CURRENT_ID = 'current';
-
-export type VoiceRegenerateParams = {
-  line_reference: boolean;
-};
-
-type VoiceRegeneratePreviewMeta = {
-  id: string;
-  attempt: number;
-  createdAt: string;
-  fuzRel: string;
-  payloadVersion: string;
-  params: VoiceRegenerateParams;
-  artifact?: 'fuz' | 'wav';
-  speakerKey?: string;
-  voiceSimilarity?: number | null;
-};
-
-type VoiceRegenerateSessionMeta = {
-  modId: number;
-  lineKey: string;
-  variant: number;
-  srcLang: string;
-  targetLang: string;
-  originPlugin?: string | null;
-  previews: VoiceRegeneratePreviewMeta[];
-};
 
 export type VoiceRegeneratePreviewResult =
   | {
@@ -57,35 +49,6 @@ export type VoiceRegeneratePreviewResult =
 export type VoiceRegenerateCommitResult =
   | { ok: true; relPath: string; kept: 'original' | 'preview' }
   | { ok: false; reason: string; message: string };
-
-const SESSION_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const PREVIEW_ID_RE = /^[0-9a-f]{12}$/i;
-
-const sessionDir = (modId: number, sessionId: string): string =>
-  path.join(PATHS.voiceRegenerate, String(modId), sessionId);
-
-const metaPath = (modId: number, sessionId: string): string =>
-  path.join(sessionDir(modId, sessionId), 'meta.json');
-
-const readSessionMeta = (modId: number, sessionId: string): VoiceRegenerateSessionMeta | null => {
-  const filePath = metaPath(modId, sessionId);
-  if (!fs.existsSync(filePath)) return null;
-  try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8')) as VoiceRegenerateSessionMeta;
-  } catch {
-    return null;
-  }
-};
-
-const writeSessionMeta = (
-  modId: number,
-  sessionId: string,
-  meta: VoiceRegenerateSessionMeta,
-): void => {
-  const dir = sessionDir(modId, sessionId);
-  ensureDir(dir);
-  fs.writeFileSync(metaPath(modId, sessionId), JSON.stringify(meta, null, 2));
-};
 
 const voiceRegenerateParamsFromProjectSettings = async (db: Tx): Promise<VoiceRegenerateParams> => {
   const settings = await getAllProjectSettings(db);
@@ -206,12 +169,10 @@ export const generateVoiceRegeneratePreview = async (
   const { destRelPath: destRel, payloadVersion, artifact, speakerKey: previewSpeakerKey } = built;
   const voiceSimilarity = built.voiceSimilarity;
 
-  if (built.artifact === 'wav') {
-    fs.writeFileSync(wavPath, built.audio);
-  } else {
-    // The browser cannot play a `.fuz`; keep the real take and serve a WAV copy.
-    const takePath = path.join(dir, `${previewId}.${built.artifact}`);
-    fs.writeFileSync(takePath, built.audio);
+  const stored = writePreviewTake(dir, previewId, built);
+  if (built.artifact !== 'wav') {
+    // The browser cannot play a `.fuz` or a `.wem`; keep the real take and serve a WAV copy.
+    const takePath = stored.takePath;
     try {
       await convertAudioToPreviewWav(takePath, wavPath);
     } catch (err) {
@@ -231,6 +192,7 @@ export const generateVoiceRegeneratePreview = async (
     payloadVersion,
     params,
     artifact,
+    ...(stored.sidecars.length > 0 ? { sidecars: stored.sidecars } : {}),
     speakerKey: previewSpeakerKey ?? speakerKey,
     voiceSimilarity,
   };
@@ -245,23 +207,6 @@ export const generateVoiceRegeneratePreview = async (
     params,
     voiceSimilarity,
   };
-};
-
-/** Stream a temporary preview WAV for browser playback. */
-export const getVoiceRegeneratePreviewWav = (
-  modId: number,
-  sessionId: string,
-  previewId: string,
-): { ok: true; wavPath: string } | { ok: false; reason: string; message: string } => {
-  if (!SESSION_ID_RE.test(sessionId) || !PREVIEW_ID_RE.test(previewId)) {
-    return { ok: false, reason: 'invalid_id', message: 'Invalid session or preview id' };
-  }
-
-  const wavPath = path.join(sessionDir(modId, sessionId), `${previewId}.wav`);
-  if (!fs.existsSync(wavPath)) {
-    return { ok: false, reason: 'preview_not_found', message: 'Preview audio not found' };
-  }
-  return { ok: true, wavPath };
 };
 
 /** Keep the selected preview (or original) and discard the session. */
@@ -311,19 +256,14 @@ export const commitVoiceRegenerateSession = async (
     packages[0]?.localizeDir ?? modImportLocalizeDir(extractRoot, resolved.targetLang);
   ensureDir(localizeDir);
 
-  const artifact = preview.artifact === 'wav' ? 'wav' : 'fuz';
-  const artifactPath = path.join(sessionDir(modId, sessionId), `${previewId}.${artifact}`);
-  if (!fs.existsSync(artifactPath)) {
+  const destPath = toDiskPath(localizeDir, preview.fuzRel);
+  if (!commitPreviewTake(sessionDir(modId, sessionId), preview, destPath)) {
     return {
       ok: false,
       reason: 'preview_not_found',
-      message: artifact === 'wav' ? 'Preview WAV not found' : 'Preview FUZ not found',
+      message: `Preview ${previewArtifact(preview).toUpperCase()} not found`,
     };
   }
-
-  const destPath = toDiskPath(localizeDir, preview.fuzRel);
-  ensureDir(path.dirname(destPath));
-  fs.writeFileSync(destPath, fs.readFileSync(artifactPath));
 
   const take = { pluginPath: resolved.ctx.pluginPath, srcLang: meta.srcLang, takePath: destPath };
   await recordVoiceTakeByLineKey(db, take, {
@@ -341,18 +281,3 @@ export const commitVoiceRegenerateSession = async (
   discardVoiceRegenerateSession(modId, sessionId);
   return { ok: true, relPath, kept: 'preview' };
 };
-
-/** Delete a regeneration session and all temporary preview files. */
-export const discardVoiceRegenerateSession = (modId: number, sessionId: string): void => {
-  if (!SESSION_ID_RE.test(sessionId)) return;
-  const dir = sessionDir(modId, sessionId);
-  if (fs.existsSync(dir)) {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
-};
-
-/** List previews in an active session (for UI restore after reload). */
-export const listVoiceRegenerateSession = (
-  modId: number,
-  sessionId: string,
-): VoiceRegenerateSessionMeta | null => readSessionMeta(modId, sessionId);

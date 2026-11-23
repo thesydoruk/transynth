@@ -23,9 +23,9 @@ import {
 import { discoverArchiveCandidatesForPlugin } from '../../../import/mod/discovery';
 import { discoverLocaleSources } from '../../../import/mod/localeSources';
 import { resolveEnglishLocaleMaps } from '../../../import/mod/localeRows';
-import { buildVoiceFolderMap } from '../../../import/mod/speakerMaps';
 import { resolveModStoredPath } from '../../../modStorage/paths';
 import type { CreationEngineTitle } from '../title';
+import { buildLineVoiceFolders } from './lineVoiceFolders';
 
 export const refreshCreationEngineDialogSpeakers = async (
   title: CreationEngineTitle,
@@ -36,17 +36,28 @@ export const refreshCreationEngineDialogSpeakers = async (
     throw new Error(`Plugin missing at ${pluginPath}`);
   }
 
-  const esp = new EspReader(pluginPath, title.subrecords);
+  const esp = new EspReader(pluginPath, title.subrecords, title.records);
   const localeSources = esp.info.isLocalized
     ? discoverLocaleSources(pluginPath, title, discoverArchiveCandidatesForPlugin(pluginPath))
     : [];
 
-  const index = buildPluginSpeakerIndex({
-    actorIndex: buildSpeakerActorIndex(esp, title, await loadPluginPathByBasename(db)),
+  const actorIndex = buildSpeakerActorIndex(esp, title, await loadPluginPathByBasename(db));
+  const pluginSpeakers = buildPluginSpeakerIndex({
+    actorIndex,
     englishStrings: resolveEnglishLocaleMaps(localeSources)?.get('STRINGS') ?? null,
     npcReferenceNames: title.npcReference(),
-    voiceFolders: buildVoiceFolderMap(pluginPath),
+    voiceFolders: new Map(),
   });
+  // Only a title whose INFOs list their voice types needs the rows (for the
+  // player's scene choices); the others read voice folders off disk alone.
+  const { voiceFolders } = buildLineVoiceFolders({
+    esp,
+    pluginPath,
+    espRows: esp.layout.infoResponseVoiceTypes ? esp.extractStrings() : [],
+    actorIndex,
+    speakerIndex: pluginSpeakers,
+  });
+  const index = { ...pluginSpeakers, voiceFolders };
 
   const actors = index.actors.size;
   if (dryRun) return { actors, speakers: 0, withGender: 0, recoveredSpeakers: 0 };

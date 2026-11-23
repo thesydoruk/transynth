@@ -17,7 +17,9 @@ import {
   voiceTtsSkipMessage,
   type PrepareVoiceTtsTextResult,
 } from './prepareVoiceTtsText';
-import { outputLocalizedFuzRelPath } from './voiceFilePaths';
+import { FUZ_TAKES, type VoiceTakeFormat } from './takeFormat';
+import { takeOnDisk } from './takeSidecars';
+import { loadTakeSpeakerSexResolver } from './takeSpeakerSex';
 import { loadVoiceSynthesisVersionMap, lookupVoiceSynthesisVersion } from './voiceSynthesisState';
 import { voiceTtsPayloadVersionFromPrepared } from './voiceTtsPayloadVersion';
 import {
@@ -44,6 +46,8 @@ export const localizeVoicePackage = async (
   tgtLang: string,
   options: {
     game: GameId;
+    /** How the game stores takes; `.fuz` when omitted. */
+    takes?: VoiceTakeFormat;
     ttsBaseUrl: string;
     dryRun: boolean;
     force: boolean;
@@ -66,6 +70,7 @@ export const localizeVoicePackage = async (
   warnings: string[],
 ): Promise<void> => {
   const prefix = pkg.folder ? `${pkg.folder}/` : '';
+  const takes = options.takes ?? FUZ_TAKES;
   const pluginRel = pluginRelPath(pkg.packageDir, pkg.pluginPath);
   const work = await loadVoiceWorkList(db, {
     modId,
@@ -74,6 +79,7 @@ export const localizeVoicePackage = async (
     srcLang,
     tgtLang,
     prefix,
+    takes,
   });
   skipped.push(...work.skipped);
   const storedVersions = options.dryRun
@@ -112,8 +118,8 @@ export const localizeVoicePackage = async (
     if (options.onlyKeys && !options.onlyKeys.has(entryKey)) return null;
     if (speakerFilter && voiceSpeakerKey(entry, voiceRootRel) !== speakerFilter) return null;
 
-    const fuzRel = outputLocalizedFuzRelPath(entry);
-    const fuzDest = toDiskPath(pkg.localizeDir, fuzRel);
+    const takeRel = takes.localizedRelPath(entry);
+    const takeDest = toDiskPath(pkg.localizeDir, takeRel);
     const prepared = prepareVoiceTtsText({
       lineSource: row.source,
       translation: row.translation,
@@ -141,13 +147,13 @@ export const localizeVoicePackage = async (
         entry.originPlugin,
       ),
       payloadVersion: voiceTtsPayloadVersionFromPrepared(prepared, tgtLang),
-      fileExists: fs.existsSync(fuzDest),
+      fileExists: takeOnDisk(takeDest, takes.sidecarExtensions),
     });
     if (!due) return null;
 
     if (options.dryRun) {
       const via = source.masterBacked ? ` [ref: ${source.masterBacked.master.pluginName}]` : '';
-      log.info(`[dry-run] ${prefix}${fuzRel}${via} ← "${prepared.text.slice(0, 80)}..."`);
+      log.info(`[dry-run] ${prefix}${takeRel}${via} ← "${prepared.text.slice(0, 80)}..."`);
       eligibleSeen += 1;
       finishEligibleStep();
       return null;
@@ -177,6 +183,8 @@ export const localizeVoicePackage = async (
       prefix,
       tempRoot,
       game: options.game,
+      takes,
+      speakerSexOf: options.dryRun ? undefined : await loadTakeSpeakerSexResolver(db, modId, takes),
       ttsBaseUrl: options.ttsBaseUrl,
       referenceMode: options.referenceMode,
       synthesis: options.synthesis,

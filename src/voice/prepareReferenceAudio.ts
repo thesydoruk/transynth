@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { extractXwmFromFuzFile } from '../formats/fuz';
-import { decodeAudioToReferenceWav } from './ffmpegAudio';
+import { decodeAudioToReferenceWav, REFERENCE_WAV_SAMPLE_RATE } from './ffmpegAudio';
 import type { VoiceFileEntry } from './discoverVoiceFiles';
+import { decodeWemTakeToWav } from './wemTakeAudio';
 
-/** Decode a voiced line asset (FUZ/XWM/WAV) into a reference WAV for XTTS. */
+/** Decode a voiced line asset (FUZ/XWM/WAV/WEM) into a reference WAV for XTTS. */
 export const prepareReferenceAudio = async (
   entry: VoiceFileEntry,
   tempDir: string,
@@ -12,6 +13,10 @@ export const prepareReferenceAudio = async (
   const referencePath = path.join(tempDir, `${entry.lineKey}_${entry.variant}.ref.wav`);
   if (entry.ext === 'wav') {
     await decodeAudioToReferenceWav(entry.absolutePath, referencePath);
+    return referencePath;
+  }
+  if (entry.ext === 'wem') {
+    await decodeWemTakeToWav(entry.absolutePath, referencePath, REFERENCE_WAV_SAMPLE_RATE);
     return referencePath;
   }
 

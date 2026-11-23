@@ -9,8 +9,11 @@ export type VoiceFileEntry = {
   fileName: string;
   lineKey: string;
   variant: number;
-  /** `ogg` is a take a game stores inside a container, unpacked for playback. */
-  ext: 'fuz' | 'wav' | 'xwm' | 'ogg';
+  /**
+   * `ogg` is a take a game stores inside a container, unpacked for playback;
+   * `wem` is a Wwise take named by its own id (see `discoverWemTakes.ts`).
+   */
+  ext: 'fuz' | 'wav' | 'xwm' | 'ogg' | 'wem';
   /**
    * Plugin that owns the line, lower-cased: the folder under `Sound/Voice/`.
    * Set for Creation Engine takes; games without an origin notion leave it out.
@@ -81,8 +84,18 @@ const allowedVoiceOrigins = (packageDir: string, pluginRelPath: string): Set<str
   return new Set([path.basename(pluginRelPath), ...masters].map(normalizeVoiceOrigin));
 };
 
+/** One file somewhere below `Sound/Voice/<origin>/`. */
+export type VoiceTreeFile = {
+  name: string;
+  /** Package-relative path; always starts with the canonical `Sound/Voice` spelling. */
+  relPath: string;
+  absolutePath: string;
+  /** The origin folder the file sits under, lower-cased. */
+  origin: string;
+};
+
 /**
- * Scan `<plugin-dir>/Sound/Voice/<origin>/` for voiced dialogue files.
+ * Visit every file under `<plugin-dir>/Sound/Voice/<origin>/`.
  *
  * The plugin's own folder is walked and so are its masters': a patch keeps its
  * fixed takes under the master it overrides (`Sound/Voice/Fallout4.esm/…`),
@@ -91,17 +104,20 @@ const allowedVoiceOrigins = (packageDir: string, pluginRelPath: string): Set<str
  * add-on — belong to someone else. Folder names are matched by what they are,
  * so a folder whose case differs from the plugin file name is found too.
  *
- * So is a tree the mod spells `sound/voice`. A take's `relPath` still starts
+ * So is a tree the mod spells `sound/voice`. A file's `relPath` still starts
  * with `Sound/Voice`: it names where the dub goes, and everything that looks
  * for dubs looks there. The original is read through `absolutePath`.
  */
-export const discoverVoiceFiles = (packageDir: string, pluginRelPath: string): VoiceFileEntry[] => {
+export const walkVoiceTree = (
+  packageDir: string,
+  pluginRelPath: string,
+  visit: (file: VoiceTreeFile) => void,
+): void => {
   const treeRel = resolveVoiceTreeRel(pluginRelPath);
   const treeRoot = findDirAnyCase(packageDir, treeRel);
-  if (!treeRoot) return [];
+  if (!treeRoot) return;
   const allowed = allowedVoiceOrigins(packageDir, pluginRelPath);
 
-  const entries: VoiceFileEntry[] = [];
   const walk = (currentDir: string, relDir: string, origin: string): void => {
     for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
       const relPath = `${relDir}/${entry.name}`;
@@ -110,17 +126,7 @@ export const discoverVoiceFiles = (packageDir: string, pluginRelPath: string): V
         walk(fullPath, relPath, origin);
         continue;
       }
-      const match = entry.name.match(VOICE_FILE_RE);
-      if (!match) continue;
-      entries.push({
-        relPath,
-        absolutePath: fullPath,
-        fileName: entry.name,
-        lineKey: match[1]!.substring(2).toUpperCase(),
-        variant: Number.parseInt(match[2]!, 10),
-        ext: match[3]!.toLowerCase() as VoiceFileEntry['ext'],
-        originPlugin: origin,
-      });
+      visit({ name: entry.name, relPath, absolutePath: fullPath, origin });
     }
   };
 
@@ -133,6 +139,27 @@ export const discoverVoiceFiles = (packageDir: string, pluginRelPath: string): V
       normalizeVoiceOrigin(originDir.name),
     );
   }
+};
+
+/**
+ * Scan `<plugin-dir>/Sound/Voice/<origin>/` for takes named after their line,
+ * `<FormID>_<response>.<ext>` — see {@link walkVoiceTree} for which folders.
+ */
+export const discoverVoiceFiles = (packageDir: string, pluginRelPath: string): VoiceFileEntry[] => {
+  const entries: VoiceFileEntry[] = [];
+  walkVoiceTree(packageDir, pluginRelPath, (file) => {
+    const match = file.name.match(VOICE_FILE_RE);
+    if (!match) return;
+    entries.push({
+      relPath: file.relPath,
+      absolutePath: file.absolutePath,
+      fileName: file.name,
+      lineKey: match[1]!.substring(2).toUpperCase(),
+      variant: Number.parseInt(match[2]!, 10),
+      ext: match[3]!.toLowerCase() as VoiceFileEntry['ext'],
+      originPlugin: file.origin,
+    });
+  });
   entries.sort((a, b) => a.relPath.localeCompare(b.relPath));
   return entries;
 };

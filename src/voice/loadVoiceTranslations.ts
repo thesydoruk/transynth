@@ -98,8 +98,9 @@ export const loadVoiceTranslations = async (
   for (const row of rows) {
     const voiceVariant = resolveVoiceVariant(row.voice_ordinal, row.info_formid_hex, responseMap);
     const originPlugin = origins.originOfFormid(row.info_formid_hex);
-    map.set(voiceTranslationMapKey(row.line_key, voiceVariant, originPlugin), {
-      lineKey: row.line_key,
+    const lineKey = origins.lineKeyOfFormid(row.info_formid_hex);
+    map.set(voiceTranslationMapKey(lineKey, voiceVariant, originPlugin), {
+      lineKey,
       infoFormidHex: row.info_formid_hex,
       originPlugin,
       voiceVariant,
@@ -159,7 +160,8 @@ export const loadVoiceSourcesDetailed = async (
     if (!source) continue;
     const voiceVariant = resolveVoiceVariant(row.voice_ordinal, row.info_formid_hex, responseMap);
     const originPlugin = origins.originOfFormid(row.info_formid_hex);
-    map.set(voiceTranslationMapKey(row.line_key, voiceVariant, originPlugin), {
+    const lineKey = origins.lineKeyOfFormid(row.info_formid_hex);
+    map.set(voiceTranslationMapKey(lineKey, voiceVariant, originPlugin), {
       source,
       infoFormidHex: row.info_formid_hex,
       originPlugin,

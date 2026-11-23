@@ -35,10 +35,17 @@ describe('Creation Engine record kinds', () => {
   });
 
   it('is one vocabulary for every title, not a Fallout 4 table', () => {
-    for (const game of ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle']) {
+    for (const game of ['fo4', 'fo76', 'fo3', 'fnv', 'sf1', 'ob', 'mw', 'sse', 'sle']) {
       expect(kind(game, 'TERM')).toBe('prose');
       expect(kind(game, 'PEX')).toBe('compiled_script');
     }
+  });
+
+  it("reads Starfield's terminal menus as narration", () => {
+    expect(kind('sf1', 'TMLM', 'BTXT')).toBe('prose');
+    expect(kind('sf1', 'TMLM')).toBe('prose');
+    expect(kind('sf1', 'BOOK')).toBe('prose');
+    expect(kind('sf1', 'NPC_', 'FULL')).toBe('actor_name');
   });
 
   it('reads a signature however it is cased or padded', () => {

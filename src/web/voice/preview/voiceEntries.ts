@@ -1,10 +1,7 @@
 import type { Tx } from '../../../db';
-import {
-  dedupeVoiceFiles,
-  discoverVoiceFiles,
-  type VoiceFileEntry,
-} from '../../../voice/discoverVoiceFiles';
+import type { VoiceFileEntry } from '../../../voice/discoverVoiceFiles';
 import { voiceSpeakerKey } from '../../../voice/speakerReference';
+import { FUZ_TAKES, type VoiceTakeFormat } from '../../../voice/takeFormat';
 import { normalizeVoiceOrigin } from '../../../voice/voiceOrigin';
 import type { VoicePackageContext } from './context';
 
@@ -50,8 +47,11 @@ export const loadSpeakerNamesFromDb = async (
   return map;
 };
 
-export const discoverVoiceEntries = (ctx: VoicePackageContext): VoiceFileEntry[] =>
-  dedupeVoiceFiles(discoverVoiceFiles(ctx.packageDir, ctx.pluginRel));
+/** The package's source takes, in the game's take format (`.fuz` when omitted). */
+export const discoverVoiceEntries = (
+  ctx: VoicePackageContext,
+  takes: VoiceTakeFormat = FUZ_TAKES,
+): VoiceFileEntry[] => takes.discover(ctx.packageDir, ctx.pluginRel);
 
 /**
  * Resolve one voice file by FormID + response number.

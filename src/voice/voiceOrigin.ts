@@ -16,36 +16,92 @@
  * Origins are plugin file names in lower case, so a folder on disk and a name
  * from a TES4 header compare equal whatever case either was written in.
  *
- * Known gap: an override of a record owned by an ESL-flagged master is stored
- * as `MM000yyy`, while that master names its own take `FExxxyyy`; those two do
- * not meet here. No mod in the corpus overrides ESL dialogue yet.
+ * A title whose plugins number small and medium masters on their own
+ * (Starfield, `formIdMasterSlots: 'byKind'`) reads the owner through
+ * `formIdMasterIndex`: `FE` + 12-bit slot is the n-th small master, `FD` +
+ * 8-bit slot the n-th medium one, any other top byte the n-th full one. The
+ * line key there is the record's object id as its owner numbers it — 12 bits
+ * for a small owner, 16 for a medium one — so an override and the master's own
+ * record meet whatever slot the master has in the overriding plugin. The kind
+ * of each master comes from its own header; a master not on disk counts as
+ * full, so a small or medium FormID pointing at it reads as the plugin's own.
+ *
+ * Known gap (`plain` titles): an override of a record owned by an ESL-flagged
+ * master is stored as `MM000yyy`, while that master names its own take
+ * `FExxxyyy`; those two do not meet here. No mod in the corpus overrides ESL
+ * dialogue yet.
  */
 import path from 'node:path';
+import { formIdMasterIndex } from '../formats/esp/pluginHeader';
+import type { EspRecordLayout, PluginKind } from '../formats/esp/recordLayout';
 
 export type VoiceOriginResolver = {
   /** The plugin's own file name, lower-cased. */
   ownOrigin: string;
-  /** `MAST` names in header order (original case). Index = FormID top byte. */
+  /** `MAST` names in header order (original case). */
   masters: string[];
   /** Origin of a record by its 8-hex FormID as stored in this plugin. */
   originOfFormid: (formidHex: string) => string;
+  /**
+   * Line key of a record by its 8-hex FormID as stored in this plugin: the
+   * lower six hex digits, upper-case — for a `byKind` title, the object id
+   * within its owner, padded to six.
+   */
+  lineKeyOfFormid: (formidHex: string) => string;
+};
+
+/** How a title's FormIDs name their master, and the kinds of this plugin's masters. */
+export type VoiceOriginFormIds = {
+  slots: EspRecordLayout['plugin']['formIdMasterSlots'];
+  /** Kind of each `MAST` entry from its own header; null when it is not on disk. */
+  masterKinds: ReadonlyArray<PluginKind | null>;
 };
 
 export const normalizeVoiceOrigin = (name: string | null | undefined): string =>
   (name ?? '').trim().toLowerCase();
 
+const padFormid = (formidHex: string): string => formidHex.trim().toUpperCase().padStart(8, '0');
+
 const masterIndexOf = (formidHex: string): number => {
-  const padded = formidHex.trim().toUpperCase().padStart(8, '0');
-  const idx = Number.parseInt(padded.slice(0, 2), 16);
+  const idx = Number.parseInt(padFormid(formidHex).slice(0, 2), 16);
   return Number.isFinite(idx) ? idx : 0;
 };
 
+/** Object id within the owner: `FE` keeps 12 bits, `FD` 16, anything else 24. */
+const objectIdKey = (formidHex: string): string => {
+  const padded = padFormid(formidHex);
+  const top = padded.slice(0, 2);
+  if (top === 'FE') return padded.slice(5).padStart(6, '0');
+  if (top === 'FD') return padded.slice(4).padStart(6, '0');
+  return padded.slice(2);
+};
+
+/**
+ * @param formIds - The title's FormID rule and the masters' kinds; omitted, the
+ *   top byte indexes `MAST` (Fallout 4 and older).
+ */
 export const buildVoiceOriginResolver = (
   pluginFileName: string,
   masters: string[],
+  formIds?: VoiceOriginFormIds,
 ): VoiceOriginResolver => {
   const ownOrigin = normalizeVoiceOrigin(path.basename(pluginFileName));
   const normalizedMasters = masters.map(normalizeVoiceOrigin);
+
+  if (formIds?.slots === 'byKind') {
+    const kinds = masters.map((_, i) => formIds.masterKinds[i] ?? 'full');
+    return {
+      ownOrigin,
+      masters,
+      originOfFormid: (formidHex) => {
+        const raw = Number.parseInt(padFormid(formidHex), 16);
+        const idx = Number.isFinite(raw) ? formIdMasterIndex(raw >>> 0, kinds, 'byKind') : -1;
+        return idx >= 0 ? normalizedMasters[idx]! : ownOrigin;
+      },
+      lineKeyOfFormid: objectIdKey,
+    };
+  }
+
   return {
     ownOrigin,
     masters,
@@ -53,6 +109,7 @@ export const buildVoiceOriginResolver = (
       const idx = masterIndexOf(formidHex);
       return idx < normalizedMasters.length ? normalizedMasters[idx]! : ownOrigin;
     },
+    lineKeyOfFormid: (formidHex) => padFormid(formidHex).slice(2),
   };
 };
 

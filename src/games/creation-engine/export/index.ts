@@ -32,11 +32,12 @@ const packVoiceIntoSoundPack = async (
   entries: ZipPackEntry[],
   stagingDir: string,
   modName?: string,
+  ba2Version?: number,
 ): Promise<ZipPackEntry[]> => {
   const { rest, voice } = splitLangpackVoiceEntries(entries);
   if (voice.length === 0) return rest;
 
-  await writeUaSoundPackIntoDir(stagingDir, voice, modName);
+  await writeUaSoundPackIntoDir(stagingDir, voice, modName, ba2Version);
   const names = uaSoundPackNames(modName);
   return [
     ...rest,
@@ -95,7 +96,8 @@ export const createCreationEngineExportAdapter = (
   logLabel: 'Langpack export',
 
   finalizeLangpackEntries: title.voice.packLangpackVoiceIntoBa2
-    ? (entries, stagingDir, modName) => packVoiceIntoSoundPack(entries, stagingDir, modName)
+    ? (entries, stagingDir, modName) =>
+        packVoiceIntoSoundPack(entries, stagingDir, modName, title.archive.ba2Version)
     : undefined,
 
   exportFullModZip: async (ctx) => {

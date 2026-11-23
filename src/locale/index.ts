@@ -1,2 +1,3 @@
 export { languageAlphabet, languageInputChars } from './alphabets';
-export { exportLocaleSlots, isOfficialBethesdaLocale } from './exportSlots';
+export { exportLocaleSlots, interfaceFontsForGame, isOfficialBethesdaLocale } from './exportSlots';
+export type { InterfaceFonts } from './exportSlots';

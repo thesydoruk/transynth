@@ -12,10 +12,11 @@ import { createCreationEngineExportAdapter } from './export';
 import { createCreationEngineImportAdapter } from './import';
 import { createCreationEngineTextAdapter } from './text';
 import { creationEngineDialogAdapter } from './dialog';
-import { creationEngineVoiceAdapter } from './voice';
+import { createCreationEngineVoiceAdapter } from './voice';
 import { createCreationEngineContentAdapter } from './content';
 import { registerCreationEngineTitle } from './registry';
 import type { CreationEngineTitle } from './title';
+import { voiceTakeFormat } from '../../voice/takeFormat';
 
 export const createCreationEnginePlugin = (title: CreationEngineTitle): GamePlugin => {
   registerCreationEngineTitle(title);
@@ -33,7 +34,9 @@ export const createCreationEnginePlugin = (title: CreationEngineTitle): GamePlug
     import: createCreationEngineImportAdapter(title),
     export: createCreationEngineExportAdapter(title),
     dialog: creationEngineDialogAdapter,
-    voice: creationEngineVoiceAdapter,
+    voice: createCreationEngineVoiceAdapter(
+      voiceTakeFormat(title.voice.takes, title.records?.plugin),
+    ),
     deployment: title.deployment,
     content: createCreationEngineContentAdapter(title),
     ...(title.media ? { media: title.media } : {}),

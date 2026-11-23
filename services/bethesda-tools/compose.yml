@@ -1,5 +1,7 @@
 # Standalone host (split deploy). Same image as the embedded Compose profile.
-# FaceFXWrapper.exe and xWMAEncode.exe are baked at image build. Mount FonixData.cdf at ./tools.
+# FaceFXWrapper.exe and xWMAEncode.exe are baked at image build. Mount FonixData.cdf at ./tools;
+# for Starfield lips also ./tools/starfield/{LipGenerator,FaceFX} from the Starfield Creation Kit
+# (the layout `npm run tools:install` writes to data/tools/voice; copy that folder here).
 services:
   bethesda-tools:
     build:

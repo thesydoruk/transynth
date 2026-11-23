@@ -12,6 +12,7 @@ import {
 } from '../../../db';
 import { sceneHasTimingConstraint, type SceneAction, type SceneRecord } from '../../../formats/esp';
 import type { DialogGraphImportContext } from '../../../import/bulk';
+import { PLAYER_ALIAS_ID } from '../../../import/dialogSpeakers/addressees';
 
 export type SceneImportResult = {
   scenes: number;
@@ -55,6 +56,13 @@ const resolveSceneTopicId = async (
   ctx.topicIdCache.set(topicFormId, topicId);
   return topicId;
 };
+
+/**
+ * Alias that speaks one topic of an action: the action's own, except for the
+ * player's side of a player-dialogue choice, whose action names the NPC.
+ */
+const phaseAliasId = (action: SceneAction, topicFormId: string): number =>
+  action.playerTopicFormIds?.includes(topicFormId) ? PLAYER_ALIAS_ID : action.aliasId;
 
 const persistAction = async (
   db: Tx,
@@ -118,7 +126,13 @@ export const importSceneRecords = async (
       actions++;
       for (const topicFormId of action.topicFormIds) {
         const topicId = await resolveSceneTopicId(db, modId, topicFormId, ctx);
-        await upsertDialogScenePhase(db, sceneId, action.startPhase, action.aliasId, topicId);
+        await upsertDialogScenePhase(
+          db,
+          sceneId,
+          action.startPhase,
+          phaseAliasId(action, topicFormId),
+          topicId,
+        );
         phases++;
       }
     }

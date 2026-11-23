@@ -1,13 +1,18 @@
 /**
  * SCEN (Scene) record extractor for ESP/ESM plugins.
  *
- * Keeps every recognized action (dialogue, package, timer, and FO4 player
- * dialogue / start-scene / NPC response / radio). Dialogue phases still come
- * from topic-bearing actions; timers and packages are stored so a later pass
- * can tell which scenes are pinned to authored duration.
+ * Keeps every action the title's record layout knows (dialogue, package,
+ * timer, and FO4 player dialogue / start-scene / NPC response / radio, or
+ * their Starfield counterparts). Dialogue phases still come from topic-bearing
+ * actions; timers and packages are stored so a later pass can tell which
+ * scenes are pinned to authored duration. Action types the layout does not
+ * list — Starfield's move, camera, FX, animation and timeline actions — are
+ * dropped rather than read as something they are not.
  */
 import { log } from '../../logger';
 import type { SceneRecord } from '../types';
+import { DEFAULT_ESP_RECORD_LAYOUT, type EspRecordLayout } from './recordLayout';
+import { toSceneActionLayout, type SceneActionLayout } from './scene/parseSceneAction';
 import { parseSceneRecord } from './scene/parseSceneRecord';
 
 const RECORD_HEADER_SIZE = 24;
@@ -19,9 +24,11 @@ const GRUP_HEADER_SIZE = 24;
  */
 export class EspSceneExtractor {
   private readonly buf: Buffer;
+  private readonly layout: SceneActionLayout;
 
-  constructor(buf: Buffer) {
+  constructor(buf: Buffer, layout: EspRecordLayout = DEFAULT_ESP_RECORD_LAYOUT) {
     this.buf = buf;
+    this.layout = toSceneActionLayout(layout.scene);
   }
 
   /** Extract scenes that have dialogue, timing, or FO4 extra actions. */
@@ -40,7 +47,7 @@ export class EspSceneExtractor {
         } else {
           const dataSize = this.buf.readUInt32LE(p + 4);
           if (sig === 'SCEN') {
-            const scene = parseSceneRecord(this.buf, p);
+            const scene = parseSceneRecord(this.buf, p, this.layout);
             if (scene) scenes.push(scene);
           }
           p += RECORD_HEADER_SIZE + dataSize;

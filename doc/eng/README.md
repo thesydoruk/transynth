@@ -66,6 +66,7 @@ Transynth supports the following titles:
 - Fallout 76 (`fo76`)
 - Fallout 3 (`fo3`)
 - Fallout: New Vegas (`fnv`)
+- Starfield (`sf1`)
 - The Elder Scrolls IV: Oblivion (`ob`)
 - The Elder Scrolls III: Morrowind (`mw`)
 - Skyrim Special Edition (`sse`)
@@ -75,7 +76,7 @@ Transynth supports the following titles:
 Each title is a plugin under `src/games/`, and its plugin decides how its mods
 are read and written:
 
-- FO4 / FO76: BA2 workflow
+- FO4 / FO76 / Starfield: BA2 workflow
 - FO3 / FNV / OB / MW / SSE / SLE: BSA workflow
 - Disco Elysium: Disco Translator Final Cut language packs (`.po` + `.wav`)
 

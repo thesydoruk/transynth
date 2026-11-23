@@ -7,6 +7,7 @@ import path from 'node:path';
 import fg from 'fast-glob';
 import type { Tx } from '../db';
 import { PATHS } from '../paths';
+import { LOCALIZED_TAKE_EXTENSIONS } from './takeFormat';
 import { clearModVoiceSynthesisState } from './voiceSynthesisState';
 
 export type ClearModGeneratedVoiceResult = {
@@ -15,7 +16,20 @@ export type ClearModGeneratedVoiceResult = {
   previewCacheCleared: boolean;
 };
 
-const VOICE_AUDIO_GLOBS = ['**/Sound/Voice/**/*.{fuz,wav}', '**/Audio/**/*.wav'] as const;
+/** Bethesda takes of any format with what travels with them, and Disco's loose `.wav`. */
+const VOICE_AUDIO_GLOBS = [
+  `**/Sound/Voice/**/*.{${[
+    ...LOCALIZED_TAKE_EXTENSIONS.takes,
+    'wav',
+    ...LOCALIZED_TAKE_EXTENSIONS.sidecars,
+  ].join(',')}}`,
+  '**/Audio/**/*.wav',
+] as const;
+
+const isTakeSidecar = (filePath: string): boolean =>
+  LOCALIZED_TAKE_EXTENSIONS.sidecars.some((extension) =>
+    filePath.toLowerCase().endsWith(`.${extension}`),
+  );
 
 const removeDirIfExists = (dir: string): boolean => {
   if (!fs.existsSync(dir)) return false;
@@ -28,7 +42,10 @@ const matchesSpeakerFolder = (filePath: string, speakerKey: string): boolean => 
   return filePath.replace(/\\/g, '/').includes(needle);
 };
 
-/** Delete localized `.fuz` / `.wav` under one `_localize_{hash}/{lang}/` tree. */
+/**
+ * Delete localized takes under one `_localize_{hash}/{lang}/` tree. Returns
+ * the number of takes removed; the files that travel with one are not counted.
+ */
 export const clearModLocalizedVoiceFiles = (localizeDir: string, speakerKey?: string): number => {
   if (!fs.existsSync(localizeDir)) return 0;
   const cwd = localizeDir.replace(/\\/g, '/');
@@ -46,7 +63,7 @@ export const clearModLocalizedVoiceFiles = (localizeDir: string, speakerKey?: st
   for (const file of toRemove) {
     fs.unlinkSync(file);
   }
-  return toRemove.length;
+  return toRemove.filter((file) => !isTakeSidecar(file)).length;
 };
 
 /** Delete this mod's generated voice files, synthesis stamps, and translation previews. */

@@ -11,6 +11,7 @@ import {
   finalizeSceneAction,
   startActionDraft,
   type SceneActionDraft,
+  type SceneActionLayout,
 } from './parseSceneAction';
 
 const RECORD_HEADER_SIZE = 24;
@@ -33,14 +34,22 @@ const readRecordPayload = (buf: Buffer, recOffset: number): Buffer | null => {
   return buf.subarray(recOffset + RECORD_HEADER_SIZE, recOffset + RECORD_HEADER_SIZE + dataSize);
 };
 
-const flushAction = (draft: SceneActionDraft | null, actions: SceneAction[]): void => {
+const flushAction = (
+  draft: SceneActionDraft | null,
+  actions: SceneAction[],
+  layout: SceneActionLayout,
+): void => {
   if (!draft) return;
-  const action = finalizeSceneAction(draft);
+  const action = finalizeSceneAction(draft, layout);
   if (action) actions.push(action);
 };
 
 /** Parse the SCEN at `recOffset` in a plugin buffer. */
-export const parseSceneRecord = (buf: Buffer, recOffset: number): SceneRecord | null => {
+export const parseSceneRecord = (
+  buf: Buffer,
+  recOffset: number,
+  layout: SceneActionLayout,
+): SceneRecord | null => {
   const recordData = readRecordPayload(buf, recOffset);
   if (!recordData) return null;
 
@@ -65,18 +74,18 @@ export const parseSceneRecord = (buf: Buffer, recOffset: number): SceneRecord | 
       const raw = payload.readUInt32LE(0);
       if (raw !== 0) questFormId = formIdHex(raw);
     } else if (subSig === 'ANAM' && subSize === 2) {
-      flushAction(draft, actions);
+      flushAction(draft, actions, layout);
       draft = startActionDraft(payload.readUInt16LE(0));
     } else if (subSig === 'ANAM' && subSize === 0 && draft) {
-      flushAction(draft, actions);
+      flushAction(draft, actions, layout);
       draft = null;
     } else if (draft) {
-      applyActionSubrecord(draft, subSig, payload);
+      applyActionSubrecord(draft, subSig, payload, layout);
     }
 
     pos += SUBRECORD_HEADER_SIZE + subSize;
   }
-  flushAction(draft, actions);
+  flushAction(draft, actions, layout);
 
   if (actions.length === 0) return null;
   actions.sort((a, b) => a.startPhase - b.startPhase || a.endPhase - b.endPhase);
