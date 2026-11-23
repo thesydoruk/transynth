@@ -233,10 +233,10 @@ const updateRecoveredSpeakers = async (
  * Resolve gender for every dialog speaker of a mod and record who each node
  * addresses.
  *
- * Runs after scenes are imported because scene aliases are what identify the
- * player, name the speakers the plugin left blank, and give the counterpart of
- * a conversation. Manual overrides in `dialog_speakers.gender_override` are
- * left alone unless a backfill pass explicitly clears them first.
+ * Runs after scenes are imported because scene aliases are what name the
+ * speakers the plugin left blank and give the counterpart of a conversation.
+ * Manual overrides in `dialog_speakers.gender_override` are left alone unless
+ * a backfill pass explicitly clears them first.
  */
 export const resolveModDialogSpeakers = async (
   db: Tx,
@@ -258,7 +258,7 @@ export const resolveModDialogSpeakers = async (
 
   const phases = await loadScenePhases(db, modId);
   const fromPlugin = buildDialogSpeakerRows({ nodes, index });
-  const { addressees, playerSpeakerKeys, recoveredSpeakers } = resolveNodeAddressees(
+  const { addressees, recoveredSpeakers } = resolveNodeAddressees(
     nodes,
     phases,
     playerKeysFromRows(fromPlugin),
@@ -266,7 +266,7 @@ export const resolveModDialogSpeakers = async (
 
   // A recovered node now speaks through a key the speaker table already holds,
   // so the rows themselves need no rebuild — only the nodes do.
-  const dialogSpeakers = markPlayerSpeakers(fromPlugin, playerSpeakerKeys);
+  const dialogSpeakers = markPlayerSpeakers(fromPlugin);
   const dialogKeys = new Set(dialogSpeakers.map((s) => s.speakerKey));
   const actorSpeakers = buildActorSpeakerRowsFromIndex(index, dialogKeys);
   const speakers = await applyPronounEvidence(
