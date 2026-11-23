@@ -3,8 +3,8 @@
  * scenes, and who speaks each line.
  *
  * Runs after the strings are stored, because scene aliases are what identify
- * the player and the conversation counterpart. Every step is non-fatal — a mod
- * whose scene records will not parse still imports its text.
+ * the conversation counterpart. Every step is non-fatal — a mod whose scene
+ * records will not parse still imports its text.
  */
 import type { EspReader } from '../../../formats/esp';
 import { logImport } from '../../../logging/loggers';

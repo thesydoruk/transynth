@@ -115,11 +115,10 @@ const buildRow = (
 /**
  * Build the speaker table of one mod from the plugin alone.
  *
- * Scene aliases can prove that a speaker is the player, but that evidence is
- * only available once addressees are resolved, and addressee resolution needs
- * to know who the player is. The knot is cut by running this first — voice
- * types and actor records already identify most player speakers — and applying
- * the alias evidence afterwards with {@link markPlayerSpeakers}.
+ * The player is known by the player's actor record and by the voice folder a
+ * line ships in, and by nothing else. The scene alias a speaker is heard under
+ * does not say: a holotape plays under the player's alias and is spoken by
+ * whoever recorded it.
  */
 export const buildDialogSpeakerRows = (opts: {
   nodes: SpeakerSourceNode[];
@@ -133,15 +132,9 @@ export const buildDialogSpeakerRows = (opts: {
  * Force the player's own rows to `any`, whose gender is picked when the game
  * starts and can never be committed to in a translation.
  */
-export const markPlayerSpeakers = (
-  rows: DialogSpeakerRow[],
-  playerSpeakerKeys: ReadonlySet<string>,
-): DialogSpeakerRow[] =>
+export const markPlayerSpeakers = (rows: DialogSpeakerRow[]): DialogSpeakerRow[] =>
   rows.map((row) => {
-    const isPlayer =
-      row.isPlayer ||
-      playerSpeakerKeys.has(row.speakerKey) ||
-      row.speakerKey === PLAYER_SPEAKER_KEY;
+    const isPlayer = row.isPlayer || row.speakerKey === PLAYER_SPEAKER_KEY;
     if (!isPlayer) return row;
     return { ...row, isPlayer: true, detectedGender: 'any', detectedSource: 'player' };
   });

@@ -13,10 +13,27 @@
  * Scenes are the other case: they play out between quest aliases, the player is
  * only one possible participant, and many of their lines carry no speaker at
  * all. An alias that is named on one of its lines names the rest of them too.
+ *
+ * The player's own alias is the exception: it puts the player in the scene and
+ * says nothing about whose voice is heard. A holotape is a scene of `radio`
+ * actions played at the player, and an NPC who talks over a radio or out of the
+ * player's inventory is a `dialogue` action on the player; each of those lines
+ * names its real speaker. So who the player is comes from the caller — a player
+ * voice type, the player's actor record — and never from the alias a speaker
+ * was heard under.
+ *
+ * The reverse happens too. A Fallout 4 Player Dialogue action belongs to the
+ * NPC the player is talking to: its prompts and that NPC's answers are all
+ * filed under the NPC's alias. So inside a scene the speaker of a line decides
+ * whose turn it is, not the alias — a prompt is said to the NPC of its alias,
+ * and the NPC's lines of the same action answer the player.
  */
 import type { AddresseeKind } from '../../dialog';
 
-/** Quest alias id reserved for the player character. */
+/**
+ * Scene alias of the player character: the action is played on, or at, the
+ * player. xEdit reads `-2` as "Player" in every title but Skyrim.
+ */
 const PLAYER_ALIAS_ID = -2;
 
 export type SpeakerNodeRow = {
@@ -46,13 +63,23 @@ export type RecoveredNodeSpeaker = {
 
 export type AddresseeResolution = {
   addressees: NodeAddressee[];
-  /** Speaker keys that turned out to be the player character. */
-  playerSpeakerKeys: Set<string>;
   /** Speaker-less nodes their scene alias could name. */
   recoveredSpeakers: RecoveredNodeSpeaker[];
 };
 
 type SceneAliases = Map<number, Map<number, string[]>>;
+
+/** Where a node sits in its scene. */
+type SceneTurn = { sceneId: number; aliasId: number; phaseOrder: number };
+
+type Addressee = { kind: AddresseeKind; speakerKey: string | null };
+
+const TO_PLAYER: Addressee = { kind: 'player', speakerKey: null };
+const TO_UNKNOWN: Addressee = { kind: 'unknown', speakerKey: null };
+
+/** One scene action: every topic it plays shares scene, phase and alias. */
+const actionKey = (sceneId: number, phaseOrder: number, aliasId: number): string =>
+  `${sceneId}:${phaseOrder}:${aliasId}`;
 
 /** Most frequent value, or null for an empty list. Ties resolve to the first seen. */
 const dominant = (values: readonly string[]): string | null => {
@@ -101,22 +128,51 @@ const collectSceneAliases = (
 const assignNodesToScenes = (
   nodesByTopic: Map<number, SpeakerNodeRow[]>,
   phases: ScenePhaseRow[],
-): Map<number, { sceneId: number; aliasId: number }> => {
-  const assignment = new Map<number, { sceneId: number; aliasId: number }>();
+): Map<number, SceneTurn> => {
+  const assignment = new Map<number, SceneTurn>();
 
   for (const phase of [...phases].sort(
     (a, b) => a.scene_id - b.scene_id || a.phase_order - b.phase_order,
   )) {
     for (const node of nodesByTopic.get(phase.topic_id) ?? []) {
       if (assignment.has(node.id)) continue;
-      assignment.set(node.id, { sceneId: phase.scene_id, aliasId: phase.alias_id });
+      assignment.set(node.id, {
+        sceneId: phase.scene_id,
+        aliasId: phase.alias_id,
+        phaseOrder: phase.phase_order,
+      });
     }
   }
 
   return assignment;
 };
 
-/** Is every speaker this alias was seen with the player character? */
+/**
+ * Collect the actions in which the player is heard under somebody else's alias.
+ *
+ * Those are the Player Dialogue actions: the phase rows do not say which of an
+ * action's topics are prompts and which are answers, but the lines themselves
+ * do — a prompt is in the player's voice.
+ */
+const collectPlayerExchanges = (
+  nodesByTopic: Map<number, SpeakerNodeRow[]>,
+  phases: ScenePhaseRow[],
+  playerKeys: ReadonlySet<string>,
+): Set<string> => {
+  const exchanges = new Set<string>();
+
+  for (const phase of phases) {
+    if (phase.alias_id === PLAYER_ALIAS_ID) continue;
+    const playerHeard = (nodesByTopic.get(phase.topic_id) ?? []).some(
+      (node) => node.speaker_key != null && playerKeys.has(node.speaker_key),
+    );
+    if (playerHeard) exchanges.add(actionKey(phase.scene_id, phase.phase_order, phase.alias_id));
+  }
+
+  return exchanges;
+};
+
+/** Is this the player's alias, or one only the player was heard under? */
 const aliasIsPlayer = (
   aliasId: number,
   keys: readonly string[],
@@ -124,28 +180,51 @@ const aliasIsPlayer = (
 ): boolean =>
   aliasId === PLAYER_ALIAS_ID || (keys.length > 0 && keys.every((key) => playerKeys.has(key)));
 
+/** Most frequent speaker who is not the player: the NPC an alias or a topic stands for. */
+const dominantNpc = (keys: readonly string[], playerKeys: ReadonlySet<string>): string | null =>
+  dominant(keys.filter((key) => !playerKeys.has(key)));
+
 const addresseeForSceneTurn = (
   aliases: Map<number, string[]>,
-  aliasId: number,
+  turn: SceneTurn,
+  node: SpeakerNodeRow,
   playerKeys: ReadonlySet<string>,
-): { kind: AddresseeKind; speakerKey: string | null } => {
-  const speaking = aliasIsPlayer(aliasId, aliases.get(aliasId) ?? [], playerKeys);
-  const others = [...aliases.keys()].filter((id) => id !== aliasId);
+  playerExchanges: ReadonlySet<string>,
+): Addressee => {
+  const ownKeys = aliases.get(turn.aliasId) ?? [];
+  const ownIsPlayer = aliasIsPlayer(turn.aliasId, ownKeys, playerKeys);
+
+  if (!ownIsPlayer && node.speaker_key != null) {
+    // A prompt of a Player Dialogue action: said to the NPC it is filed under.
+    if (playerKeys.has(node.speaker_key)) {
+      return { kind: 'npc', speakerKey: dominantNpc(ownKeys, playerKeys) };
+    }
+    // ...and that NPC answering the prompt.
+    if (playerExchanges.has(actionKey(turn.sceneId, turn.phaseOrder, turn.aliasId))) {
+      return TO_PLAYER;
+    }
+  }
+
+  const speaking = ownIsPlayer;
+  const others = [...aliases.keys()].filter((id) => id !== turn.aliasId);
   const counterparts = others.filter((id) => !aliasIsPlayer(id, aliases.get(id) ?? [], playerKeys));
 
   // Companion idle / one-alias scene: the player is the implicit audience.
-  if (!speaking && others.length === 0) {
-    return { kind: 'player', speakerKey: null };
-  }
+  if (!speaking && others.length === 0) return TO_PLAYER;
 
   // The player is in the scene and someone else is talking: they are the audience.
-  if (!speaking && counterparts.length < others.length) {
-    return { kind: 'player', speakerKey: null };
-  }
+  if (!speaking && counterparts.length < others.length) return TO_PLAYER;
+
   if (counterparts.length === 1) {
-    return { kind: 'npc', speakerKey: dominant(aliases.get(counterparts[0]!) ?? []) };
+    const counterpartKeys = aliases.get(counterparts[0]!) ?? [];
+    if (speaking) return { kind: 'npc', speakerKey: dominantNpc(counterpartKeys, playerKeys) };
+
+    // An alias the player is heard under more than its NPC is the player's
+    // side of the conversation; the player is never an addressee by key.
+    const heard = dominant(counterpartKeys);
+    return heard != null && playerKeys.has(heard) ? TO_PLAYER : { kind: 'npc', speakerKey: heard };
   }
-  return { kind: 'unknown', speakerKey: null };
+  return TO_UNKNOWN;
 };
 
 /**
@@ -159,15 +238,11 @@ const addresseeForTopicTurn = (
   node: SpeakerNodeRow,
   topicSpeakers: readonly string[],
   playerKeys: ReadonlySet<string>,
-): { kind: AddresseeKind; speakerKey: string | null } => {
-  if (!node.speaker_key || !playerKeys.has(node.speaker_key)) {
-    return { kind: 'player', speakerKey: null };
-  }
+): Addressee => {
+  if (!node.speaker_key || !playerKeys.has(node.speaker_key)) return TO_PLAYER;
 
-  const counterpart = dominant(topicSpeakers.filter((key) => !playerKeys.has(key)));
-  return counterpart
-    ? { kind: 'npc', speakerKey: counterpart }
-    : { kind: 'unknown', speakerKey: null };
+  const counterpart = dominantNpc(topicSpeakers, playerKeys);
+  return counterpart ? { kind: 'npc', speakerKey: counterpart } : TO_UNKNOWN;
 };
 
 /**
@@ -176,13 +251,13 @@ const addresseeForTopicTurn = (
  *
  * @param nodes - Every dialog node, with the speaker key resolved at import.
  * @param phases - Scene phases linking scenes and aliases to dialog topics.
- * @param knownPlayerKeys - Speaker keys already known to be the player, from
- * player voice types and actor records. Scene aliases add to this set.
+ * @param playerSpeakerKeys - Speaker keys of the player character, from player
+ * voice types and actor records.
  */
 export const resolveNodeAddressees = (
   nodes: SpeakerNodeRow[],
   phases: ScenePhaseRow[],
-  knownPlayerKeys: ReadonlySet<string> = new Set(),
+  playerSpeakerKeys: ReadonlySet<string> = new Set(),
 ): AddresseeResolution => {
   const nodesByTopic = new Map<number, SpeakerNodeRow[]>();
   for (const node of nodes) {
@@ -193,11 +268,7 @@ export const resolveNodeAddressees = (
 
   const sceneAliases = collectSceneAliases(nodesByTopic, phases);
   const nodeScenes = assignNodesToScenes(nodesByTopic, phases);
-
-  const playerSpeakerKeys = new Set(knownPlayerKeys);
-  for (const aliases of sceneAliases.values()) {
-    for (const key of aliases.get(PLAYER_ALIAS_ID) ?? []) playerSpeakerKeys.add(key);
-  }
+  const playerExchanges = collectPlayerExchanges(nodesByTopic, phases, playerSpeakerKeys);
 
   const recoveredSpeakers: RecoveredNodeSpeaker[] = [];
   const addressees = nodes.map<NodeAddressee>((node) => {
@@ -209,7 +280,13 @@ export const resolveNodeAddressees = (
         const own = dominant(aliases.get(scene.aliasId) ?? []);
         if (own) recoveredSpeakers.push({ nodeId: node.id, speakerKey: own });
       }
-      const resolved = addresseeForSceneTurn(aliases, scene.aliasId, playerSpeakerKeys);
+      const resolved = addresseeForSceneTurn(
+        aliases,
+        scene,
+        node,
+        playerSpeakerKeys,
+        playerExchanges,
+      );
       return { nodeId: node.id, kind: resolved.kind, speakerKey: resolved.speakerKey };
     }
 
@@ -220,5 +297,5 @@ export const resolveNodeAddressees = (
     return { nodeId: node.id, kind: resolved.kind, speakerKey: resolved.speakerKey };
   });
 
-  return { addressees, playerSpeakerKeys, recoveredSpeakers };
+  return { addressees, recoveredSpeakers };
 };
