@@ -238,6 +238,39 @@ jobs:
           path: web-ui/playwright-report
           retention-days: 7
 
+  # The Wine sidecar is published from main only, after the merge. A pull
+  # request that changes it builds it here too (nothing is pushed), so a broken
+  # Dockerfile or a tool download that has gone away fails the pull request
+  # rather than the publish job, which would leave the merge undeployed.
+  tools-image:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Did bethesda-tools change?
+        id: tools
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if ! git diff --quiet "origin/$BASE_REF...HEAD" -- services/bethesda-tools; then
+            echo build=true >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+        if: steps.tools.outputs.build == 'true'
+
+      - name: Build bethesda-tools image
+        if: steps.tools.outputs.build == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: services/bethesda-tools
+          push: false
+          cache-from: type=gha,scope=bethesda-tools
+
   # Published for every green main commit; skipped checks (already-tested
   # tree) count as green, a failed or cancelled one does not.
   image:
