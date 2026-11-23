@@ -4,6 +4,7 @@
  * Layout used here (Fallout 4 / Skyrim SE):
  *
  *   QUST: EDID, FULL (inline name when not localized), INDX stage markers
+ *         (uint16 stage, then flags and an unused byte from Skyrim on)
  *   DLBR: EDID, QNAM parent quest, SNAM start DIAL topic
  *   DIAL: QNAM owning quest, BNAM owning DLBR branch
  *
@@ -101,12 +102,10 @@ export class EspDialogStructureExtractor {
         const text = data.toString('utf8', ds, ds + subSize).replace(/\0/g, '');
         if (text) name = text;
       } else if (subSig === 'INDX' && (subSize === 2 || subSize === 4)) {
-        const stageIndex = subSize === 2 ? data.readUInt16LE(ds) : data.readInt32LE(ds);
-        // Some QUST subrecords reuse INDX with 4-byte payloads that are not stage
-        // numbers (they look like FormIDs). Real quest stages stay small.
-        if (stageIndex >= 0 && stageIndex <= 65535) {
-          stageSet.add(stageIndex);
-        }
+        // The stage number is the leading uint16 in every title. Skyrim and
+        // later append a flags byte and an unused byte that holds leftover
+        // data, so the four bytes are never read as one number.
+        stageSet.add(data.readUInt16LE(ds));
       }
 
       pos = ds + subSize;

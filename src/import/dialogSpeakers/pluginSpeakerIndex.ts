@@ -14,6 +14,13 @@ import {
 } from '../../dialog';
 import type { EspActorIndex, VoiceTypeRecord } from '../../formats/esp';
 
+/**
+ * FormID of the player character's own NPC_ record. The engine reserves it in
+ * the game master of every title, and a plugin that overrides the record keeps
+ * the FormID.
+ */
+const PLAYER_ACTOR_FORM_ID = '00000007';
+
 /** Everything known about one actor record. */
 export type ActorSpeakerInfo = {
   gender: SpeakerGender;
@@ -146,7 +153,10 @@ export const buildPluginSpeakerIndex = (
       source = fromVoiceType?.source ?? null;
     }
 
-    const isPlayer = voiceType ? isPlayerVoiceType(voiceType) : false;
+    // A player voice type does not make an actor the player: Fallout 4 gives
+    // it to the spouse and to the character presets too, and the spouse
+    // (`MQ101PlayerSpouseMale`) speaks as an NPC whose sex is fixed.
+    const isPlayer = actor.formId === PLAYER_ACTOR_FORM_ID;
     if (isPlayer) {
       gender = 'any';
       source = 'player';

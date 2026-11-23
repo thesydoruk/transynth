@@ -85,7 +85,9 @@ const buildRow = (
     return {
       speakerKey,
       displayName: actor.name ?? fallbackName,
-      voiceType: actor.voiceType ?? [...evidence.voiceFolders][0] ?? null,
+      // The folder the audio was found in comes first: the voice tab looks
+      // speakers up by folder name as it is spelled on disk.
+      voiceType: [...evidence.voiceFolders][0] ?? actor.voiceType ?? null,
       isPlayer: actor.isPlayer,
       detectedGender: actor.gender,
       detectedSource: actor.source,
@@ -96,13 +98,15 @@ const buildRow = (
   const displayName =
     actor?.name ?? fallbackName ?? (folderName ? cleanVoiceFolderName(folderName) : null);
   const inferred = genderFromEvidence(evidence, index);
-  const voiceType = actor?.voiceType ?? inferred.voiceType ?? folderName;
+  const voiceFolder = inferred.voiceType ?? folderName;
 
   return {
     speakerKey,
     displayName,
-    voiceType,
-    isPlayer: actor?.isPlayer === true || (voiceType != null && isPlayerVoiceType(voiceType)),
+    voiceType: voiceFolder ?? actor?.voiceType ?? null,
+    // Only the folder a line ships in can make its speaker the player; an
+    // actor record that borrows the player's voice type is still an NPC.
+    isPlayer: actor?.isPlayer === true || (voiceFolder != null && isPlayerVoiceType(voiceFolder)),
     detectedGender: inferred.gender,
     detectedSource: inferred.source,
   };

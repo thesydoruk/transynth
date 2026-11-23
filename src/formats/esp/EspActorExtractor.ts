@@ -11,7 +11,8 @@
  *   EDID : Editor ID (null-terminated string)
  *   FULL : Name — lstring id (localized) or inline text
  *   ACBS : Configuration, 24 bytes; uint32 flags at offset 0, bit 0 = Female
- *   VTYP : Voice type FormID (uint32)
+ *   VTCK : Voice type FormID (uint32) — the same subrecord in Fallout 3 / New
+ *          Vegas, Skyrim, Fallout 4 and 76; Oblivion has no voice types
  *
  * VTYP records contribute their EDID, which is the voice type name (e.g.
  * `FemaleBoston`) that the Creation Kit also uses as the voice folder name, and
@@ -105,7 +106,7 @@ export class EspActorExtractor {
         actor.edid = data.toString('utf8', ds, ds + subSize).replace(/\0/g, '');
       } else if (subSig === 'ACBS' && subSize >= 4) {
         actor.isFemale = (data.readUInt32LE(ds) & ACBS_FLAG_FEMALE) !== 0;
-      } else if (subSig === 'VTYP' && subSize === 4) {
+      } else if (subSig === 'VTCK' && subSize === 4) {
         actor.voiceTypeFormId = readFormIdAt(data, ds);
       } else if (subSig === 'FULL' && subSize > 0) {
         if (this.isLocalized && subSize === 4) {
