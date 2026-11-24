@@ -2,8 +2,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
-import { demuxOggOpus, muxOggOpus } from '../audio/ogg';
-import { buildOpusWem, opusWemDuration, opusWemToOgg, parseOpusWem } from '../audio/opusWem';
+import {
+  buildOpusWem,
+  demuxOggOpus,
+  muxOggOpus,
+  opusWemDuration,
+  opusWemToOgg,
+  parseOpusWem,
+} from '../../../formats/wem';
 import {
   buildW3SpeechAudio,
   parseW3SpeechAudio,

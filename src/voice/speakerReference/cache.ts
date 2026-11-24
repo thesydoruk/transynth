@@ -2,9 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { sha1Hex } from '../../utils/hash';
 import { ensureDir } from '../../utils/file';
-import { decodeAudioToReferenceWav } from '../ffmpegAudio';
+import { decodeAudioToReferenceWav, REFERENCE_WAV_SAMPLE_RATE } from '../ffmpegAudio';
 import { extractXwmFromFuzFile } from '../../formats/fuz';
 import type { VoiceFileEntry } from '../discoverVoiceFiles';
+import { decodeWemTakeToWav } from '../wemTakeAudio';
 import { MIN_REFERENCE_DURATION_SEC } from './constants';
 import { isUsableWavFile, wavDurationSec } from './pcm';
 
@@ -136,6 +137,11 @@ const decodeEntryToReferenceWav = async (
 ): Promise<void> => {
   if (entry.ext === 'wav') {
     await decodeAudioToReferenceWav(entry.absolutePath, outputPath);
+    return;
+  }
+
+  if (entry.ext === 'wem') {
+    await decodeWemTakeToWav(entry.absolutePath, outputPath, REFERENCE_WAV_SAMPLE_RATE);
     return;
   }
 

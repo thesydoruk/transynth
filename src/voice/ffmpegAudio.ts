@@ -12,6 +12,30 @@ export const convertToFo4Wav = async (inputPath: string, outputPath: string): Pr
   await execFileAsync(resolveFfmpegPath(), ['-y', '-i', inputPath, ...FO4_WAV_ARGS, outputPath]);
 };
 
+/** Convert any supported audio input to mono 16-bit PCM WAV at `sampleRate`. */
+export const convertToMonoWav = async (
+  inputPath: string,
+  outputPath: string,
+  sampleRate: number,
+): Promise<void> => {
+  ensureDir(path.dirname(outputPath));
+  await execFileAsync(resolveFfmpegPath(), [
+    '-y',
+    '-i',
+    inputPath,
+    '-ac',
+    '1',
+    '-ar',
+    String(sampleRate),
+    '-sample_fmt',
+    's16',
+    outputPath,
+  ]);
+};
+
+/** Reference clips for TTS are mono 16-bit at this rate, whatever the take was. */
+export const REFERENCE_WAV_SAMPLE_RATE = 22050;
+
 /** Decode XWM/FUZ audio to mono WAV suitable as an XTTS reference clip. */
 export const decodeAudioToReferenceWav = async (
   inputPath: string,
@@ -25,7 +49,7 @@ export const decodeAudioToReferenceWav = async (
     '-ac',
     '1',
     '-ar',
-    '22050',
+    String(REFERENCE_WAV_SAMPLE_RATE),
     '-sample_fmt',
     's16',
     outputPath,

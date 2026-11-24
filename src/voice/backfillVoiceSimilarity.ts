@@ -24,7 +24,8 @@ import { scoreVoiceSimilarity } from '../tts/ttsSimilarity';
 import { runPoolOverAsyncIterable } from '../utils/concurrency';
 import { ensureDir } from '../utils/file';
 import type { VoiceFileEntry } from './discoverVoiceFiles';
-import { decodeAudioToReferenceWav } from './ffmpegAudio';
+import { decodeAudioToReferenceWav, REFERENCE_WAV_SAMPLE_RATE } from './ffmpegAudio';
+import { decodeWemTakeToWav } from './wemTakeAudio';
 import { pickVoiceTtsReference } from './pickVoiceTtsReference';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import type { SpeakerRefCacheEntry } from './processVoiceLocalizeEntry';
@@ -60,12 +61,14 @@ type PendingRow = { lineKey: string; variant: number; speakerKey: string; origin
 const stateKey = (speakerKey: string, lineKey: string, variant: number, origin = ''): string =>
   `${normalizeVoiceOrigin(origin)}|${normalizeVoiceSpeakerKey(speakerKey)}|${lineKey.toUpperCase()}|${variant}`;
 
-/** The take as WAV: a FUZ carries xWMA behind its LIP block, a WAV take is itself. */
+/** The take as WAV: a FUZ carries xWMA behind its LIP block, a WEM is Opus, a WAV take is itself. */
 const decodeTakeToWav = async (takePath: string, workDir: string): Promise<Buffer> => {
   const ext = path.extname(takePath).toLowerCase();
   if (ext === '.wav') return fs.readFileSync(takePath);
   const wavPath = path.join(workDir, 'take.wav');
-  if (ext === '.fuz') {
+  if (ext === '.wem') {
+    await decodeWemTakeToWav(takePath, wavPath, REFERENCE_WAV_SAMPLE_RATE);
+  } else if (ext === '.fuz') {
     const xwmPath = path.join(workDir, 'take.xwm');
     fs.writeFileSync(xwmPath, extractXwmFromFuzFile(takePath));
     await decodeAudioToReferenceWav(xwmPath, wavPath);

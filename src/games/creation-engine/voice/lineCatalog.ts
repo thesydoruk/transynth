@@ -1,9 +1,9 @@
 /**
  * The editor's voice catalog for a Creation Engine mod.
  *
- * Takes live in `Sound/Voice/<VoiceType>/<FormID>_<n>.fuz` next to the plugin;
- * their text comes from the INFO records the import stored, plus any master
- * plugin the mod inherits lines from.
+ * Takes live in `Sound/Voice/<Plugin>/<VoiceType>/` next to the plugin, named
+ * as the title's take format says; their text comes from the INFO records the
+ * import stored, plus any master plugin the mod inherits lines from.
  */
 import type { Tx } from '../../../db';
 import { log } from '../../../logger';
@@ -21,6 +21,7 @@ import {
 import { persistBethesdaVoiceClips } from '../../../voice/persistBethesdaVoiceClips';
 import { BETHESDA_VOICE_MARKUP } from '../../../voice/prepareVoiceTtsText';
 import { voiceSpeakerKey } from '../../../voice/speakerReference';
+import type { VoiceTakeFormat } from '../../../voice/takeFormat';
 import { collectVoiceSourceFormids } from '../../../voice/voiceSourceFormids';
 import { loadVoiceSpeakerRefs } from '../../../voice/voiceSpeakerRefs';
 import { loadVoiceSimilarityMap } from '../../../voice/voiceSynthesisState';
@@ -30,7 +31,6 @@ import {
   resolveVoicePackageContext,
 } from '../../../web/voice/preview/context';
 import { loadVoiceFolderGenders } from '../../../web/voice/preview/speakerGender';
-import { creationEngineVoiceKeyFromRelPath } from './takeFiles';
 import {
   buildTranslationAudioSet,
   voiceEntryAudioKey,
@@ -55,6 +55,7 @@ const hasVoiceClips = async (db: Tx, modId: number): Promise<boolean> => {
 export const loadCreationEngineVoiceCatalog = async (
   db: Tx,
   request: { modId: number; pluginPath: string; srcLang: string; targetLang: string },
+  takes: VoiceTakeFormat,
 ): Promise<VoiceLineCatalogResult> => {
   const { modId, pluginPath, srcLang, targetLang } = request;
 
@@ -67,7 +68,9 @@ export const loadCreationEngineVoiceCatalog = async (
   // backfill here. Rewriting the index on every catalog build (every new take bumps the
   // revision) cost a minute of UPDATE/DELETE/INSERT over a hundred thousand rows.
   try {
-    if (!(await hasVoiceClips(db, modId))) await persistBethesdaVoiceClips(db, modId, srcLang);
+    if (!(await hasVoiceClips(db, modId))) {
+      await persistBethesdaVoiceClips(db, modId, srcLang, { takes });
+    }
   } catch (err) {
     log.warn(
       `Voice clips: ensure failed for mod ${modId}: ${err instanceof Error ? err.message : String(err)}`,
@@ -82,9 +85,10 @@ export const loadCreationEngineVoiceCatalog = async (
     pluginPath: ctx.pluginPath,
     srcLang,
     tgtLang: targetLang,
+    takes,
   });
   const voiceFiles = [
-    ...discoverVoiceEntries(ctx),
+    ...discoverVoiceEntries(ctx, takes),
     ...work.items.filter((item) => item.masterBacked).map((item) => item.entry),
   ];
   if (voiceFiles.length === 0) {
@@ -93,7 +97,7 @@ export const loadCreationEngineVoiceCatalog = async (
 
   const voiceRootRel = resolveVoiceRootRel(ctx.pluginRel);
   const translationAudio = buildTranslationAudioSet(ctx.localizeDir, {
-    voiceKeyFromRelPath: creationEngineVoiceKeyFromRelPath,
+    voiceKeyFromRelPath: takes.voiceKeyResolver(ctx.pluginPath),
   });
 
   const [

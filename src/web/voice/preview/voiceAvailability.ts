@@ -27,6 +27,7 @@ import { resolveModVoiceContext } from './context';
 import { discoverVoiceEntries } from './voiceEntries';
 import { buildTranslationAudioSet, hasTranslationAudioForEntry } from './translationAudioIndex';
 import { gamePlugin } from '../../../games/registry';
+import { voiceTakesOf } from '../../../voice/takeFormat';
 import type { VoiceAvailabilityResult } from './types';
 
 /**
@@ -53,7 +54,11 @@ export const listVoiceAvailabilityForMod = async (
   if (!voice) {
     return { ok: false, reason: 'plugin_missing', message: 'This game has no voice support' };
   }
-  const translationAudio = buildTranslationAudioSet(resolved.ctx.localizeDir, voice);
+  const translationAudio = buildTranslationAudioSet(
+    resolved.ctx.localizeDir,
+    voice,
+    resolved.ctx.pluginPath,
+  );
   const voiceRootRel = resolveVoiceRootRel(resolved.ctx.pluginRel);
   const source: string[] = [];
   const translation: string[] = [];
@@ -61,7 +66,7 @@ export const listVoiceAvailabilityForMod = async (
   const skipReasons: Record<string, VoiceTtsSkipReason> = {};
   const similarities: Record<string, number> = {};
 
-  for (const entry of discoverVoiceEntries(resolved.ctx)) {
+  for (const entry of discoverVoiceEntries(resolved.ctx, voiceTakesOf(voice))) {
     // Result keys stay `FORMID6:variant` (no origin): the dialogs editor builds them that way.
     const key = voiceTranslationMapKey(entry.lineKey, entry.variant);
     const mapKey = voiceTranslationMapKey(entry.lineKey, entry.variant, entry.originPlugin);

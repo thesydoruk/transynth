@@ -1,12 +1,15 @@
 # Opt in via COMPOSE_PROFILES=embedded-bethesda-tools (see .env.example).
 # External sidecar: omit the profile and set BETHESDA_TOOLS_URL.
 #
-# Host: http://localhost:8015 — GET /health, POST /v1/lip, POST /v1/xwm.
+# Host: http://localhost:8015 — GET /health, POST /v1/lip, /v1/xwm, /v1/ffxanim.
 # From web/worker: DOCKER_BETHESDA_TOOLS_URL=http://bethesda-tools:3210
 #
 # Latest thesydoruk/FaceFXWrapper release and xWMAEncode (DirectX SDK) are
-# downloaded at image build. Mounts data/tools/voice for FonixData.cdf only.
-# Wine prefix is a named volume so the container owns it.
+# downloaded at image build. Mounts data/tools/voice (read-only) for what
+# `npm run tools:install` copies from the user's own installs: FonixData.cdf and,
+# for Starfield, starfield/LipGenerator + starfield/FaceFX from its Creation Kit
+# (copied again inside the container before use: Wine cannot run them from a
+# Windows bind mount). Wine prefixes are a named volume so the container owns them.
 
 services:
   bethesda-tools:

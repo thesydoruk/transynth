@@ -147,8 +147,8 @@ take.
 Bink 2 is written by RAD Video Tools alone (free for non-commercial use), and the one
 program that does it, `radvideo64.exe`, is 64-bit Windows. It runs in `bethesda-tools`,
 the sidecar that already runs FaceFX and xWMAEncode under Wine: the image fetches RAD's
-permanent download at build (a 7z, password `RAD` as stated on the download page, holding
-an NSIS installer holding the exe; 7-Zip opens both layers, so the installer never runs),
+download at build (an NSIS installer holding the exe; 7-Zip opens it, so the installer
+never runs),
 keeps the one file at `/opt/bethesda/radvideo64.exe`, and gives it its own 64-bit Wine
 prefix beside the 32-bit ones. The tool is a windowed program: without a display Wine
 cannot create its window and it exits 0 having done nothing, so every pass runs under a

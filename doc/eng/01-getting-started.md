@@ -36,6 +36,7 @@ Transynth supports the following titles:
 - Fallout 76 (`fo76`)
 - Fallout 3 (`fo3`)
 - Fallout: New Vegas (`fnv`)
+- Starfield (`sf1`)
 - The Elder Scrolls IV: Oblivion (`ob`)
 - The Elder Scrolls III: Morrowind (`mw`)
 - Skyrim Special Edition (`sse`)
@@ -44,7 +45,7 @@ Transynth supports the following titles:
 
 Archive/export behavior depends on the selected game profile:
 
-- FO4 / FO76: BA2 workflow
+- FO4 / FO76 / Starfield: BA2 workflow
 - FO3 / FNV / OB / MW / SSE / SLE: BSA workflow
 - Disco Elysium: Disco Translator Final Cut language packs (`.po` text + `.wav` voice)
 
@@ -187,6 +188,10 @@ Same opt-in: profile `embedded-bethesda-tools` starts FaceFX and xWMAEncode
 from `docker/compose.bethesda-tools.yml`. FaceFXWrapper and xWMAEncode are
 fetched at image build. Only `FonixData.cdf` still needs `data/tools/voice/`
 (`npm run tools:install --game-dir …` copies it from the game or Creation Kit).
+For Starfield, run it once more with the Starfield folder that has the Creation
+Kit installed: it copies the Creation Kit's `Tools/LipGenerator` and
+`Tools/FaceFX` into `data/tools/voice/starfield/` for the `.ffxanim` lip
+animation ([Voice](09-voice.md#starfield-lip-animation)).
 
 ```env
 COMPOSE_PROFILES=embedded-db,embedded-bethesda-tools

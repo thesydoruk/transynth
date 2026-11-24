@@ -11,6 +11,8 @@ import type { ArchiveInputFile } from '../../formats/types';
 import { readModImportExtractManifest } from '../../modImport/archiveManifest';
 import { resolveModImportExtractRoot } from '../../modStorage/paths';
 import { parsePluginStringsFileName } from '../../import/stringsPack/constants';
+import { findTitleStringsArchives } from '../../import/mod/localeSources';
+import { creationEngineTitle } from '../../games/creation-engine/registry';
 
 /** Manifest path of one of the plugin's own tables: `Strings/<pluginStem>_<locale>.*`. */
 const isPluginStringsManifestPath = (loosePath: string, pluginStem: string): boolean => {
@@ -83,6 +85,9 @@ export const resolveStringsArchiveFileName = (
   }
 
   if (usesBa2Archives(game)) {
+    const suffixes = creationEngineTitle(game).strings.archiveSuffixes ?? [];
+    const [titleArchive] = findTitleStringsArchives(modPath, [], suffixes);
+    if (titleArchive) return path.basename(titleArchive);
     const discovered = discoverCompanionBa2(modPath, archiveKindForGame(game));
     if (discovered) return path.basename(discovered);
   }
@@ -90,14 +95,20 @@ export const resolveStringsArchiveFileName = (
   return defaultArchiveFileName(pluginStem, game);
 };
 
-/** PEX scripts belong in Main.ba2 when string tables ship in Interface.ba2. */
+/**
+ * PEX scripts belong in Main.ba2 when string tables ship in an archive that
+ * holds nothing else: Interface.ba2, or one of the title's own string-table
+ * archives (Starfield's Localization.ba2).
+ */
 export const resolveScriptsArchiveFileName = (
   pluginStem: string,
   stringsArchiveFileName: string,
   game: GameId,
 ): string => {
   if (!usesBa2Archives(game)) return stringsArchiveFileName;
-  if (stringsArchiveFileName.toLowerCase().includes(' - interface')) {
+  const lower = stringsArchiveFileName.toLowerCase();
+  const textOnly = [' - interface', ...(creationEngineTitle(game).strings.archiveSuffixes ?? [])];
+  if (textOnly.some((suffix) => lower.includes(suffix.toLowerCase()))) {
     return `${pluginStem} - Main.ba2`;
   }
   return stringsArchiveFileName;

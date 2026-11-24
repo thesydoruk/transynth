@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { execFileAsync } from '../../../utils/execFile';
 import { resolveFfmpegPath } from '../../../voice/voiceToolPaths';
-import { buildOpusWem } from '../audio/opusWem';
+import { buildOpusWem } from '../../../formats/wem';
 import {
   buildW3SpeechAudio,
   parseW3SpeechAudio,

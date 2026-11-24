@@ -33,7 +33,7 @@ import {
 } from '../../../voice/voiceResynth';
 import { resolveTtsLanguage } from '../../../voice/voiceToolPaths';
 import { recordVoiceTake } from '../../../voice/referenceVoiceTakeHooks';
-import { decodeOpusWemToWav } from '../audio/opusWem';
+import { decodeOpusWemToWav } from '../../../formats/wem';
 import type { MimicModel } from '../mimic/model';
 import { parseW3SpeechAudio } from '../w3speech';
 import { buildW3Take } from './buildTake';

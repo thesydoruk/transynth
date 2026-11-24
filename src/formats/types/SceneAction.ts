@@ -21,6 +21,11 @@ export interface SceneAction {
   topicFormId: string | null;
   /** Every DIAL this action references (DATA plus FO4 response slots). */
   topicFormIds: string[];
+  /**
+   * The subset of {@link topicFormIds} whose lines the player says, when the
+   * title's layout tells them apart (Starfield `ESCE`). Absent otherwise.
+   */
+  playerTopicFormIds?: string[];
   /** Scene phase ordinal — determines dialog ordering within the scene. */
   startPhase: number;
   /** Last phase this action spans. */

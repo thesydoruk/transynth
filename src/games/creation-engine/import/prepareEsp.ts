@@ -23,17 +23,14 @@ import {
   type LocaleStringsSource,
 } from '../../../import/mod/localeSources';
 import { resolveSingleImportLocale } from '../../../import/mod/localeHelpers';
-import {
-  buildSpeakerFormIdMap,
-  buildVoiceFolderMap,
-  voiceSpeakerNamesFromFolders,
-} from '../../../import/mod/speakerMaps';
+import { buildSpeakerFormIdMap } from '../../../import/mod/speakerMaps';
 import {
   createModImportBatchWriter,
   type ModImportBatchWriter,
 } from '../../../import/mod/run/batchWriter';
 import type { ModImportRunContext } from '../../contract';
 import type { CreationEngineTitle } from '../title';
+import { buildLineVoiceFolders } from './lineVoiceFolders';
 
 export { importCreationEngineDialogGraph } from './dialogGraph';
 
@@ -70,7 +67,7 @@ export const prepareEspImportContext = async (
   title: CreationEngineTitle,
   ctx: ModImportRunContext,
 ): Promise<EspImportPrep> => {
-  const esp = new EspReader(ctx.anchorPath, title.subrecords);
+  const esp = new EspReader(ctx.anchorPath, title.subrecords, title.records);
   const espRows = esp.extractStrings();
 
   const dialogEdidByFormId = new Map<string, string>();
@@ -80,8 +77,6 @@ export const prepareEspImportContext = async (
 
   const dialogTopicIdCache = await loadDialogTopicIdCache(ctx, ctx.importModId!);
   const speakerMap = buildSpeakerFormIdMap(espRows);
-  const voiceFolderMap = buildVoiceFolderMap(ctx.anchorPath);
-  const voiceSpeakerMap = voiceSpeakerNamesFromFolders(voiceFolderMap);
   const archiveCandidates = discoverArchiveCandidatesForPlugin(ctx.anchorPath);
 
   const localeSources = esp.info.isLocalized
@@ -122,18 +117,27 @@ export const prepareEspImportContext = async (
   }
 
   const storedByBasename = await loadPluginPathByBasename(ctx.db);
+  const actorIndex = buildSpeakerActorIndex(esp, title, storedByBasename);
+  const pluginSpeakers = buildPluginSpeakerIndex({
+    actorIndex,
+    englishStrings: resolveEnglishLocaleMaps(localeSources)?.get('STRINGS') ?? null,
+    npcReferenceNames: title.npcReference(),
+    voiceFolders: new Map(),
+  });
+  const lines = buildLineVoiceFolders({
+    esp,
+    pluginPath: ctx.anchorPath,
+    espRows,
+    actorIndex,
+    speakerIndex: pluginSpeakers,
+  });
 
   const dialogGraphCtx: DialogGraphImportContext = {
     dialogEdidByFormId,
     speakerMap,
-    voiceSpeakerMap,
-    voiceFolderMap,
-    speakerIndex: buildPluginSpeakerIndex({
-      actorIndex: buildSpeakerActorIndex(esp, title, storedByBasename),
-      englishStrings: resolveEnglishLocaleMaps(localeSources)?.get('STRINGS') ?? null,
-      npcReferenceNames: title.npcReference(),
-      voiceFolders: voiceFolderMap,
-    }),
+    voiceSpeakerMap: lines.speakerNames,
+    voiceFolderMap: lines.voiceFolders,
+    speakerIndex: { ...pluginSpeakers, voiceFolders: lines.voiceFolders },
     topicIdCache: dialogTopicIdCache,
   };
 

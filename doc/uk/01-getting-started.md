@@ -36,6 +36,7 @@ Transynth підтримує такі ігри:
 - Fallout 76 (`fo76`)
 - Fallout 3 (`fo3`)
 - Fallout: New Vegas (`fnv`)
+- Starfield (`sf1`)
 - The Elder Scrolls IV: Oblivion (`ob`)
 - The Elder Scrolls III: Morrowind (`mw`)
 - Skyrim Special Edition (`sse`)
@@ -44,7 +45,7 @@ Transynth підтримує такі ігри:
 
 Поведінка архівів/експорту залежить від профілю гри:
 
-- FO4 / FO76: BA2-потік
+- FO4 / FO76 / Starfield: BA2-потік
 - FO3 / FNV / OB / MW / SSE / SLE: BSA-потік
 - Disco Elysium: мовні пакети Disco Translator Final Cut (`.po` + `.wav`)
 
@@ -178,6 +179,10 @@ Healthcheck: `curl -s http://localhost:8014/health`. Пізніше один с�
 з `docker/compose.bethesda-tools.yml`. FaceFXWrapper і xWMAEncode качаються на
 білді образу. У `data/tools/voice/` потрібен лише `FonixData.cdf`
 (`npm run tools:install --game-dir …` копіює його з гри чи Creation Kit).
+Для Starfield запустіть його ще раз із текою Starfield, де встановлено Creation
+Kit: він копіює `Tools/LipGenerator` і `Tools/FaceFX` з Creation Kit у
+`data/tools/voice/starfield/` для лицьової анімації `.ffxanim`
+([Озвучка](09-voice.md#лицьова-анімація-starfield)).
 
 ```env
 COMPOSE_PROFILES=embedded-db,embedded-bethesda-tools

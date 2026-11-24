@@ -1,12 +1,14 @@
 /**
  * Extract QUST, DLBR, and DIAL ownership links for dialog structure browsing.
  *
- * Layout used here (Fallout 4 / Skyrim SE):
+ * Layout used here (the same in Fallout 4, Skyrim SE and Starfield):
  *
  *   QUST: EDID, FULL (inline name when not localized), INDX stage markers
- *         (uint16 stage, then flags and an unused byte from Skyrim on)
  *   DLBR: EDID, QNAM parent quest, SNAM start DIAL topic
  *   DIAL: QNAM owning quest, BNAM owning DLBR branch
+ *
+ * Starfield nests base-form components (`BFCB` … `BFCE`) in QUST and DIAL; the
+ * record layout's brackets keep their fields from passing for the record's own.
  *
  * Localized FULL values are skipped — EDID is enough to label a quest until
  * string tables are resolved elsewhere.
@@ -16,11 +18,12 @@ import type { BranchRecord, DialOwnership, QuestRecord } from '../types';
 import {
   GRUP_HEADER_SIZE,
   RECORD_HEADER_SIZE,
-  SUBRECORD_HEADER_SIZE,
+  forEachSubrecord,
   formatFormId,
   readFormIdAt,
   readRecordData,
 } from './recordData';
+import { DEFAULT_ESP_RECORD_LAYOUT, type EspRecordLayout } from './recordLayout';
 
 export type DialogStructureExtract = {
   quests: QuestRecord[];
@@ -31,10 +34,16 @@ export type DialogStructureExtract = {
 export class EspDialogStructureExtractor {
   private readonly buf: Buffer;
   private readonly isLocalized: boolean;
+  private readonly layout: EspRecordLayout;
 
-  constructor(buf: Buffer, isLocalized: boolean) {
+  constructor(
+    buf: Buffer,
+    isLocalized: boolean,
+    layout: EspRecordLayout = DEFAULT_ESP_RECORD_LAYOUT,
+  ) {
     this.buf = buf;
     this.isLocalized = isLocalized;
+    this.layout = layout;
   }
 
   /** Walk the plugin once and collect every quest, branch, and DIAL link. */
@@ -89,27 +98,24 @@ export class EspDialogStructureExtractor {
     let name: string | null = null;
     const stageSet = new Set<number>();
 
-    let pos = 0;
-    while (pos + SUBRECORD_HEADER_SIZE <= data.length) {
-      const subSig = data.toString('ascii', pos, pos + 4);
-      const subSize = data.readUInt16LE(pos + 4);
-      const ds = pos + SUBRECORD_HEADER_SIZE;
-      if (ds + subSize > data.length) break;
-
-      if (subSig === 'EDID') {
-        edid = data.toString('utf8', ds, ds + subSize).replace(/\0/g, '');
-      } else if (subSig === 'FULL' && subSize > 0 && !(this.isLocalized && subSize === 4)) {
-        const text = data.toString('utf8', ds, ds + subSize).replace(/\0/g, '');
-        if (text) name = text;
-      } else if (subSig === 'INDX' && (subSize === 2 || subSize === 4)) {
-        // The stage number is the leading uint16 in every title. Skyrim and
-        // later append a flags byte and an unused byte that holds leftover
-        // data, so the four bytes are never read as one number.
-        stageSet.add(data.readUInt16LE(ds));
-      }
-
-      pos = ds + subSize;
-    }
+    forEachSubrecord(
+      data,
+      (subSig, ds, de) => {
+        const subSize = de - ds;
+        if (subSig === 'EDID') {
+          edid = data.toString('utf8', ds, de).replace(/\0/g, '');
+        } else if (subSig === 'FULL' && subSize > 0 && !(this.isLocalized && subSize === 4)) {
+          const text = data.toString('utf8', ds, de).replace(/\0/g, '');
+          if (text) name = text;
+        } else if (subSig === 'INDX' && (subSize === 2 || subSize === 4)) {
+          // The stage number is the leading uint16 in every title. Skyrim and
+          // later append a flags byte and an unused byte that holds leftover
+          // data, so the four bytes are never read as one number.
+          stageSet.add(data.readUInt16LE(ds));
+        }
+      },
+      this.layout.baseFormComponents,
+    );
 
     return {
       formId: formatFormId(this.buf.readUInt32LE(recOffset + 12)),
@@ -127,23 +133,20 @@ export class EspDialogStructureExtractor {
     let questFormId: string | null = null;
     let startTopicFormId: string | null = null;
 
-    let pos = 0;
-    while (pos + SUBRECORD_HEADER_SIZE <= data.length) {
-      const subSig = data.toString('ascii', pos, pos + 4);
-      const subSize = data.readUInt16LE(pos + 4);
-      const ds = pos + SUBRECORD_HEADER_SIZE;
-      if (ds + subSize > data.length) break;
-
-      if (subSig === 'EDID') {
-        edid = data.toString('utf8', ds, ds + subSize).replace(/\0/g, '');
-      } else if (subSig === 'QNAM' && subSize === 4) {
-        questFormId = readFormIdAt(data, ds);
-      } else if (subSig === 'SNAM' && subSize === 4) {
-        startTopicFormId = readFormIdAt(data, ds);
-      }
-
-      pos = ds + subSize;
-    }
+    forEachSubrecord(
+      data,
+      (subSig, ds, de) => {
+        const subSize = de - ds;
+        if (subSig === 'EDID') {
+          edid = data.toString('utf8', ds, de).replace(/\0/g, '');
+        } else if (subSig === 'QNAM' && subSize === 4) {
+          questFormId = readFormIdAt(data, ds);
+        } else if (subSig === 'SNAM' && subSize === 4) {
+          startTopicFormId = readFormIdAt(data, ds);
+        }
+      },
+      this.layout.baseFormComponents,
+    );
 
     return {
       formId: formatFormId(this.buf.readUInt32LE(recOffset + 12)),
@@ -160,18 +163,15 @@ export class EspDialogStructureExtractor {
     let questFormId: string | null = null;
     let branchFormId: string | null = null;
 
-    let pos = 0;
-    while (pos + SUBRECORD_HEADER_SIZE <= data.length) {
-      const subSig = data.toString('ascii', pos, pos + 4);
-      const subSize = data.readUInt16LE(pos + 4);
-      const ds = pos + SUBRECORD_HEADER_SIZE;
-      if (ds + subSize > data.length) break;
-
-      if (subSig === 'QNAM' && subSize === 4) questFormId = readFormIdAt(data, ds);
-      else if (subSig === 'BNAM' && subSize === 4) branchFormId = readFormIdAt(data, ds);
-
-      pos = ds + subSize;
-    }
+    forEachSubrecord(
+      data,
+      (subSig, ds, de) => {
+        if (de - ds !== 4) return;
+        if (subSig === 'QNAM') questFormId = readFormIdAt(data, ds);
+        else if (subSig === 'BNAM') branchFormId = readFormIdAt(data, ds);
+      },
+      this.layout.baseFormComponents,
+    );
 
     return {
       formId: formatFormId(this.buf.readUInt32LE(recOffset + 12)),

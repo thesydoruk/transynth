@@ -66,6 +66,7 @@ Transynth підтримує такі ігри:
 - Fallout 76 (`fo76`)
 - Fallout 3 (`fo3`)
 - Fallout: New Vegas (`fnv`)
+- Starfield (`sf1`)
 - The Elder Scrolls IV: Oblivion (`ob`)
 - The Elder Scrolls III: Morrowind (`mw`)
 - Skyrim Special Edition (`sse`)
@@ -74,7 +75,7 @@ Transynth підтримує такі ігри:
 
 Поведінка архівів/експорту залежить від профілю гри:
 
-- FO4 / FO76: BA2-потік
+- FO4 / FO76 / Starfield: BA2-потік
 - FO3 / FNV / OB / MW / SSE / SLE: BSA-потік
 - Disco Elysium: мовні пакети Disco Translator Final Cut (`.po` + `.wav`)
 

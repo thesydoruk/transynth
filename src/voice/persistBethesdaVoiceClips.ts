@@ -1,7 +1,9 @@
 /**
  * Persist Bethesda INFO response variants and per-speaker voice takes.
  *
- * `strings.voice_variant` is the TRDA / `.fuz` response number.
+ * `strings.voice_variant` is the variant a take of the line carries: the TRDA /
+ * `.fuz` response number, or for a title that names takes by WEM id the
+ * response's position in its INFO.
  * `voice_clips` is one row per speaker folder × that response (Nate/Nora stay
  * distinct). SHA-1 stays in `voice_source_file_hashes`.
  */
@@ -11,7 +13,7 @@ import { log } from '../logger';
 import { loadModImportPaths } from '../import/mod/resolvePaths';
 import { pluginRelPath } from '../modImport/packages';
 import { resolveModDirectoryFromPath } from '../formats/mcm';
-import { dedupeVoiceFiles, discoverVoiceFiles, resolveVoiceRootRel } from './discoverVoiceFiles';
+import { resolveVoiceRootRel } from './discoverVoiceFiles';
 import { loadModInfoVoiceSlots, voiceVariantFromOrdinal } from './infoResponseNumbers';
 import { loadVoicePromptSources } from './voicePromptText';
 import {
@@ -19,6 +21,7 @@ import {
   INFO_NAM1_RECORD_PATHS,
   voiceTranslationMapKey,
 } from './voiceTextRows';
+import { voiceTakesForGame, type VoiceTakeFormat } from './takeFormat';
 import { resolveVoiceSourceFileHashes } from './voiceSourceFileHashes';
 import { buildVoiceClipRows, type VoiceClipRow, type VoiceClipStringRef } from './voiceClipRows';
 
@@ -82,7 +85,11 @@ const collectClipStringRefs = async (
       row.ordinal,
       responses.get(row.formidHex.toUpperCase()),
     );
-    const key = voiceTranslationMapKey(row.lineKey, variant, origins.originOfFormid(row.formidHex));
+    const key = voiceTranslationMapKey(
+      origins.lineKeyOfFormid(row.formidHex),
+      variant,
+      origins.originOfFormid(row.formidHex),
+    );
     if (!stringsByKey.has(key)) {
       stringsByKey.set(key, { stringId: row.stringId, formidHex: row.formidHex });
     }
@@ -176,8 +183,10 @@ export type PersistBethesdaVoiceClipsResult = {
 };
 
 export type PersistBethesdaVoiceClipsOptions = {
-  /** Hash source `.fuz`/`.wav` into `voice_source_file_hashes`. Default true. */
+  /** Hash the source takes into `voice_source_file_hashes`. Default true. */
   hashSourceFiles?: boolean;
+  /** How the game stores takes. Read off the game of the mod's import when omitted. */
+  takes?: VoiceTakeFormat;
 };
 
 /** Replace clip + variant rows for one Bethesda mod from the extract pack. */
@@ -208,7 +217,8 @@ export const persistBethesdaVoiceClips = async (
   const packageDir = resolveModDirectoryFromPath(paths.pluginPath);
   const pluginRel = pluginRelPath(packageDir, paths.pluginPath);
   const voiceRootRel = resolveVoiceRootRel(pluginRel);
-  const files = dedupeVoiceFiles(discoverVoiceFiles(packageDir, pluginRel));
+  const takes = options.takes ?? voiceTakesForGame(paths.game);
+  const files = takes.discover(packageDir, pluginRel);
   const clipRows = buildVoiceClipRows(files, voiceRootRel, stringsByKey, sharedFrom);
   const clips = await replaceVoiceClips(db, modId, clipRows);
 

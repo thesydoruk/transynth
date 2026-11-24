@@ -1,11 +1,12 @@
 /**
- * INNR (Instance Naming Rule) string extraction for Fallout 4 / 76.
+ * INNR (Instance Naming Rule) string extraction for Fallout 4 / 76 / Starfield.
  *
  * INNR records contain repeated WNAM subrecords — one per naming-rule condition.
  * Each WNAM holds the text fragment appended when its keyword conditions match
  * (or "*" to insert the base item FULL name, which is not stored as WNAM text).
+ * The WNAM lstring is laid out the same in all three games.
  */
-import { SUBRECORD_HEADER_SIZE } from './recordData';
+import { forEachSubrecord, type ComponentBrackets } from './recordData';
 
 export type InnrWnamRow = { path: string; text: string };
 
@@ -33,28 +34,24 @@ export const readInnrWnamText = (
  * Extract indexed WNAM rows from a decompressed INNR record payload.
  *
  * Paths use `WNAM[n]` so multiple fragments on one FormID stay unique in the DB.
+ *
+ * @param components - Base-form component brackets of the title (Starfield):
+ *   a component may carry a WNAM of its own that is not a name fragment.
  */
-export const extractInnrWnamRows = (recordData: Buffer, isLocalized: boolean): InnrWnamRow[] => {
+export const extractInnrWnamRows = (
+  recordData: Buffer,
+  isLocalized: boolean,
+  components: ComponentBrackets = null,
+): InnrWnamRow[] => {
   const rows: InnrWnamRow[] = [];
-  let wnamIndex = 0;
-  let pos = 0;
-
-  while (pos + SUBRECORD_HEADER_SIZE <= recordData.length) {
-    const subSig = recordData.toString('ascii', pos, pos + 4);
-    const subSize = recordData.readUInt16LE(pos + 4);
-    const dataStart = pos + SUBRECORD_HEADER_SIZE;
-    const dataEnd = dataStart + subSize;
-
-    if (subSig === 'WNAM') {
+  forEachSubrecord(
+    recordData,
+    (subSig, dataStart, dataEnd) => {
+      if (subSig !== 'WNAM') return;
       const text = readInnrWnamText(recordData, dataStart, dataEnd, isLocalized);
-      if (text !== null) {
-        rows.push({ path: `WNAM[${wnamIndex}]`, text });
-        wnamIndex++;
-      }
-    }
-
-    pos = dataEnd;
-  }
-
+      if (text !== null) rows.push({ path: `WNAM[${rows.length}]`, text });
+    },
+    components,
+  );
   return rows;
 };

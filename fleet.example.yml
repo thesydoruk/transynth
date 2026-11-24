@@ -86,6 +86,9 @@ services:
   # declares `tools` as demand (voice jobs call it as an extra), so without `keep` the
   # controller would never start it. One entry per instance; the `tools` pool spreads calls
   # over every healthy one, next to the instance configured by env on the pipeline host.
+  # Starfield `.ffxanim` calls go to any of them too, so every instance needs the Starfield
+  # Creation Kit tools in its tools folder (`tools/starfield/` beside its compose file, the
+  # layout `npm run tools:install` writes to data/tools/voice/starfield/).
   - name: bethesda-tools
     kinds: [tools]
     host: gaming-pc

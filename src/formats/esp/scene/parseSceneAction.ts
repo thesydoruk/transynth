@@ -1,8 +1,23 @@
 import type { SceneAction } from '../../types';
-import { SCENE_ACTION_KIND_BY_CODE, SCENE_TOPIC_SUBRECORDS } from './actionTypes';
+import type { EspRecordLayout } from '../recordLayout';
 
 const toFormIdHex = (raw: number): string | null =>
   raw === 0 ? null : raw.toString(16).toUpperCase().padStart(8, '0');
+
+/** The scene part of a record layout, with its lists turned into sets. */
+export type SceneActionLayout = {
+  actionKinds: EspRecordLayout['scene']['actionKinds'];
+  topicSubrecords: ReadonlySet<string>;
+  startSceneSubrecords: ReadonlySet<string>;
+  playerTopicSubrecords: ReadonlySet<string>;
+};
+
+export const toSceneActionLayout = (scene: EspRecordLayout['scene']): SceneActionLayout => ({
+  actionKinds: scene.actionKinds,
+  topicSubrecords: new Set(scene.topicSubrecords),
+  startSceneSubrecords: new Set(scene.startSceneSubrecords),
+  playerTopicSubrecords: new Set(scene.playerTopicSubrecords),
+});
 
 /** Mutable action block collected between ANAM start and ANAM end. */
 export type SceneActionDraft = {
@@ -10,6 +25,7 @@ export type SceneActionDraft = {
   aliasId: number | null;
   topicFormId: string | null;
   topicFormIds: string[];
+  playerTopicFormIds: string[];
   startPhase: number;
   endPhase: number;
   sawStartPhase: boolean;
@@ -27,6 +43,7 @@ export const startActionDraft = (actionType: number): SceneActionDraft => ({
   aliasId: null,
   topicFormId: null,
   topicFormIds: [],
+  playerTopicFormIds: [],
   startPhase: 0,
   endPhase: 0,
   sawStartPhase: false,
@@ -47,13 +64,14 @@ const pushTopic = (draft: SceneActionDraft, hex: string, asPrimary: boolean): vo
  * Fold one subrecord into the current action.
  *
  * The first 4-byte `SNAM` is the start phase; a later `SNAM` is timer-max
- * seconds (FO4/Skyrim reuse the signature). `HTID` is a head-track alias, not
- * a topic, and is ignored.
+ * seconds (FO4/Skyrim/Starfield reuse the signature). `HTID` is a head-track
+ * alias, not a topic, and is ignored.
  */
 export const applyActionSubrecord = (
   draft: SceneActionDraft,
   subSig: string,
   payload: Buffer,
+  layout: SceneActionLayout,
 ): void => {
   const size = payload.length;
   if (subSig === 'ALID' && size === 4) {
@@ -89,20 +107,27 @@ export const applyActionSubrecord = (
     draft.loopMax = payload.readFloatLE(0);
     return;
   }
-  if (subSig === 'LCEP' && size === 4) {
+  if (layout.startSceneSubrecords.has(subSig) && size === 4) {
     const hex = toFormIdHex(payload.readUInt32LE(0));
     if (hex && draft.startSceneFormId == null) draft.startSceneFormId = hex;
     return;
   }
-  if (SCENE_TOPIC_SUBRECORDS.has(subSig) && size === 4) {
+  if (layout.topicSubrecords.has(subSig) && size === 4) {
     const hex = toFormIdHex(payload.readUInt32LE(0));
-    if (hex) pushTopic(draft, hex, subSig === 'DATA');
+    if (!hex) return;
+    pushTopic(draft, hex, subSig === 'DATA');
+    if (layout.playerTopicSubrecords.has(subSig) && !draft.playerTopicFormIds.includes(hex)) {
+      draft.playerTopicFormIds.push(hex);
+    }
   }
 };
 
-/** Finish an action block; unknown ANAM types are dropped. */
-export const finalizeSceneAction = (draft: SceneActionDraft): SceneAction | null => {
-  const actionType = SCENE_ACTION_KIND_BY_CODE[draft.actionType];
+/** Finish an action block; ANAM types the layout does not know are dropped. */
+export const finalizeSceneAction = (
+  draft: SceneActionDraft,
+  layout: SceneActionLayout,
+): SceneAction | null => {
+  const actionType = layout.actionKinds[draft.actionType];
   if (!actionType) return null;
   return {
     actionType,
@@ -117,5 +142,8 @@ export const finalizeSceneAction = (draft: SceneActionDraft): SceneAction | null
     loopMax: draft.loopMax,
     flags: draft.flags,
     startSceneFormId: draft.startSceneFormId,
+    ...(draft.playerTopicFormIds.length > 0
+      ? { playerTopicFormIds: draft.playerTopicFormIds }
+      : {}),
   };
 };

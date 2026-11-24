@@ -18,6 +18,8 @@ import type { Tx } from '../db';
 import { referenceGameKey } from '../games/referenceKey';
 import { log } from '../logger';
 import { referenceVoiceTakePath } from '../modStorage';
+import { voiceTakesForGame } from './takeFormat';
+import { copyTakeSidecars } from './takeSidecars';
 
 export type ReferenceVoiceTakeInput = {
   /** The mod's game id; folded into the reference game key here. */
@@ -49,7 +51,7 @@ export type StoredReferenceVoiceTake = {
   absPath: string;
 };
 
-/** Extension of a take path the way the store records it: `.fuz`, `.wav`. */
+/** Extension of a take path the way the store records it: `.fuz`, `.wem`, `.wav`. */
 export const referenceVoiceFileExt = (takePath: string): string =>
   path.extname(takePath).toLowerCase();
 
@@ -199,6 +201,8 @@ const saveReferenceVoiceTakeUnsafe = async (
   if (options.dryRun) return 'saved';
 
   await copyFileAtomic(input.takePath, dest);
+  // What travels with the take (a `.ffxanim`) is kept under the same stem.
+  await copyTakeSidecars(input.takePath, dest, voiceTakesForGame(input.game).sidecarExtensions);
   await db.query(
     `INSERT INTO reference_voice_takes (
        game, tgt_lang, source_sha1, tts_text_version, speaker_key, source_text, translation,

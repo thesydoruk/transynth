@@ -4,7 +4,7 @@ import { writeBa2, shouldCompressArchiveEntry, isRepackableBethesdaArchive } fro
 import { writeBsa } from '../formats/bsa';
 import type { ArchiveInputFile } from '../formats/types';
 import { log } from '../logger';
-import { archiveKindForGame } from '../games/creation-engine/archives';
+import { archiveKindForGame, ba2VersionForGame } from '../games/creation-engine/archives';
 import type { GameId } from '../types';
 import type { ArchiveManifestEntry } from './archiveManifest';
 import {
@@ -98,7 +98,7 @@ const writeBethesdaArchiveFile = (
 
   const buf =
     archive.type === 'ba2'
-      ? writeBa2(files)
+      ? writeBa2(files, ba2VersionForGame(game))
       : writeBsa(files, archive.bsaVersion ?? bsaVersionForGame(game));
 
   fs.writeFileSync(destPath, buf);

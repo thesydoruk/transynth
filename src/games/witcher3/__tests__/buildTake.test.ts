@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import { execFileAsync } from '../../../utils/execFile';
 import { resolveFfmpegPath } from '../../../voice/voiceToolPaths';
-import { encodeAudioToOpusWem, opusWemDuration, parseOpusWem } from '../audio/opusWem';
+import { encodeAudioToOpusWem, opusWemDuration, parseOpusWem } from '../../../formats/wem';
 import { MIMIC_MEL_BANDS } from '../mimic/features';
 import { LIP_TAIL_SECONDS } from '../mimic/generate';
 import { MIMIC_MODEL_FORMAT, parseMimicModel } from '../mimic/model';

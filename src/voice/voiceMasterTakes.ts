@@ -12,12 +12,7 @@ import type { Tx } from '../db';
 import { resolveModDirectoryFromPath } from '../formats/mcm';
 import { pluginRelPath } from '../modImport/packages';
 import { resolveModStoredPath } from '../modStorage';
-import {
-  dedupeVoiceFiles,
-  discoverVoiceFiles,
-  resolveVoiceRootRel,
-  type VoiceFileEntry,
-} from './discoverVoiceFiles';
+import { resolveVoiceRootRel, type VoiceFileEntry } from './discoverVoiceFiles';
 import {
   findImportedMasterMods,
   findMasterByOrigin,
@@ -28,6 +23,7 @@ import {
 } from './inheritedVoiceText';
 import { voiceTranslationMapKey } from './loadVoiceTranslations';
 import { groupVoiceFilesBySpeaker, voiceSpeakerKey } from './speakerReference/grouping';
+import { FUZ_TAKES, type VoiceTakeFormat } from './takeFormat';
 import { normalizeVoiceOrigin } from './voiceOrigin';
 
 /** An imported master's takes, indexed for lending them to a patch. */
@@ -41,13 +37,16 @@ export type MasterVoiceContext = {
   bySpeaker: Map<string, VoiceFileEntry[]>;
 };
 
-export const loadMasterVoiceContext = (master: MasterModRef): MasterVoiceContext | null => {
+export const loadMasterVoiceContext = (
+  master: MasterModRef,
+  takes: VoiceTakeFormat = FUZ_TAKES,
+): MasterVoiceContext | null => {
   const pluginPath = resolveModStoredPath(master.absPath);
   if (!fs.existsSync(pluginPath)) return null;
   const packageDir = resolveModDirectoryFromPath(pluginPath);
   const pluginRel = pluginRelPath(packageDir, pluginPath);
   const voiceRootRel = resolveVoiceRootRel(pluginRel);
-  const entries = dedupeVoiceFiles(discoverVoiceFiles(packageDir, pluginRel));
+  const entries = takes.discover(packageDir, pluginRel);
   const byLine = new Map<string, VoiceFileEntry[]>();
   for (const entry of entries) {
     const key = voiceTranslationMapKey(entry.lineKey, entry.variant, entry.originPlugin);
@@ -69,15 +68,29 @@ export const loadMasterVoiceContext = (master: MasterModRef): MasterVoiceContext
  * A master's take as the dubbing mod sees it: the same file to clone from, at
  * the path it has in the mod's own voice tree, so the dub lands in the mod's
  * localize tree (`Data/Sound/Voice/…` when the mod keeps a `Data/` folder).
+ *
+ * `ownFileName` is the name the dubbing mod's own plugin gives the take, for a
+ * format whose names are not the line's (`VoiceTakeFormat.ownTakeFileName`):
+ * the dub is written under that name, while the audio is still read from the
+ * master's file.
  */
 export const asDubbingEntry = (
   take: VoiceFileEntry,
   ctx: MasterVoiceContext,
   voiceRootRel: string,
+  ownFileName?: string | null,
 ): VoiceFileEntry => {
   const masterTree = path.posix.dirname(ctx.voiceRootRel);
   const below = path.posix.relative(masterTree, take.relPath.replace(/\\/g, '/'));
-  return { ...take, relPath: path.posix.join(path.posix.dirname(voiceRootRel), below) };
+  const relPath = path.posix.join(path.posix.dirname(voiceRootRel), below);
+  if (!ownFileName || ownFileName.toLowerCase() === take.fileName.toLowerCase()) {
+    return { ...take, relPath };
+  }
+  return {
+    ...take,
+    relPath: path.posix.join(path.posix.dirname(relPath), ownFileName),
+    fileName: ownFileName,
+  };
 };
 
 /**
@@ -120,14 +133,17 @@ export const findMasterBackedTake = async (
     speakerKey?: string | null;
     srcLang: string;
     tgtLang: string;
+    /** How the game stores takes; `.fuz` when omitted. */
+    takes?: VoiceTakeFormat;
   },
 ): Promise<MasterBackedTake | null> => {
+  const takeFormat = input.takes ?? FUZ_TAKES;
   const origin = normalizeVoiceOrigin(input.originPlugin);
   if (!origin) return null;
   const masters = await findImportedMasterMods(db, input.pluginPath, input.modId);
   const master = findMasterByOrigin(masters, origin);
   if (!master) return null;
-  const context = loadMasterVoiceContext(master);
+  const context = loadMasterVoiceContext(master, takeFormat);
   if (!context) return null;
 
   const takes = context.byLine.get(voiceTranslationMapKey(input.lineKey, input.variant, origin));
@@ -141,8 +157,11 @@ export const findMasterBackedTake = async (
 
   const inherited = await loadInheritedVoiceLookup(db, [master], input.srcLang, input.tgtLang);
   const line = lookupInheritedVoiceLine(inherited, input.lineKey, input.variant, origin);
+  const ownFileName = takeFormat.ownTakeFileName?.(input.pluginPath, take);
+  // The mod's own plugin names no file for this response: there is nothing to dub.
+  if (ownFileName === null) return null;
   return {
-    entry: asDubbingEntry(take, context, voiceRootRel),
+    entry: asDubbingEntry(take, context, voiceRootRel, ownFileName),
     context,
     referenceSource: line?.source ?? null,
     masterTranslation: line?.translation ?? null,

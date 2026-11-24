@@ -51,6 +51,65 @@ describe('buildVoiceOriginResolver', () => {
     expect(none.originOfFormid('00000001')).toBe('mod.esp');
     expect(none.originOfFormid('00ABCDEF')).toBe('mod.esp');
   });
+
+  it('keys a line by the lower six hex digits', () => {
+    expect(resolver.lineKeyOfFormid('01abcdef')).toBe('ABCDEF');
+    expect(resolver.lineKeyOfFormid('FE001800')).toBe('001800');
+    expect(resolver.lineKeyOfFormid('1234')).toBe('001234');
+  });
+});
+
+describe('buildVoiceOriginResolver with small and medium masters (byKind)', () => {
+  // MAST order: full, small, medium, full, small. Kinds are counted separately:
+  // full 00 → Starfield, 01 → DLC; FE slot 0 → SmallA, slot 1 → SmallB; FD slot 0 → Medium.
+  const masters = ['Starfield.esm', 'SmallA.esm', 'Medium.esm', 'DLC.esm', 'SmallB.esm'];
+  const resolver = buildVoiceOriginResolver('C:/Data/Patch.esm', masters, {
+    slots: 'byKind',
+    masterKinds: ['full', 'small', 'medium', 'full', 'small'],
+  });
+
+  it('reads the owner per kind, in MAST order', () => {
+    expect(resolver.originOfFormid('00012345')).toBe('starfield.esm');
+    expect(resolver.originOfFormid('01012345')).toBe('dlc.esm');
+    expect(resolver.originOfFormid('FE000ABC')).toBe('smalla.esm');
+    expect(resolver.originOfFormid('FE001ABC')).toBe('smallb.esm');
+    expect(resolver.originOfFormid('FD00ABCD')).toBe('medium.esm');
+  });
+
+  it('treats the slot one past the last master of a kind as the plugin itself', () => {
+    expect(resolver.originOfFormid('02000800')).toBe('patch.esm');
+    expect(resolver.originOfFormid('FE002800')).toBe('patch.esm');
+    expect(resolver.originOfFormid('FD010800')).toBe('patch.esm');
+  });
+
+  it('keys a line by the object id within its owner', () => {
+    // The second small master numbers its own record FE000ABC; the override
+    // here says FE001ABC. Both key as 000ABC.
+    expect(resolver.lineKeyOfFormid('FE001ABC')).toBe('000ABC');
+    expect(resolver.lineKeyOfFormid('FE000ABC')).toBe('000ABC');
+    expect(resolver.lineKeyOfFormid('FD00ABCD')).toBe('00ABCD');
+    expect(resolver.lineKeyOfFormid('01012345')).toBe('012345');
+  });
+
+  it('counts a master missing from disk as full', () => {
+    const partial = buildVoiceOriginResolver(
+      'Patch.esm',
+      ['Starfield.esm', 'Gone.esm', 'DLC.esm'],
+      {
+        slots: 'byKind',
+        masterKinds: ['full', null, 'full'],
+      },
+    );
+    expect(partial.originOfFormid('01000001')).toBe('gone.esm');
+    expect(partial.originOfFormid('FE000001')).toBe('patch.esm');
+  });
+
+  it('reads plain FormIDs exactly as before without a rule', () => {
+    const plain = buildVoiceOriginResolver('Patch.esm', masters);
+    expect(plain.originOfFormid('01012345')).toBe('smalla.esm');
+    expect(plain.originOfFormid('FE001ABC')).toBe('patch.esm');
+    expect(plain.lineKeyOfFormid('FE001ABC')).toBe('001ABC');
+  });
 });
 
 describe('originFromVoiceRelPath / speakerFromVoiceRelPath', () => {

@@ -38,6 +38,16 @@ Register it and you are done:
 registerGamePlugin(createCreationEnginePlugin(starfield));
 ```
 
+That holds while the new title only changes values the descriptor already has.
+Starfield (`titles/starfield.ts`) changed more than values: besides the file and
+the line it brought its own subrecord, STRINGS-table and keyword data, prompts
+and a glossary, a newer BA2 version, record layouts of its own (dialogue
+responses, voice files named by Wwise id, `.ffxanim` lip files), and three
+optional descriptor fields for things earlier titles had in common —
+`strings.unofficialSlots` (no Russian to replace), `strings.archiveSuffixes`
+(tables in `- Localization.ba2`) and `addonPluginPrefixes` (`sfbgs*` instead of
+`cc*`). Expect a title from a newer engine to need the same.
+
 **Anything else** — a different engine, a different file format — is a plugin
 directory of its own. `src/games/disco-elysium/` is the worked example: a Unity
 game with no plugin format, no archives, and no string tables, whose

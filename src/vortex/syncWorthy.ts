@@ -7,11 +7,13 @@ import { isVideoRelPath } from './videoFiles';
 
 const ARCHIVE_EXT = new Set(['.ba2', '.bsa']);
 const STRING_TABLE_EXT = new Set(['.strings', '.dlstrings', '.ilstrings']);
-const VOICE_EXT = new Set(['.fuz', '.xwm', '.wav']);
+/** Source takes: `.fuz` / `.xwm` / `.wav`, and Starfield's `.wem`. */
+const VOICE_EXT = new Set(['.fuz', '.xwm', '.wav', '.wem']);
 
 /**
  * CK-tagged archives we send whole: Main (PEX / extra strings), Interface
- * (vanilla strings + UI), Voices (reference audio for synthesis).
+ * (vanilla strings + UI), Localization (Starfield's string tables), Voices
+ * (reference audio for synthesis).
  * Meshes / Sounds / Textures / … stay on disk — they are not unpacked here.
  */
 export const isVortexSyncArchiveName = (fileName: string): boolean => {
@@ -20,7 +22,12 @@ export const isVortexSyncArchiveName = (fileName: string): boolean => {
   const tagged = fileName.toLowerCase().match(/ - ([^.]+)\.(ba2|bsa)$/);
   if (!tagged) return true;
   const role = tagged[1]!;
-  return role === 'main' || role.startsWith('interface') || role.startsWith('voice');
+  return (
+    role === 'main' ||
+    role === 'localization' ||
+    role.startsWith('interface') ||
+    role.startsWith('voice')
+  );
 };
 
 export const isVoiceSourceRelPath = (relPath: string): boolean => {

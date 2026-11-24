@@ -81,7 +81,7 @@ export const buildSpeakerActorIndex = (
     const masterPath = resolveMasterPluginPath(esp.filePath, masterName, storedByBasename);
     if (!masterPath) continue;
     try {
-      indexes.push(new EspReader(masterPath, title.subrecords).extractActorIndex());
+      indexes.push(new EspReader(masterPath, title.subrecords, title.records).extractActorIndex());
     } catch (err) {
       logImport.warn(
         `Master plugin ${masterName} skipped: ${err instanceof Error ? err.message : String(err)}`,

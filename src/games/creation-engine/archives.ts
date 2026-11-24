@@ -21,6 +21,10 @@ export const archiveKindForGame = (game: GameId): 'ba2' | 'bsa' =>
 export const bsaVersionForGame = (game: GameId): number =>
   creationEngineTitle(game).archive.bsaVersion;
 
+/** BA2 header version to write: 1 unless the title sets `archive.ba2Version`. */
+export const ba2VersionForGame = (game: GameId): number =>
+  creationEngineTitle(game).archive.ba2Version ?? 1;
+
 /** Archive file name the Creation Kit would produce for a plugin's strings. */
 export const defaultArchiveFileName = (pluginStem: string, game: GameId): string =>
   archiveFileName(pluginStem, archiveKindForGame(game));

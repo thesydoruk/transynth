@@ -46,7 +46,7 @@ const isPluginFile = (filePath: string): boolean =>
 
 /** Rows a localized plugin will produce once its STRINGS tables are read. */
 const describePlugin = (title: CreationEngineTitle, pluginPath: string): AnchorDescription => {
-  const esp = new EspReader(pluginPath, title.subrecords);
+  const esp = new EspReader(pluginPath, title.subrecords, title.records);
   const espRows = esp.extractStrings();
   if (!esp.info.isLocalized) return { isLocalized: false, totalRecords: espRows.length };
 

@@ -7,6 +7,7 @@ import type { TtsSynthesisParams } from '../../tts/ttsClient';
 import type { VoiceLineCatalog, VoiceLineCatalogError } from '../../voice/lineCatalog';
 import type { VoiceGenerateLineResult } from '../../web/voice/preview/types';
 import type { VoiceResynthParams } from '../../voice/voiceResynth';
+import type { VoiceTakeFormat, VoiceTakeSidecar } from '../../voice/takeFormat/types';
 
 /**
  * Which lines a mod-wide voice job touches:
@@ -109,8 +110,10 @@ export type VoiceLinePreviewBuild =
       destRelPath: string;
       payloadVersion: string;
       /** File kind of `audio`; anything but `wav` is converted for the browser. */
-      artifact: 'wav' | 'fuz';
+      artifact: 'wav' | 'fuz' | 'wem';
       audio: Buffer;
+      /** Files that go beside the take when it is kept, e.g. its lip animation. */
+      sidecars?: VoiceTakeSidecar[];
       speakerKey?: string;
       voiceSimilarity: number | null;
     };
@@ -154,8 +157,17 @@ export type VoiceReindexResult = {
 };
 
 export type GameVoiceAdapter = {
-  /** Extension of a localized take on disk, e.g. `.fuz` or `.wav`. */
+  /** Extension of a localized take on disk, e.g. `.fuz`, `.wem` or `.wav`. */
   readonly sourceExtension: string;
+
+  /**
+   * How takes are stored, for games that keep them in a
+   * `Sound/Voice/<plugin>/<speaker>/` tree. The shared Creation Engine voice
+   * code reads this instead of asking which game it is: file naming, the files
+   * that travel with a take, and how one is built all come from here. Other
+   * games leave it out.
+   */
+  readonly takes?: VoiceTakeFormat;
 
   /** TTS text-prep rules — how `*…*` and friends are treated before synthesis. */
   readonly markupStyle: VoiceTtsMarkupStyle;
@@ -172,6 +184,11 @@ export type GameVoiceAdapter = {
    * key — `<origin>/FORMID6:variant` for games whose takes have an owning
    * plugin, `FORMID6:variant` otherwise — or null
    * when the file is not a voice take.
+   *
+   * A game whose file names do not carry the line (Starfield names a take by a
+   * WEM id) cannot answer from the path alone and returns null here; callers
+   * that know the mod ask `takes.voiceKeyResolver(pluginPath)` instead
+   * (`voiceTakeKeyResolver` picks between the two).
    */
   voiceKeyFromRelPath(relPath: string): string | null;
 
@@ -182,7 +199,7 @@ export type GameVoiceAdapter = {
    * The mod's own source-language takes, as they sit on disk after import.
    *
    * Where they sit is entirely the game's business: a Creation Engine mod
-   * keeps `.fuz` under `sound/voice/<plugin>/`, Disco ships loose `.wav`
+   * keeps `.fuz` (or `.wem`) under `sound/voice/<plugin>/`, Disco ships loose `.wav`
    * under a per-language folder, and the next engine will do something else
    * again. Both halves of the extracted mod are handed over so an adapter can
    * use whichever it needs.

@@ -4,7 +4,8 @@
  * Enough to open a Bethesda `Interface/fonts_*.swf`, rewrite a single tag (a font
  * definition) and write the library back with correct lengths and the original
  * compression. Tag bodies are kept as raw buffers; interpreting them is the job of
- * the format-specific modules.
+ * the format-specific modules. Scaleform's `.gfx` export of a library (Starfield ships
+ * `fonts_en.gfx` next to `fonts_en.swf`) is the same container under another signature.
  */
 import { deflateSync, inflateSync } from 'zlib';
 
@@ -13,6 +14,11 @@ export type SwfTag = { code: number; body: Buffer };
 export type SwfFile = {
   /** Original container used `CWS` (zlib) rather than plain `FWS`. */
   compressed: boolean;
+  /**
+   * Scaleform's exported form (`GFX`, or `CFX` compressed): the same tag stream with
+   * Scaleform's own tags (codes 1000 and up) next to the standard ones.
+   */
+  gfx?: boolean;
   version: number;
   /** Frame size RECT, frame rate and frame count, kept verbatim. */
   preamble: Buffer;
@@ -29,10 +35,11 @@ const frameRectSize = (body: Buffer): number => {
 
 export const parseSwf = (buf: Buffer): SwfFile => {
   const signature = buf.toString('ascii', 0, 3);
-  if (signature !== 'FWS' && signature !== 'CWS') {
-    throw new Error(`Unsupported SWF signature "${signature}" (only FWS and CWS are handled)`);
+  if (!['FWS', 'CWS', 'GFX', 'CFX'].includes(signature)) {
+    throw new Error(`Unsupported SWF signature "${signature}" (only FWS, CWS, GFX and CFX)`);
   }
-  const compressed = signature === 'CWS';
+  const compressed = signature[0] === 'C';
+  const gfx = signature.endsWith('FX');
   const version = buf[3];
   const body = compressed ? inflateSync(buf.subarray(8)) : buf.subarray(8);
 
@@ -56,7 +63,9 @@ export const parseSwf = (buf: Buffer): SwfFile => {
     pos += length;
   }
 
-  return { compressed, version, preamble, tags };
+  return gfx
+    ? { compressed, gfx, version, preamble, tags }
+    : { compressed, version, preamble, tags };
 };
 
 /** Encode a tag record header, switching to the long form when needed. */
@@ -81,7 +90,8 @@ export const writeSwf = (swf: SwfFile): Buffer => {
 
   const body = Buffer.concat(chunks);
   const header = Buffer.alloc(8);
-  header.write(swf.compressed ? 'CWS' : 'FWS', 0, 3, 'ascii');
+  const signature = swf.gfx ? (swf.compressed ? 'CFX' : 'GFX') : swf.compressed ? 'CWS' : 'FWS';
+  header.write(signature, 0, 3, 'ascii');
   header.writeUInt8(swf.version, 3);
   header.writeUInt32LE(8 + body.length, 4);
 

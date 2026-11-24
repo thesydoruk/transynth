@@ -43,7 +43,13 @@ import {
   type DialogStructureExtract,
 } from './EspDialogStructureExtractor';
 import { EspExplorer } from './EspExplorer';
+import {
+  extractInfoResponseVoiceTypes,
+  type InfoResponseVoiceTypes,
+} from './EspInfoVoiceExtractor';
 import { EspSceneExtractor } from './EspSceneExtractor';
+import { formatFormId } from './recordData';
+import { DEFAULT_ESP_RECORD_LAYOUT, type EspRecordLayout } from './recordLayout';
 import type {
   EspActorIndex,
   EspGrupInfo,
@@ -71,6 +77,7 @@ export type {
   VoiceTypeRecord,
 } from '../types';
 export type { DialogStructureExtract } from './EspDialogStructureExtractor';
+export type { InfoResponseVoiceTypes } from './EspInfoVoiceExtractor';
 
 const RECORD_HEADER_SIZE = 24;
 const GRUP_HEADER_SIZE = 24;
@@ -100,19 +107,33 @@ export class EspReader {
   public info!: EspPluginInfo;
   /** Which record/subrecord pairs hold translatable text for this title. */
   private readonly subrecords: TranslatableSubrecords;
+  /** Where this title keeps speakers, voice types, dialogue order and scene actions. */
+  readonly layout: EspRecordLayout;
+  /**
+   * INFO FormID → the INFO before it, from DIAL `TIFL` lists, for titles whose
+   * layout keeps the order there. Filled while walking: a DIAL always precedes
+   * its topic-children group.
+   */
+  private readonly previousInfoByInfo = new Map<string, string>();
 
   /**
    * @param filePath   - Absolute path to the .esp/.esm/.esl plugin file.
    * @param subrecords - The title's translatable-subrecord table; a Creation
    *                     Engine game plugin supplies it from its own JSON config.
+   * @param layout     - The title's record layout; omitted, the Fallout 4 one.
    */
-  constructor(filePath: string, subrecords: TranslatableSubrecords) {
+  constructor(
+    filePath: string,
+    subrecords: TranslatableSubrecords,
+    layout: EspRecordLayout = DEFAULT_ESP_RECORD_LAYOUT,
+  ) {
     this.filePath = filePath;
     log.debug(`ESP: opening ${filePath}`);
     this.subrecords = subrecords;
+    this.layout = layout;
     this.buf = fs.readFileSync(filePath);
     this.explorer = new EspExplorer(this.buf);
-    this.sceneExtractor = new EspSceneExtractor(this.buf);
+    this.sceneExtractor = new EspSceneExtractor(this.buf, layout);
     this.parseHeader();
     log.info(
       `ESP: ${filePath} — localized=${this.info.isLocalized}, masters=[${this.info.masterFiles.join(', ')}]`,
@@ -208,7 +229,11 @@ export class EspReader {
    */
   extractDialogStructure(): DialogStructureExtract {
     if (!this.structureExtractor) {
-      this.structureExtractor = new EspDialogStructureExtractor(this.buf, this.info.isLocalized);
+      this.structureExtractor = new EspDialogStructureExtractor(
+        this.buf,
+        this.info.isLocalized,
+        this.layout,
+      );
     }
     return this.structureExtractor.extract();
   }
@@ -220,7 +245,15 @@ export class EspReader {
    * and a voice type reference, VTYP names the voice folder the audio ships in.
    */
   extractActorIndex(): EspActorIndex {
-    return new EspActorExtractor(this.buf, this.info.isLocalized).extractActorIndex();
+    return new EspActorExtractor(this.buf, this.info.isLocalized, this.layout).extractActorIndex();
+  }
+
+  /**
+   * Per INFO, the voice types each response lists for itself — empty for a
+   * title whose layout has no such list (see `EspInfoVoiceExtractor`).
+   */
+  extractInfoResponseVoiceTypes(): InfoResponseVoiceTypes {
+    return extractInfoResponseVoiceTypes(this.buf, this.layout);
   }
 
   /**
@@ -333,6 +366,13 @@ export class EspReader {
     let speakerFormId: string | undefined;
     let previousInfoFormId: string | undefined;
 
+    const components = this.layout.baseFormComponents;
+    const isInfo = recSig === 'INFO';
+    const readsPreviousInfo = isInfo && this.layout.infoOrder === 'infoPreviousInfo';
+    const readsInfoList = recSig === 'DIAL' && this.layout.infoOrder === 'topicInfoList';
+    // Speaker / order fields nested in a base-form component are not the record's.
+    let inComponent = false;
+
     let pos = 0;
     // `XXXX` carries the true size of the following subrecord when it exceeds
     // the uint16 size field (which is then written as 0).
@@ -347,19 +387,19 @@ export class EspReader {
 
       if (subSig === 'XXXX' && subSize === 4) {
         oversizeNext = recordData.readUInt32LE(dataStart);
+      } else if (components && (subSig === components.begin || subSig === components.end)) {
+        inComponent = subSig === components.begin;
       } else if (subSig === 'EDID') {
         edid = recordData.toString('utf8', dataStart, dataEnd).replace(/\0/g, '');
-      } else if (recSig === 'INFO' && subSig === 'ANAM' && subSize === 4) {
+      } else if (!inComponent && isInfo && subSig === 'ANAM' && subSize === 4) {
         // Actor speaker FormID for dialog INFO records (little-endian uint32)
         const rawId = recordData.readUInt32LE(dataStart);
-        if (rawId !== 0) {
-          speakerFormId = rawId.toString(16).toUpperCase().padStart(8, '0');
-        }
-      } else if (recSig === 'INFO' && subSig === 'PNAM' && subSize === 4) {
+        if (rawId !== 0) speakerFormId = formatFormId(rawId);
+      } else if (!inComponent && readsPreviousInfo && subSig === 'PNAM' && subSize === 4) {
         const rawPrevId = recordData.readUInt32LE(dataStart);
-        if (rawPrevId !== 0) {
-          previousInfoFormId = rawPrevId.toString(16).toUpperCase().padStart(8, '0');
-        }
+        if (rawPrevId !== 0) previousInfoFormId = formatFormId(rawPrevId);
+      } else if (!inComponent && readsInfoList && subSig === 'TIFL') {
+        this.collectInfoOrder(recordData, dataStart, dataEnd);
       } else if (
         this.subrecords.isTranslatable(recSig, subSig) &&
         // GMST DATA is text only for string settings (EDID `s…`); int/float/bool
@@ -386,9 +426,12 @@ export class EspReader {
 
     if (recSig === 'INNR') {
       subRows.length = 0;
-      for (const row of extractInnrWnamRows(recordData, this.info.isLocalized)) {
+      for (const row of extractInnrWnamRows(recordData, this.info.isLocalized, components)) {
         subRows.push(row);
       }
+    }
+    if (isInfo && previousInfoFormId === undefined) {
+      previousInfoFormId = this.previousInfoByInfo.get(formIdHex);
     }
 
     for (const { path, text } of subRows) {
@@ -403,6 +446,21 @@ export class EspReader {
         dialogTopicFormId,
         previousInfoFormId,
       });
+    }
+  }
+
+  /**
+   * Remember the order of a DIAL's `TIFL` INFO list: each INFO's predecessor
+   * plays the part of a Fallout 4 INFO's `PNAM`. The first INFO has none.
+   */
+  private collectInfoOrder(data: Buffer, start: number, end: number): void {
+    let previous: string | null = null;
+    for (let p = start; p + 4 <= end; p += 4) {
+      const raw = data.readUInt32LE(p);
+      if (raw === 0) continue;
+      const infoFormId = formatFormId(raw);
+      if (previous) this.previousInfoByInfo.set(infoFormId, previous);
+      previous = infoFormId;
     }
   }
 

@@ -7,7 +7,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { BsaReader } from '../../formats/bsa';
-import { discoverBa2Candidate, getBa2Reader, isBa2GnrArchive } from '../../formats/ba2';
+import {
+  discoverBa2Candidate,
+  findFileIgnoringCase,
+  getBa2Reader,
+  isBa2GnrArchive,
+} from '../../formats/ba2';
+import { readPluginMasterNames } from '../../formats/esp';
 import { stringsTypeFromPath, resolveLooseStringsDirForPlugin } from '../../formats/strings';
 import type { StringsType } from '../../formats/strings';
 import type { CreationEngineTitle } from '../../games/creation-engine/title';
@@ -68,7 +74,11 @@ const discoverLooseLocaleSources = (espPath: string): LocaleStringsSource[] => {
   return catalogToSources(catalog);
 };
 
-const readBa2LocaleSources = (ba2Path: string): LocaleStringsSource[] => {
+/**
+ * Every STRINGS-family table in a BA2. With `pluginStem`, only that plugin's
+ * own `<stem>_<locale>.*` — the engine finds a plugin's tables by file name.
+ */
+const readBa2LocaleSources = (ba2Path: string, pluginStem?: string): LocaleStringsSource[] => {
   const reader = getBa2Reader(ba2Path);
   const catalog = new Map<string, LocaleStringsFileRef[]>();
 
@@ -80,6 +90,7 @@ const readBa2LocaleSources = (ba2Path: string): LocaleStringsSource[] => {
 
   for (const entry of stringsEntries) {
     const base = entry.name.replace(/\\/g, '/').split('/').pop() ?? entry.name;
+    if (pluginStem && !parsePluginStringsFileName(base, pluginStem)) continue;
     const locale = localeFromStringsFileName(base);
     if (!locale) continue;
     addLocaleFile(catalog, locale, {
@@ -133,9 +144,12 @@ const discoverBsa = (modPath: string, bsaCandidates: string[]): string | null =>
   return null;
 };
 
-const tryReadBa2LocaleSources = (ba2Path: string): LocaleStringsSource[] | null => {
+const tryReadBa2LocaleSources = (
+  ba2Path: string,
+  pluginStem?: string,
+): LocaleStringsSource[] | null => {
   try {
-    const locales = readBa2LocaleSources(ba2Path);
+    const locales = readBa2LocaleSources(ba2Path, pluginStem);
     return locales.length > 0 ? locales : null;
   } catch (err) {
     logImport.warn(
@@ -145,25 +159,106 @@ const tryReadBa2LocaleSources = (ba2Path: string): LocaleStringsSource[] | null 
   }
 };
 
+/**
+ * A plugin's own tables when the archive holds them, else every table in it.
+ *
+ * An archive can carry a second plugin's tables beside its own — Starfield's
+ * `SFBGS050 - Main.ba2` also holds `blueprintships-sfbgs050_*` — and string ids
+ * of two plugins overlap. An archive with no table named for the plugin is
+ * still read whole, as it always was.
+ */
+const readPluginBa2LocaleSources = (
+  ba2Path: string,
+  pluginStem: string,
+): LocaleStringsSource[] | null =>
+  tryReadBa2LocaleSources(ba2Path, pluginStem) ?? tryReadBa2LocaleSources(ba2Path);
+
+/**
+ * The title's own string-table archives, `<stem><suffix>.ba2` in the title's
+ * order — among the candidates first, then on disk next to the plugin.
+ */
+export const findTitleStringsArchives = (
+  espPath: string,
+  ba2Candidates: string[],
+  suffixes: readonly string[],
+): string[] => {
+  const stem = path.basename(espPath, path.extname(espPath));
+  const found: string[] = [];
+  for (const suffix of suffixes) {
+    const fileName = `${stem}${suffix}.ba2`;
+    const candidate = ba2Candidates.find(
+      (f) => path.basename(f).toLowerCase() === fileName.toLowerCase(),
+    );
+    const archive = candidate ?? findFileIgnoringCase(path.dirname(espPath), fileName);
+    if (archive && !found.includes(archive)) found.push(archive);
+  }
+  return found;
+};
+
+/**
+ * Archives of the plugin's masters that may hold the plugin's tables, nearest
+ * master first: a plugin with no archive of its own can ship its tables in the
+ * archive of the master it extends (Starfield's `BlueprintShips-SFBGS050.esm`
+ * keeps `blueprintships-sfbgs050_*` in `SFBGS050 - Main.ba2`). Only each
+ * master's string-table archive and Creation Kit companion — never its whole
+ * set, which for a base game is dozens of multi-gigabyte archives.
+ */
+export const findMasterStringsArchives = (
+  espPath: string,
+  ba2Candidates: string[],
+  titleSuffixes: readonly string[],
+): string[] => {
+  let masters: string[];
+  try {
+    masters = readPluginMasterNames(espPath);
+  } catch {
+    return [];
+  }
+  const found: string[] = [];
+  for (const master of masters.reverse()) {
+    const masterPath = path.join(path.dirname(espPath), master);
+    const companion = discoverBa2Candidate(masterPath, ba2Candidates, 'ba2');
+    for (const archive of [
+      ...findTitleStringsArchives(masterPath, ba2Candidates, titleSuffixes),
+      ...(companion ? [companion] : []),
+    ]) {
+      if (!found.includes(archive)) found.push(archive);
+    }
+  }
+  return found;
+};
+
 const discoverBa2LocaleSourcesForPlugin = (
   espPath: string,
   ba2Candidates: string[],
+  titleSuffixes: readonly string[],
 ): LocaleStringsSource[] => {
   const ba2Cands = ba2Candidates.filter((f) => f.toLowerCase().endsWith('.ba2'));
+  const pluginStem = path.basename(espPath, path.extname(espPath));
+  for (const archive of findTitleStringsArchives(espPath, ba2Cands, titleSuffixes)) {
+    const fromTitleArchive = tryReadBa2LocaleSources(archive, pluginStem);
+    if (fromTitleArchive) return fromTitleArchive;
+  }
+
   const primaryBa2 = discoverBa2Candidate(espPath, ba2Cands, 'ba2');
   if (primaryBa2) {
-    const fromPrimary = tryReadBa2LocaleSources(primaryBa2);
+    const fromPrimary = readPluginBa2LocaleSources(primaryBa2, pluginStem);
     if (fromPrimary) return fromPrimary;
   }
 
-  const stem = path.basename(espPath, path.extname(espPath)).toLowerCase();
+  const stem = pluginStem.toLowerCase();
   for (const ba2 of ba2Cands) {
     if (ba2 === primaryBa2) continue;
     const base = path.basename(ba2, '.ba2').toLowerCase();
     if (!base.startsWith(stem)) continue;
     if (!isBa2GnrArchive(ba2)) continue;
-    const fromBa2 = tryReadBa2LocaleSources(ba2);
+    const fromBa2 = readPluginBa2LocaleSources(ba2, pluginStem);
     if (fromBa2) return fromBa2;
+  }
+
+  for (const archive of findMasterStringsArchives(espPath, ba2Cands, titleSuffixes)) {
+    const fromMaster = tryReadBa2LocaleSources(archive, pluginStem);
+    if (fromMaster) return fromMaster;
   }
 
   return [];
@@ -182,8 +277,9 @@ const discoverBsaLocaleSourcesForPlugin = (
  * Discover STRINGS/DLSTRINGS/ILSTRINGS locale files without loading string text.
  *
  * Where to look is the title's business: Skyrim and the Gamebryo Fallouts keep
- * their tables in a BSA, Fallout 4 / 76 in a BA2, and any title may ship them
- * loose next to the plugin. The first container that yields tables wins.
+ * their tables in a BSA, Fallout 4 / 76 in a BA2, Starfield in a BA2 named for
+ * its role (`- Localization`), and any title may ship them loose next to the
+ * plugin. The first container that yields tables wins.
  */
 export const discoverLocaleSources = (
   espPath: string,
@@ -195,7 +291,11 @@ export const discoverLocaleSources = (
       container === 'bsa'
         ? discoverBsaLocaleSourcesForPlugin(espPath, archiveCandidates)
         : container === 'ba2'
-          ? discoverBa2LocaleSourcesForPlugin(espPath, archiveCandidates)
+          ? discoverBa2LocaleSourcesForPlugin(
+              espPath,
+              archiveCandidates,
+              title.strings.archiveSuffixes ?? [],
+            )
           : discoverLooseLocaleSources(espPath);
     if (found.length > 0) return found;
   }

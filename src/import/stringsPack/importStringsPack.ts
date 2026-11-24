@@ -57,7 +57,8 @@ export const importStringsPack = async (
     );
   }
 
-  const esp = new EspReader(pluginPath, creationEngineTitle(game).subrecords);
+  const title = creationEngineTitle(game);
+  const esp = new EspReader(pluginPath, title.subrecords, title.records);
   if (!esp.info.isLocalized) {
     throw new Error(`Plugin "${pluginPath}" is not localized — strings tables are not used`);
   }

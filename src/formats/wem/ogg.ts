@@ -1,10 +1,10 @@
 /**
- * Just enough Ogg to move Opus packets in and out of ffmpeg.
+ * Just enough Ogg to move Opus and Vorbis packets in and out of ffmpeg.
  *
- * A Witcher 3 take stores bare Opus packets (see `opusWem.ts`); ffmpeg and
- * libopus speak Ogg Opus. These two functions are the bridge: wrap the game's
- * packets so ffmpeg can decode them, and unwrap what libopus encoded so the
- * packets can go back into a take.
+ * A WEM take stores bare codec packets (see `opusWem.ts`, `vorbisWem.ts`);
+ * ffmpeg, libopus and libvorbis speak Ogg. The functions here are the bridge:
+ * wrap the game's packets so ffmpeg can decode them, and unwrap what the
+ * encoder wrote so the packets can go back into a take.
  */
 
 const CRC_TABLE = (() => {
@@ -23,12 +23,13 @@ const oggCrc = (page: Buffer): number => {
   return crc;
 };
 
-const FLAG_BOS = 0x02;
-const FLAG_EOS = 0x04;
+export const OGG_FLAG_BOS = 0x02;
+export const OGG_FLAG_EOS = 0x04;
 /** Packets per page; small enough that no page's lacing table overflows 255 entries. */
 const PACKETS_PER_PAGE = 50;
 
-const buildPage = (
+/** One Ogg page holding whole packets (each shorter than a page: under 255 × 255 bytes in all). */
+export const buildOggPage = (
   serial: number,
   sequence: number,
   granule: bigint,
@@ -83,19 +84,19 @@ export const muxOggOpus = (
   tags.writeUInt32LE(vendor.length, 8);
   vendor.copy(tags, 12);
 
-  const pages = [buildPage(1, 0, 0n, FLAG_BOS, [head]), buildPage(1, 1, 0n, 0, [tags])];
+  const pages = [buildOggPage(1, 0, 0n, OGG_FLAG_BOS, [head]), buildOggPage(1, 1, 0n, 0, [tags])];
   let granule = 0n;
   for (let i = 0, sequence = 2; i < packets.length; i += PACKETS_PER_PAGE, sequence++) {
     const chunk = packets.slice(i, i + PACKETS_PER_PAGE);
     granule += BigInt(chunk.length * options.frameSize);
     const last = i + PACKETS_PER_PAGE >= packets.length;
-    pages.push(buildPage(1, sequence, granule, last ? FLAG_EOS : 0, chunk));
+    pages.push(buildOggPage(1, sequence, granule, last ? OGG_FLAG_EOS : 0, chunk));
   }
   return Buffer.concat(pages);
 };
 
-/** Read the packets of a single-stream Ogg Opus file, as libopus writes it. */
-export const demuxOggOpus = (ogg: Buffer): OggOpusStream => {
+/** Every packet of a single-stream Ogg file, headers included, and its last granule position. */
+export const readOggPackets = (ogg: Buffer): { packets: Buffer[]; finalGranule: bigint } => {
   const all: Buffer[] = [];
   let pending: Buffer[] = [];
   let finalGranule = 0n;
@@ -117,6 +118,12 @@ export const demuxOggOpus = (ogg: Buffer): OggOpusStream => {
     }
     pos = body;
   }
+  return { packets: all, finalGranule };
+};
+
+/** Read the packets of a single-stream Ogg Opus file, as libopus writes it. */
+export const demuxOggOpus = (ogg: Buffer): OggOpusStream => {
+  const { packets: all, finalGranule } = readOggPackets(ogg);
   const head = all[0];
   if (!head || head.toString('latin1', 0, 8) !== 'OpusHead')
     throw new Error('Not an Ogg Opus stream');

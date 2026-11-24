@@ -23,7 +23,7 @@ import type { VoiceFileEntry } from '../../../voice/discoverVoiceFiles';
 import type { VoiceTakeSource } from '../../../voice/referenceVoiceTakeHooks';
 import { PATHS } from '../../../paths';
 import { ensureDir } from '../../../utils/file';
-import { opusWemToOgg, parseOpusWem } from '../audio/opusWem';
+import { opusWemToOgg, parseOpusWem } from '../../../formats/wem';
 import { parseW3SpeechAudio, readW3SpeechBlock, readW3SpeechIndex } from '../w3speech';
 import { parseW3ClipRelPath } from './clips';
 

@@ -8,6 +8,9 @@
  *
  * POST /v1/lip  { game?, text, wav }  → raw .lip
  * POST /v1/xwm  { wav }               → raw .xwm
+ * POST /v1/ffxanim  { text, wav, actor, name?, game? } → raw Starfield .ffxanim
+ *                   (the Starfield Creation Kit's LipGenerator + ffxc, user-supplied,
+ *                   under 64-bit Wine; see ffxanimRoute.ts)
  * POST /v1/binkmix  multipart trackIds, video, sound → the Bink 2 video with the
  *                   sound on every listed track (radvideo64.exe under 64-bit Wine)
  * GET  /health
@@ -20,6 +23,10 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { createBinkMixHandler } from './binkMixRoute';
 import { createFaceFxServePool } from './faceFxServe';
+import { wineToolRunner } from './ffxanim';
+import { createStarfieldLipService } from './ffxanimRoute';
+import { decodeWav, readJsonBody, sendBytes, sendJson } from './http';
+import { createStarfieldToolsCache } from './starfieldTools';
 import {
   createWineSlotPool,
   migrateLegacyWinePrefix,
@@ -35,7 +42,6 @@ const PORT = Number.parseInt(process.env.PORT ?? '3210', 10);
 const WINE_SERVERS = parseWineServerCount(process.env.BETHESDA_TOOLS_WINE_SERVERS);
 const PER_WINE = parsePerWine(process.env.BETHESDA_TOOLS_PER_WINE);
 const TIMEOUT_MS = Number.parseInt(process.env.BETHESDA_TOOLS_TIMEOUT_MS ?? '120000', 10);
-const MAX_BODY = 32 * 1024 * 1024;
 const TOOLS_DIR = process.env.BETHESDA_TOOLS_DIR ?? '/data/tools';
 const WINEPREFIX_ROOT = process.env.WINEPREFIX ?? '/data/wine';
 const WINE = process.env.WINE_PATH ?? 'wine';
@@ -94,52 +100,33 @@ const servePool = createFaceFxServePool({
   jobTimeoutMs: TIMEOUT_MS,
 });
 
-const readJsonBody = async (req: IncomingMessage): Promise<unknown> => {
-  const chunks: Buffer[] = [];
-  let size = 0;
-  for await (const chunk of req) {
-    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-    size += buf.length;
-    if (size > MAX_BODY) throw new Error('body too large');
-    chunks.push(buf);
-  }
-  const raw = Buffer.concat(chunks).toString('utf8');
-  if (!raw.trim()) return {};
-  return JSON.parse(raw) as unknown;
-};
+/** Starfield `.ffxanim`: user-supplied tools from `<tools>/starfield/`, run from a local copy. */
+const starfield = createStarfieldLipService({
+  tools: createStarfieldToolsCache(
+    path.join(TOOLS_DIR, 'starfield'),
+    path.join(os.tmpdir(), 'bethesda-tools-starfield'),
+  ),
+  prefixRoot: path.join(WINEPREFIX_ROOT, 'ffx64'),
+  concurrency: totalSlots,
+  runner: (prefix) => wineToolRunner(WINE, wineEnv(prefix, 'win64')),
+  initPrefix: (prefix) => initWinePrefix(prefix, 'win64'),
+  toolPath: toWinePath,
+  timeoutMs: TIMEOUT_MS,
+});
 
-const sendJson = (res: ServerResponse, status: number, body: unknown): void => {
-  const payload = JSON.stringify(body);
-  res.writeHead(status, {
-    'content-type': 'application/json',
-    'content-length': Buffer.byteLength(payload),
-  });
-  res.end(payload);
-};
-
-const sendBytes = (res: ServerResponse, data: Buffer): void => {
-  res.writeHead(200, {
-    'content-type': 'application/octet-stream',
-    'content-length': data.length,
-  });
-  res.end(data);
-};
-
-const decodeWav = (wavB64: unknown): Buffer | null => {
-  if (typeof wavB64 !== 'string' || !wavB64) return null;
-  try {
-    const wav = Buffer.from(wavB64, 'base64');
-    return wav.length >= 16 ? wav : null;
-  } catch {
-    return null;
-  }
-};
-
-const toolStatus = (): { facefx: boolean; fonix: boolean; xwma: boolean; bink: boolean } => ({
+const toolStatus = (): {
+  facefx: boolean;
+  fonix: boolean;
+  xwma: boolean;
+  bink: boolean;
+  starfield: boolean;
+} => ({
   facefx: fs.existsSync(FACEFX_EXE),
   fonix: fs.existsSync(FONIX),
   xwma: fs.existsSync(XWMA_EXE),
   bink: fs.existsSync(RADVIDEO_EXE),
+  // Optional: absent Starfield tools fail only /v1/ffxanim, never the health check.
+  starfield: starfield.installed(),
 });
 
 const initWinePrefix = async (prefix: string, arch: 'win32' | 'win64' = 'win32'): Promise<void> => {
@@ -279,6 +266,7 @@ const server = createServer((req, res) => {
       concurrency: totalSlots,
       facefxServe,
       slots: pool.snapshot().map(({ id, active, assigned }) => ({ id, active, assigned })),
+      ffxanim: starfield.snapshot(),
       tools,
     });
     return;
@@ -296,6 +284,10 @@ const server = createServer((req, res) => {
   }
   if (req.method === 'POST' && url === '/v1/xwm') {
     handleXwm(req, res).catch(fail);
+    return;
+  }
+  if (req.method === 'POST' && url === '/v1/ffxanim') {
+    starfield.handle(req, res).catch(fail);
     return;
   }
   if (req.method === 'POST' && url === '/v1/binkmix') {
@@ -317,8 +309,18 @@ server.listen(PORT, '0.0.0.0', () => {
   const tools = toolStatus();
   process.stdout.write(
     `bethesda-tools listening on :${PORT} wineServers=${WINE_SERVERS} perWine=${PER_WINE} ` +
-      `facefx=${tools.facefx} xwma=${tools.xwma} bink=${tools.bink}\n`,
+      `facefx=${tools.facefx} xwma=${tools.xwma} bink=${tools.bink} starfield=${tools.starfield}\n`,
   );
+  // Starfield tools present: copy them and boot their prefix before the first take.
+  if (tools.starfield) {
+    void starfield
+      .warm()
+      .then(() => process.stdout.write('bethesda-tools starfield tools ready\n'))
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        process.stdout.write(`bethesda-tools starfield warm-up failed: ${message}\n`);
+      });
+  }
   void servePool
     .warm(
       pool.slots.map((slot) => slot.prefix),
@@ -326,5 +328,11 @@ server.listen(PORT, '0.0.0.0', () => {
     )
     .then(() => {
       process.stdout.write(`bethesda-tools facefxServe=${servePool.mode}\n`);
+    })
+    // A FaceFX that cannot start leaves /health at 503; it must not take the process
+    // (and /v1/xwm, /v1/ffxanim, /v1/binkmix) down with an unhandled rejection.
+    .catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      process.stdout.write(`bethesda-tools facefxServe failed: ${message}\n`);
     });
 });

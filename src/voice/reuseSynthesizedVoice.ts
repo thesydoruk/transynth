@@ -21,6 +21,8 @@ import {
   type ReuseVoiceSourceLine,
 } from './reuseSynthesizedVoiceMatch';
 import { reuseReferenceVoiceTakes } from './reuseReferenceVoiceTakes';
+import { voiceTakesForGame } from './takeFormat';
+import { copyTakeSidecars } from './takeSidecars';
 import {
   loadVoiceReuseSnapshot,
   ttsVersionForLine,
@@ -106,6 +108,11 @@ const copyOneTake = async (
   if (fs.existsSync(destAbs)) return false;
   ensureDir(path.dirname(destAbs));
   await fs.promises.copyFile(match.source.localizedAbsPath, destAbs);
+  await copyTakeSidecars(
+    match.source.localizedAbsPath,
+    destAbs,
+    voiceTakesForGame(dest.game).sidecarExtensions,
+  );
   await upsertVoiceSynthesisState(db, {
     modId: dest.modId,
     lineKey: match.dest.lineKey,
@@ -122,7 +129,7 @@ const copyOneTake = async (
 };
 
 /**
- * Copy synthesized `.fuz` / `.wav` into `destModId` from donor mods, then from
+ * Copy synthesized takes into `destModId` from donor mods, then from
  * the reference voice store, when the line text and the character's source
  * voice file both match exactly.
  */

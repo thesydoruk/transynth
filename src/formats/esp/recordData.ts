@@ -34,6 +34,49 @@ export const readRecordData = (buf: Buffer, recOffset: number): Buffer | null =>
   }
 };
 
+/** Signatures that open and close one embedded base-form component. */
+export type ComponentBrackets = { begin: string; end: string } | null;
+
+/**
+ * Visit the subrecords of one record payload in file order.
+ *
+ * `XXXX` is honoured: it carries the true size of the next subrecord when that
+ * exceeds the uint16 size field. With `components` set, everything from a
+ * component's opening subrecord through its closing one is skipped, so a field
+ * nested in a component never passes for the record's own field of the same
+ * signature.
+ *
+ * @param visit - Called with the signature and the payload's start and end offsets.
+ */
+export const forEachSubrecord = (
+  data: Buffer,
+  visit: (sig: string, start: number, end: number) => void,
+  components: ComponentBrackets = null,
+): void => {
+  let pos = 0;
+  let oversizeNext = 0;
+  let inComponent = false;
+  while (pos + SUBRECORD_HEADER_SIZE <= data.length) {
+    const sig = data.toString('ascii', pos, pos + 4);
+    const size = oversizeNext > 0 ? oversizeNext : data.readUInt16LE(pos + 4);
+    oversizeNext = 0;
+    const start = pos + SUBRECORD_HEADER_SIZE;
+    const end = start + size;
+    if (end > data.length) break;
+
+    if (sig === 'XXXX' && size === 4) {
+      oversizeNext = data.readUInt32LE(start);
+    } else if (components && sig === components.begin) {
+      inComponent = true;
+    } else if (components && sig === components.end) {
+      inComponent = false;
+    } else if (!inComponent) {
+      visit(sig, start, end);
+    }
+    pos = end;
+  }
+};
+
 /** Read a non-zero FormID from a 4-byte subrecord as 8-char uppercase hex. */
 export const readFormIdAt = (data: Buffer, offset: number): string | null => {
   const raw = data.readUInt32LE(offset);

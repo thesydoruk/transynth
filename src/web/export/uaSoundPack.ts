@@ -65,6 +65,7 @@ export const writeUaSoundPackIntoDir = async (
   dir: string,
   voice: ZipPackEntry[],
   modName?: string,
+  ba2Version?: number,
 ): Promise<number> => {
   if (voice.length === 0) return 0;
   const espSrc = uaSoundPackEspPath();
@@ -82,6 +83,7 @@ export const writeUaSoundPackIntoDir = async (
       absPath: entry.absPath,
     })),
     ba2Dest,
+    ba2Version,
   );
   log.info(`Langpack export: packed ${voice.length} voice file(s) into uncompressed ${names.ba2}`);
   return 2;

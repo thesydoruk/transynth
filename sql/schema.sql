@@ -333,7 +333,7 @@ INSERT INTO qa_rules (game, rule_type, value, severity, description)
 SELECT v.game, 'forbidden_chars', '©®™', 'warning',
   'Trademark symbols often missing from game UI fonts'
 FROM (
-  VALUES ('fo4'), ('fo76'), ('fo3'), ('fnv'), ('ob'), ('mw'), ('sse'), ('sle'), ('disco'), ('w3')
+  VALUES ('fo4'), ('fo76'), ('fo3'), ('fnv'), ('sf1'), ('ob'), ('mw'), ('sse'), ('sle'), ('disco'), ('w3')
 ) AS v(game)
 WHERE NOT EXISTS (SELECT 1 FROM qa_rules);
 

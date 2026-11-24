@@ -38,6 +38,12 @@ describe('vortex sync file selection', () => {
     expect(isVortexSyncArchiveName('MyMod.ba2')).toBe(true);
   });
 
+  it("keeps Starfield's Localization archives, which hold the string tables", () => {
+    expect(isVortexSyncArchiveName('Starfield - Localization.ba2')).toBe(true);
+    expect(isVortexSyncArchiveName('BlueprintShips-Starfield - Localization.ba2')).toBe(true);
+    expect(isVortexSyncArchiveName('Starfield - Textures01.ba2')).toBe(false);
+  });
+
   it('drops mesh / sound / texture dumps', () => {
     expect(isVortexSyncArchiveName('Fallout4 - Meshes.ba2')).toBe(false);
     expect(isVortexSyncArchiveName('Fallout4 - MeshesExtra.ba2')).toBe(false);
@@ -49,6 +55,11 @@ describe('vortex sync file selection', () => {
 
   it('keeps loose voice clips under Sound/Voice only', () => {
     expect(isVoiceSourceRelPath('Sound/Voice/CoolMod.esp/Robot/00001234_1.fuz')).toBe(true);
+    expect(isVoiceSourceRelPath('sound/voice/coolmod.esm/npcfandreja/00ae4a02.wem')).toBe(true);
+    // The lip animation is rebuilt with the dub; the original is not needed.
+    expect(isVoiceSourceRelPath('sound/voice/coolmod.esm/npcfandreja/00ae4a02.ffxanim')).toBe(
+      false,
+    );
     expect(isVoiceSourceRelPath('Sound/FX/explode.wav')).toBe(false);
     expect(isVoiceSourceRelPath('Scripts/Foo.pex')).toBe(false);
   });

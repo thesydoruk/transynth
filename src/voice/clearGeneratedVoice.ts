@@ -3,6 +3,7 @@ import fg from 'fast-glob';
 import type { Tx } from '../db';
 import { PATHS } from '../paths';
 import { modStorageRoot } from '../modStorage';
+import { LOCALIZED_TAKE_EXTENSIONS } from './takeFormat';
 import { clearAllVoiceSynthesisState } from './voiceSynthesisState';
 
 export type ClearGeneratedVoiceResult = {
@@ -18,17 +19,23 @@ const removeDirIfExists = (dir: string): boolean => {
   return true;
 };
 
-/** Delete synthesized `.fuz` files under all `_localize_*` trees. */
+/**
+ * Delete synthesized takes — `.fuz`, or `.wem` with its `.ffxanim` — under all
+ * `_localize_*` trees. Returns the number of takes; a sidecar is not counted.
+ */
 const clearGeneratedVoiceFiles = (): number => {
   const root = modStorageRoot().replace(/\\/g, '/');
-  const matches = fg.sync(`${root}/_localize_*/**/Sound/Voice/**/*.fuz`, {
-    onlyFiles: true,
-    dot: false,
-  });
+  const { takes, sidecars } = LOCALIZED_TAKE_EXTENSIONS;
+  const matches = fg.sync(
+    `${root}/_localize_*/**/Sound/Voice/**/*.{${[...takes, ...sidecars].join(',')}}`,
+    { onlyFiles: true, dot: false },
+  );
   for (const file of matches) {
     fs.unlinkSync(file);
   }
-  return matches.length;
+  const isSidecar = (file: string): boolean =>
+    sidecars.some((extension) => file.toLowerCase().endsWith(`.${extension}`));
+  return matches.filter((file) => !isSidecar(file)).length;
 };
 
 /** Delete generated voice files, preview caches, and synthesis version rows. */

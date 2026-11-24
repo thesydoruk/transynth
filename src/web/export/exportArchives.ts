@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { Tx } from '../../db';
 import type { GameId } from '../../types';
 import { writeBa2 } from '../../formats/ba2';
-import { usesBa2Archives } from '../../games/creation-engine/archives';
+import { ba2VersionForGame, usesBa2Archives } from '../../games/creation-engine/archives';
 import { writeBsa } from '../../formats/bsa';
 import { log } from '../../logger';
 import { bsaVersionForGame } from '../../modImport/bethesdaArchivePaths';
@@ -30,7 +30,7 @@ const writeBuiltArchives = (
   for (const build of builds.values()) {
     const buf =
       build.archiveType === 'ba2'
-        ? writeBa2(build.files)
+        ? writeBa2(build.files, ba2VersionForGame(game))
         : writeBsa(build.files, bsaVersionForGame(game));
     exported.push({
       fileName: build.fileName,
