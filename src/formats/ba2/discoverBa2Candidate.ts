@@ -2,6 +2,24 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /**
+ * A file in `dir` by name, whatever the case of its letters on disk: the engine
+ * and Windows do not tell `Mod - Main.ba2` from `mod - main.ba2`, a Linux host does.
+ */
+export const findFileIgnoringCase = (dir: string, fileName: string): string | null => {
+  const exact = path.join(dir, fileName);
+  if (fs.existsSync(exact)) return exact;
+  let names: string[];
+  try {
+    names = fs.readdirSync(dir);
+  } catch {
+    return null;
+  }
+  const wanted = fileName.toLowerCase();
+  const found = names.find((name) => name.toLowerCase() === wanted);
+  return found ? path.join(dir, found) : null;
+};
+
+/**
  * Find the BA2 that goes with a plugin, by Creation Kit naming convention
  * (`<stem> - Main.ba2`, plus `<stem> - Interface.ba2` on titles that pack into
  * BA2) — first among already-discovered candidates, then on disk next to the
@@ -25,9 +43,8 @@ export const discoverBa2Candidate = (
 
   const dir = path.dirname(modPath);
   for (const suffix of suffixes) {
-    const candidate = suffix ? `${baseStem}${suffix}.ba2` : `${baseStem}.ba2`;
-    const p = path.join(dir, candidate);
-    if (fs.existsSync(p)) return p;
+    const found = findFileIgnoringCase(dir, `${baseStem}${suffix}.ba2`);
+    if (found) return found;
   }
   return null;
 };

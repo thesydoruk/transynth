@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import path from 'node:path';
 import { postBethesdaToolBinary } from './client';
 
 /** Name the service accepts for the WAV, animation and group inside the `.ffxanim`. */
@@ -11,7 +10,8 @@ const FFXANIM_NAME_RE = /^[A-Za-z0-9_]{1,64}$/;
  * the base name has characters the service refuses.
  */
 export const ffxanimNameFor = (ffxanimPath: string): string | undefined => {
-  const base = path.basename(ffxanimPath).replace(/\.ffxanim$/i, '');
+  const fileName = ffxanimPath.split(/[\\/]/).pop() ?? '';
+  const base = fileName.replace(/\.ffxanim$/i, '');
   return FFXANIM_NAME_RE.test(base) ? base : undefined;
 };
 

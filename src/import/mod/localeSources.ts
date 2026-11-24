@@ -7,7 +7,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { BsaReader } from '../../formats/bsa';
-import { discoverBa2Candidate, getBa2Reader, isBa2GnrArchive } from '../../formats/ba2';
+import {
+  discoverBa2Candidate,
+  findFileIgnoringCase,
+  getBa2Reader,
+  isBa2GnrArchive,
+} from '../../formats/ba2';
 import { readPluginMasterNames } from '../../formats/esp';
 import { stringsTypeFromPath, resolveLooseStringsDirForPlugin } from '../../formats/strings';
 import type { StringsType } from '../../formats/strings';
@@ -184,8 +189,7 @@ export const findTitleStringsArchives = (
     const candidate = ba2Candidates.find(
       (f) => path.basename(f).toLowerCase() === fileName.toLowerCase(),
     );
-    const onDisk = path.join(path.dirname(espPath), fileName);
-    const archive = candidate ?? (fs.existsSync(onDisk) ? onDisk : null);
+    const archive = candidate ?? findFileIgnoringCase(path.dirname(espPath), fileName);
     if (archive && !found.includes(archive)) found.push(archive);
   }
   return found;
