@@ -3,12 +3,12 @@
  * CLI token, file-backed uploads of unit zips, and polling a run to its end.
  */
 import fs from 'node:fs';
-import { openAsBlob } from 'node:fs';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { Agent, fetch as undiciFetch } from 'undici';
 import { vortexUnitKey } from '../groupKey';
+import { multipartFileBody } from './multipartFile';
 import type { VortexFanOutStage } from '../stages';
 import type {
   VideoUploadTask,
@@ -112,13 +112,12 @@ export const createAgentApi = (opts: { api: string; token?: string }) => {
     mime: string,
     label: string,
   ): Promise<{ status: number; text: string }> => {
-    const blob = await openAsBlob(filePath, { type: mime });
-    const form = new FormData();
-    form.append('file', blob, path.basename(filePath));
+    const part = multipartFileBody(filePath, mime);
     const res = await undiciFetch(url(suffix), {
       method: 'PUT',
-      headers: headers(),
-      body: form,
+      headers: { ...headers(), 'Content-Type': part.contentType },
+      body: Readable.from(part.chunks()),
+      duplex: 'half',
       dispatcher: uploadAgent,
     }).catch((err: unknown) => {
       // `fetch failed` alone says nothing; the cause (ECONNRESET, EPIPE…) does.
