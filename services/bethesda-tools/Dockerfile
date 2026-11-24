@@ -60,17 +60,18 @@ RUN curl -fsSL --retry 3 -o /tmp/DXSDK_Jun10.exe "$DXSDK_URL" \
   && test -s /opt/bethesda/xWMAEncode.exe \
   && rm -f /tmp/DXSDK_Jun10.exe
 
-# RAD Video Tools: the one program that writes Bink 2. RAD's permanent link serves
-# a 7z (password `RAD`, printed next to the link on the download page) holding an
-# NSIS installer holding radvideo64.exe; 7-Zip opens both layers, so the installer
-# never runs and only the one executable is kept. The tools are free for
+# RAD Video Tools: the one program that writes Bink 2. The link on RAD's download
+# page serves an NSIS installer holding radvideo64.exe; 7-Zip opens it, so the
+# installer never runs and only the one executable is kept. RAD serves the current
+# version only and has renamed the file before (a password-protected RADTools.7z
+# until 2026-11): when this step answers 403, read the link on
+# https://www.radgametools.com/bnkdown.htm again. The tools are free for
 # non-commercial use and nothing of them is redistributed with this repo.
-ARG RAD_TOOLS_URL=https://www.radgametools.com/down/Bink/RADTools.7z
-RUN curl -fsSL --retry 3 -o /tmp/RADTools.7z "$RAD_TOOLS_URL" \
-  && 7z x -y -pRAD -o/tmp/radtools /tmp/RADTools.7z radtools.exe >/dev/null \
-  && 7z e -y -o/opt/bethesda /tmp/radtools/radtools.exe radvideo64.exe >/dev/null \
+ARG RAD_TOOLS_URL=https://www.radgametools.com/down/Bink/RADTools.exe
+RUN curl -fsSL --retry 3 -o /tmp/RADTools.exe "$RAD_TOOLS_URL" \
+  && 7z e -y -o/opt/bethesda /tmp/RADTools.exe radvideo64.exe >/dev/null \
   && test -s /opt/bethesda/radvideo64.exe \
-  && rm -rf /tmp/RADTools.7z /tmp/radtools
+  && rm -f /tmp/RADTools.exe
 
 WORKDIR /app
 COPY package.json ./
