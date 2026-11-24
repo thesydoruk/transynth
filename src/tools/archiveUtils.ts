@@ -4,10 +4,16 @@ import Seven from 'node-7z';
 import { path7za } from '7zip-bin';
 import { path7z as path7zFull } from '7z-bin';
 
-/** 7za (standalone) for zip/7z; full 7z binary for RAR (7za cannot unpack RAR). */
-const archiveExtractorBin = (archivePath: string): string => {
-  const ext = path.extname(archivePath).toLowerCase();
-  return ext === '.rar' ? path7zFull : path7za;
+/**
+ * The current 7-Zip (`7z-bin`) for every archive. The standalone `7za` of
+ * `7zip-bin` is p7zip 16.02 on Linux: it reports "Headers Error" and exits 2 on
+ * a valid Zip64 archive over 4 GiB (Starfield's 8.5 GB Vortex unit), although it
+ * unpacks every file, and it cannot read RAR at all. It stays as the fallback
+ * for a platform `7z-bin` ships no binary for — never for RAR.
+ */
+export const archiveExtractorBin = (archivePath: string): string => {
+  if (path.extname(archivePath).toLowerCase() === '.rar') return path7zFull;
+  return fs.existsSync(path7zFull) ? path7zFull : path7za;
 };
 
 /** npm ci --ignore-scripts can leave bundled 7z binaries without execute permission. */
