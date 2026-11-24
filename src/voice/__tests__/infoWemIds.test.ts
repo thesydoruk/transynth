@@ -36,7 +36,12 @@ describe('WEM id index of a plugin', () => {
 
   it('formats an id the way the game names the file', () => {
     expect(wemIdHex(0x00ae4a02)).toBe('00ae4a02');
-    expect(wemIdHex(0xfedcba98)).toBe('fedcba98');
+    // The top byte is the plugin's own FormID prefix, not part of the name:
+    // SFBGS004.esm (small) carries FE60F139 for `0060f139.wem`,
+    // ShatteredSpace.esm (full, one master) 01xxxxxx, a medium master FDxxxxxx.
+    expect(wemIdHex(0xfe60f139)).toBe('0060f139');
+    expect(wemIdHex(0x01ae4a02)).toBe('00ae4a02');
+    expect(wemIdHex(0xfd000abc)).toBe('00000abc');
     expect(wemTakeKey('Starfield.esm', '00AE4A02')).toBe('starfield.esm/00ae4a02');
   });
 
@@ -61,8 +66,10 @@ describe('WEM id index of a plugin', () => {
       infoFormidHex: '00012345',
     });
     expect(lookupWemTakeLine(index, 'Starfield.esm', '00AE4A03')?.variant).toBe(2);
-    // An id past 2^31 would not fit a signed variant column; as a file name it is just hex.
-    expect(lookupWemTakeLine(index, 'starfield.esm', 'fedcba98')?.lineKey).toBe('000777');
+    // A prefixed id is found by the name its file has, and names that file back.
+    expect(lookupWemTakeLine(index, 'starfield.esm', '00dcba98')?.lineKey).toBe('000777');
+    expect(lookupWemTakeLine(index, 'starfield.esm', 'fedcba98')).toBeUndefined();
+    expect(lookupLineWemId(index, 'starfield.esm', '000777', 1)).toBe('00dcba98');
 
     expect(lookupLineWemId(index, 'starfield.esm', '012345', 2)).toBe('00ae4a03');
     expect(lookupLineWemId(index, 'starfield.esm', '012345', 3)).toBeUndefined();
