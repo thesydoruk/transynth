@@ -7,7 +7,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { getBa2Reader, isBa2GnrArchive } from '../../formats/ba2';
+import { findFileIgnoringCase, getBa2Reader, isBa2GnrArchive } from '../../formats/ba2';
 import { resolveModDirectoryFromPath } from '../../formats/mcm';
 import { listCompanionGnrlBa2ForPlugin } from '../../import/mod/discovery';
 
@@ -20,8 +20,10 @@ import { listCompanionGnrlBa2ForPlugin } from '../../import/mod/discovery';
  */
 export const readModInterfaceFile = (modPath: string, fileName: string): Buffer | null => {
   const modDir = resolveModDirectoryFromPath(modPath);
-  const loosePath = path.join(modDir, 'Interface', fileName);
-  if (fs.existsSync(loosePath)) return fs.readFileSync(loosePath);
+  // An unpacked archive keeps its entries' case (`interface/translate_en.txt`).
+  const ifaceDir = findFileIgnoringCase(modDir, 'Interface');
+  const loosePath = ifaceDir ? findFileIgnoringCase(ifaceDir, fileName) : null;
+  if (loosePath && fs.statSync(loosePath).isFile()) return fs.readFileSync(loosePath);
 
   const ext = path.extname(fileName).replace(/^\./, '');
   const suffix = `/${fileName.toLowerCase()}`;
