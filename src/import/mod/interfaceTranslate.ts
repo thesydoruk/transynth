@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { getBa2Reader } from '../../formats/ba2';
+import { findFileIgnoringCase, getBa2Reader } from '../../formats/ba2';
 import {
   interfaceTranslateLocaleFromPath,
   isInterfaceTranslatePath,
@@ -28,10 +28,15 @@ const loadInterfaceTranslateFromBa2 = (ba2Path: string): Map<string, Map<string,
   return locales;
 };
 
+/**
+ * Loose `Interface/Translate_*.txt` next to the plugin. An archive unpacked on
+ * the server keeps the case its entries have — Starfield's are `interface/` —
+ * so the folder is found whatever its case, as the game finds it.
+ */
 const loadInterfaceTranslateFromLooseFiles = (modDir: string): Map<string, Map<string, string>> => {
   const locales = new Map<string, Map<string, string>>();
-  const ifaceDir = path.join(modDir, 'Interface');
-  if (!fs.existsSync(ifaceDir)) return locales;
+  const ifaceDir = findFileIgnoringCase(modDir, 'Interface');
+  if (!ifaceDir || !fs.statSync(ifaceDir).isDirectory()) return locales;
 
   for (const file of fs.readdirSync(ifaceDir)) {
     if (!isInterfaceTranslatePath(file)) continue;
