@@ -3,7 +3,8 @@
  *
  * Fallout 4 names a take after its line — `<INFO FormID>_<response>.fuz`.
  * Starfield names it after a number of its own: `<8 hex>.wem`, the "WEM File"
- * id in the response's `TRDA`. Nothing in that name says which INFO it is, so
+ * id in the response's `TRDA` without its top byte ({@link wemIdHex}). Nothing
+ * in that name says which INFO it is, so
  * the link has to be read out of the plugin: every response of every INFO with
  * the id it carries. This is that table, both ways round.
  *
@@ -43,8 +44,16 @@ export type InfoWemIndex = {
   wemOfLine: Map<string, string>;
 };
 
-/** A WEM id the way the game writes it in a file name: 8 lower-case hex digits. */
-export const wemIdHex = (id: number): string => (id >>> 0).toString(16).padStart(8, '0');
+/**
+ * A WEM id the way the game writes it in a file name: its low 24 bits as 8
+ * lower-case hex digits.
+ *
+ * The top byte of a `TRDA` id is the prefix the plugin gives its own FormIDs —
+ * `00` in `Starfield.esm`, `01` in a full master with one master
+ * (`ShatteredSpace.esm`), `FD` in a medium one, `FE` in a small one — and is
+ * not in the name: `FE60F139` is the take `0060f139.wem`.
+ */
+export const wemIdHex = (id: number): string => (id & 0xffffff).toString(16).padStart(8, '0');
 
 /** Key of one voice file: the folder it sits in under `Sound/Voice/` and its id. */
 export const wemTakeKey = (origin: string | null | undefined, wemId: string): string =>
