@@ -68,22 +68,44 @@ export const loadVoiceFolderNames = async (
   return names;
 };
 
+const labelKey = (label: string): string => label.trim().toLowerCase();
+
+/** One pass: every speaker whose label is shared is renamed by `rename`. */
+const renameShared = <T extends { key: string; displayName: string }>(
+  speakers: readonly T[],
+  rename: (speakerKey: string) => string,
+): { speakers: T[]; shared: boolean } => {
+  const count = new Map<string, number>();
+  for (const speaker of speakers) {
+    const label = labelKey(speaker.displayName);
+    count.set(label, (count.get(label) ?? 0) + 1);
+  }
+  let shared = false;
+  const renamed = speakers.map((speaker) => {
+    if ((count.get(labelKey(speaker.displayName)) ?? 0) < 2) return speaker;
+    shared = true;
+    const displayName = rename(speaker.key);
+    return displayName === speaker.displayName ? speaker : { ...speaker, displayName };
+  });
+  return { speakers: renamed, shared };
+};
+
 /**
  * The same speakers with distinct names: wherever two or more share a label,
  * each of them is shown by its folder's whole name instead.
+ *
+ * A folder's whole name can itself be the label another speaker already has —
+ * `genericmale09` becomes "Generic Male 09", the name a line gave
+ * `npcmandreas` — so the pass runs again on the result, and whatever is still
+ * shared after that is shown by its key, which nothing else has.
  */
 export const withDistinctSpeakerNames = <T extends { key: string; displayName: string }>(
   speakers: readonly T[],
   folderName: (speakerKey: string) => string,
 ): T[] => {
-  const count = new Map<string, number>();
-  for (const speaker of speakers) {
-    const label = speaker.displayName.trim().toLowerCase();
-    count.set(label, (count.get(label) ?? 0) + 1);
-  }
-  return speakers.map((speaker) =>
-    (count.get(speaker.displayName.trim().toLowerCase()) ?? 0) > 1
-      ? { ...speaker, displayName: folderName(speaker.key) }
-      : speaker,
-  );
+  const first = renameShared(speakers, folderName);
+  if (!first.shared) return first.speakers;
+  const second = renameShared(first.speakers, folderName);
+  if (!second.shared) return second.speakers;
+  return renameShared(second.speakers, (speakerKey) => speakerKey).speakers;
 };

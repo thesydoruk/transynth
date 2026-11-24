@@ -81,4 +81,39 @@ describe('withDistinctSpeakerNames', () => {
     expect(named[2]).toBe(speakers[2]);
     expect(new Set(named.map((speaker) => speaker.displayName)).size).toBe(named.length);
   });
+
+  it('renames again when a folder name is the label another speaker has', () => {
+    const spelling: Record<string, string> = {
+      genericmale09: 'GenericMale09',
+      genericmale03: 'GenericMale03',
+      npcmandreas: 'NPCMAndreas',
+    };
+    const named = withDistinctSpeakerNames(
+      [
+        // Shares "Spacer", so it is shown as "Generic Male 09" …
+        { key: 'genericmale09', displayName: 'Spacer' },
+        { key: 'genericmale03', displayName: 'Spacer' },
+        // … the name the first line of this folder happens to carry.
+        { key: 'npcmandreas', displayName: 'Generic Male 09' },
+      ],
+      (key) => formatVoiceFolderName(spelling[key] ?? key),
+    );
+    expect(named.map((speaker) => speaker.displayName)).toEqual([
+      'Generic Male 09',
+      'Generic Male 03',
+      'NPCM Andreas',
+    ]);
+  });
+
+  it('falls back to the key when two folders read the same in words', () => {
+    const named = withDistinctSpeakerNames(
+      [
+        { key: 'Robot_A', displayName: 'A' },
+        { key: 'Robot A', displayName: 'A' },
+        { key: 'other', displayName: 'Other' },
+      ],
+      formatVoiceFolderName,
+    );
+    expect(named.map((speaker) => speaker.displayName)).toEqual(['Robot_A', 'Robot A', 'Other']);
+  });
 });
