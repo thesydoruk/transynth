@@ -3,6 +3,7 @@ import path from 'node:path';
 import { isSecondaryPluginPath } from '../import/mod/importAnchor';
 import type { VortexInventoryFile } from './types';
 import { toPosixRel } from './hashSubset';
+import { findMissingStringsArchive } from './pluginStringArchives';
 import {
   isVortexSyncFile,
   shouldSkipVortexWalkDir,
@@ -99,6 +100,16 @@ export const collectNamedPluginFiles = (
     }
   }
 
+  // Tables kept outside the usual archives: a numbered Main, or the master's archive.
+  const tablesArchive = findMissingStringsArchive(
+    dataDir,
+    pluginFileName,
+    entries,
+    files.map((file) => file.relPath),
+  );
+  if (tablesArchive) {
+    files.push({ absPath: path.join(dataDir, tablesArchive), relPath: tablesArchive });
+  }
   const stringsDir = path.join(dataDir, 'Strings');
   if (fs.existsSync(stringsDir)) {
     for (const name of fs.readdirSync(stringsDir)) {
