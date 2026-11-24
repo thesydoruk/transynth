@@ -2,6 +2,7 @@ import type { Tx } from '../../../db';
 import { log } from '../../../logger';
 import { getVoiceListContext } from './voiceListContext';
 import { isOrphanVoiceEntry, sortSpeakers } from './buildVoiceLinePreview';
+import { formatVoiceFolderName, withDistinctSpeakerNames } from './speakerLabels';
 import type { VoiceSpeakersListResult } from './types';
 
 /** List voice speakers with dubbing progress, without loading every line's text. */
@@ -36,9 +37,19 @@ export const listVoiceSpeakersForMod = async (
     if (loaded.hasLocalizedTake(entry)) group.dubbedCount += 1;
   }
 
+  // A folder is spelled on disk as its archive has it, the speaker table as the
+  // plugin has the voice type: the two can differ in case.
+  const genderByFolder = new Map(
+    [...loaded.folderGenders].map(([folder, gender]) => [folder.toLowerCase(), gender]),
+  );
+  const named = withDistinctSpeakerNames(
+    [...groups.entries()].map(([key, group]) => ({ key, ...group })),
+    (key) => loaded.speakerFolderName?.(key) ?? formatVoiceFolderName(key),
+  );
+
   const speakers = sortSpeakers(
-    [...groups.entries()].map(([key, group]) => {
-      const folderGender = loaded.folderGenders.get(key);
+    named.map(({ key, ...group }) => {
+      const folderGender = loaded.folderGenders.get(key) ?? genderByFolder.get(key.toLowerCase());
       return {
         key,
         displayName: group.displayName,

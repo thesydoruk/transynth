@@ -49,6 +49,11 @@ export type VoiceLineCatalog = {
   speakerKeyOf: (entry: VoiceFileEntry) => string;
   /** Human-readable speaker name for the editor's speaker list. */
   speakerDisplayName: (speakerKey: string, lineKey: string) => string;
+  /**
+   * The speaker's folder by its whole name, shown where {@link speakerDisplayName}
+   * gives two speakers one label. Omitted, the speaker key itself.
+   */
+  speakerFolderName?: (speakerKey: string) => string;
   /** True when a synthesized take already exists for this source file. */
   hasLocalizedTake: (entry: VoiceFileEntry) => boolean;
   /**

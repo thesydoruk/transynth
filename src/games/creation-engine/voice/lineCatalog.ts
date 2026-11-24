@@ -36,6 +36,10 @@ import {
   voiceEntryAudioKey,
 } from '../../../web/voice/preview/translationAudioIndex';
 import {
+  formatVoiceFolderName,
+  loadVoiceFolderNames,
+} from '../../../web/voice/preview/speakerLabels';
+import {
   discoverVoiceEntries,
   formatVoiceSpeakerLabel,
   loadSpeakerNamesFromDb,
@@ -108,6 +112,7 @@ export const loadCreationEngineVoiceCatalog = async (
     speakerRefs,
     folderGenders,
     voiceSimilarities,
+    folderNames,
   ] = await Promise.all([
     loadVoiceSourcesDetailed(db, modId, srcLang),
     loadVoiceTranslations(db, modId, srcLang, targetLang),
@@ -116,7 +121,11 @@ export const loadCreationEngineVoiceCatalog = async (
     loadVoiceSpeakerRefs(db, modId),
     loadVoiceFolderGenders(db, modId),
     loadVoiceSimilarityMap(db, modId, targetLang),
+    loadVoiceFolderNames(db, modId),
   ]);
+  // The folder as the plugin spells its voice type: an archive may lower-case it.
+  const spellingOf = (speakerKey: string): string =>
+    folderNames.get(speakerKey.toLowerCase())?.spelling ?? speakerKey;
 
   let inheritedLookup: InheritedVoiceLookup | null = null;
   if (masterMods.length > 0) {
@@ -142,10 +151,15 @@ export const loadCreationEngineVoiceCatalog = async (
     markupStyle: BETHESDA_VOICE_MARKUP,
     speakerKeyOf: (entry) => voiceSpeakerKey(entry, voiceRootRel) || 'Unknown',
     speakerDisplayName: (speakerKey, lineKey) => {
-      const folderLabel = formatVoiceSpeakerLabel(speakerKey);
+      const folderLabel = formatVoiceSpeakerLabel(spellingOf(speakerKey));
       if (PLAYER_VOICE_LABEL_RE.test(folderLabel)) return folderLabel;
-      return dbSpeakerNames.get(lineKey.toUpperCase()) || folderLabel;
+      return (
+        dbSpeakerNames.get(lineKey.toUpperCase()) ||
+        folderNames.get(speakerKey.toLowerCase())?.character ||
+        folderLabel
+      );
     },
+    speakerFolderName: (speakerKey) => formatVoiceFolderName(spellingOf(speakerKey)),
     hasLocalizedTake: (entry) => translationAudio.has(voiceEntryAudioKey(entry)),
     masterBackedOf: (entry) => work.masterOfEntry(entry)?.master ?? null,
   };
