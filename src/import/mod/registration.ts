@@ -111,6 +111,7 @@ export const registerPluginFile = async (
   const manifest = extractGameArchivesForImport({
     extractRoot,
     scopeDirs: collectPluginArchiveScopeDirs(pluginPath, discoverArchiveCandidatesForPlugin),
+    srcLang,
   });
 
   const anchor = gamePlugin(game).import.describeAnchor(pluginPath, extractRoot);
@@ -209,6 +210,7 @@ export const registerExtractedModDirectory = async (
     extractRoot: extractDir,
     ...(options.container ? { container: options.container } : {}),
     scopeDirs: [extractDir],
+    srcLang,
   });
 
   const importAdapter = gamePlugin(game).import;

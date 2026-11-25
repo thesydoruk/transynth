@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { Ba2Reader } from '../formats/ba2';
+import { Ba2Reader, foreignVoiceArchives } from '../formats/ba2';
 import { isBa2GnrArchive, readBa2ArchiveType } from '../formats/ba2/readBa2ArchiveType';
 import { BsaReader } from '../formats/bsa';
 import { log } from '../logger';
@@ -168,22 +168,52 @@ const collectBethesdaArchivesInDirs = (dirs: string[]): string[] => {
   return [...archives];
 };
 
-/** Extract every BA2/BSA under `root` and build a provenance manifest. */
+/** Remove another language's voice archive unread: its takes would replace the source ones. */
+const dropForeignVoiceArchive = (
+  archivePath: string,
+  extractRoot: string,
+): ModImportArchiveRecord => {
+  const fileName = path.basename(archivePath);
+  fs.unlinkSync(archivePath);
+  log.debug(`Removed ${fileName}: voice archive of another language`);
+  return {
+    fileName,
+    relativePath: relativeFromRoot(extractRoot, archivePath),
+    packing: path.extname(archivePath).toLowerCase() === '.bsa' ? 'bsa' : 'ba2',
+    extracted: false,
+    skipReason: 'voice archive of another language',
+    entries: [],
+  };
+};
+
+/**
+ * Extract every BA2/BSA under `root` and build a provenance manifest.
+ *
+ * @param srcLang - The language the mod is translated from. Given it, a voice
+ *   archive of another language is dropped when the source-language one is
+ *   there too: they hold the same paths and would overwrite each other.
+ */
 export const extractAllBethesdaArchivesInTreeWithManifest = (
   root: string,
   scopeDirs: string[] = [root],
+  srcLang?: string,
 ): {
   archives: ModImportArchiveRecord[];
   files: Record<string, ModImportFileProvenance>;
 } => {
   const archives = collectBethesdaArchivesInDirs(scopeDirs);
   archives.sort((a, b) => b.length - a.length);
+  const foreign = new Set(srcLang ? foreignVoiceArchives(archives, srcLang) : []);
 
   const archiveRecords: ModImportArchiveRecord[] = [];
   const files: Record<string, ModImportFileProvenance> = {};
 
   for (const archivePath of archives) {
     if (!fs.existsSync(archivePath)) continue;
+    if (foreign.has(archivePath)) {
+      archiveRecords.push(dropForeignVoiceArchive(archivePath, root));
+      continue;
+    }
     const result = extractBethesdaArchiveInPlaceWithManifest(archivePath, root);
     if (!result) continue;
     archiveRecords.push(result.archive);
