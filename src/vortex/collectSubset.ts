@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { foreignVoiceArchives } from '../formats/ba2';
 import { isSecondaryPluginPath } from '../import/mod/importAnchor';
 import type { VortexInventoryFile } from './types';
 import { toPosixRel } from './hashSubset';
@@ -37,10 +38,21 @@ const walkLoose = (
   }
 };
 
+/** The files without the voice archives of other languages the source language also has. */
+const withoutForeignVoice = <T>(
+  files: T[],
+  absPathOf: (file: T) => string,
+  srcLang: string | undefined,
+): T[] => {
+  if (!srcLang) return files;
+  const foreign = new Set(foreignVoiceArchives(files.map(absPathOf), srcLang));
+  return foreign.size === 0 ? files : files.filter((file) => !foreign.has(absPathOf(file)));
+};
+
 const listTranslatableFiles = (root: string, options: VortexSyncFileOptions): string[] => {
   const files: string[] = [];
   walkLoose(root, root, files, options);
-  return files;
+  return withoutForeignVoice(files, (file) => file, options.srcLang);
 };
 
 /**
@@ -121,6 +133,9 @@ export const collectNamedPluginFiles = (
       }
     }
   }
+
+  const kept = withoutForeignVoice(files, (file) => file.absPath, options.srcLang);
+  if (kept.length !== files.length) files.splice(0, files.length, ...kept);
 
   if (options.videos) {
     const videoDir = path.join(dataDir, 'Video');

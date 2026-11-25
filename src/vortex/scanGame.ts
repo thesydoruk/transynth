@@ -56,6 +56,8 @@ const withoutVortexDeployed = (
 export type ScanGameOptions = {
   /** Count the cutscene videos of the main master; off unless the agent dubs them. */
   videos?: boolean;
+  /** The language the mods are translated from; see `VortexSyncFileOptions.srcLang`. */
+  srcLang?: string;
 };
 
 export const scanGameUnits = async (
@@ -101,6 +103,7 @@ export const scanGameUnits = async (
       dataDir,
       collectNamedPluginFiles(dataDir, actual, {
         videos: options.videos === true && lower === mainMaster,
+        srcLang: options.srcLang,
       }),
     );
     if (files.length === 0) continue;

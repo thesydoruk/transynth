@@ -97,6 +97,43 @@ describe('vortex sync file selection', () => {
     }
   });
 
+  it("leaves the other languages' voice archives out of a unit", () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vortex-voice-lang-'));
+    try {
+      fs.writeFileSync(path.join(dataDir, 'SFBGS003.esm'), 'esm');
+      writeGnrlStub(path.join(dataDir, 'SFBGS003 - Main.ba2'));
+      for (const language of ['de', 'en', 'es', 'fr', 'ja']) {
+        writeGnrlStub(path.join(dataDir, `SFBGS003 - Voices_${language}.ba2`));
+      }
+      const names = (srcLang?: string): string[] =>
+        collectNamedPluginFiles(dataDir, 'SFBGS003.esm', { srcLang })
+          .map((f) => f.relPath)
+          .sort();
+
+      expect(names('en')).toEqual([
+        'SFBGS003 - Main.ba2',
+        'SFBGS003 - Voices_en.ba2',
+        'SFBGS003.esm',
+      ]);
+      expect(names('ja')).toContain('SFBGS003 - Voices_ja.ba2');
+      expect(names('ja')).not.toContain('SFBGS003 - Voices_en.ba2');
+      // No source language given, or none of the archives is in it: nothing is left out.
+      expect(names()).toHaveLength(7);
+      expect(names('uk')).toHaveLength(7);
+
+      const folderNames = collectFolderUnitFiles(dataDir, { srcLang: 'en' })
+        .map((f) => f.relPath)
+        .sort();
+      expect(folderNames).toEqual([
+        'SFBGS003 - Main.ba2',
+        'SFBGS003 - Voices_en.ba2',
+        'SFBGS003.esm',
+      ]);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
   it('collects staging translation + voice files and ignores SFX', () => {
     const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'vortex-mod-'));
     try {

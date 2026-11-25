@@ -141,6 +141,7 @@ if (needInventory) {
     gameDir: argv['game-dir'] as string,
     group: argv.group,
     channel,
+    srcLang: argv['src-lang'],
   });
 
   log.info(

@@ -19,14 +19,19 @@ export const buildVortexInventory = async (opts: {
   hashFile?: FileHasher;
   /** Count the cutscene videos (the game's and the mods') as part of their units. */
   videos?: boolean;
+  /** The language the mods are translated from: voice archives of other languages stay out. */
+  srcLang?: string;
 }): Promise<VortexInventory> => {
   const stagingPath = resolveDirectoryInput(opts.stagingPath);
   const gameDir = resolveDirectoryInput(opts.gameDir);
   const channel = opts.channel ?? 'all';
   const videos = opts.videos === true;
+  const { srcLang } = opts;
 
   const modUnits =
-    channel === 'game' ? [] : await scanStagingUnits(stagingPath, opts.hashFile, { videos });
+    channel === 'game'
+      ? []
+      : await scanStagingUnits(stagingPath, opts.hashFile, { videos, srcLang });
   const ownedPlugins = stagingPluginBasenames(modUnits);
   const gameScan =
     channel === 'mods'
@@ -35,7 +40,7 @@ export const buildVortexInventory = async (opts: {
           gameRelease: { versionLabel: 'skipped', releaseHash: '' },
           dataDir: path.join(gameDir, 'Data'),
         }
-      : await scanGameUnits(opts.game, gameDir, ownedPlugins, opts.hashFile, { videos });
+      : await scanGameUnits(opts.game, gameDir, ownedPlugins, opts.hashFile, { videos, srcLang });
 
   return {
     game: opts.game,
