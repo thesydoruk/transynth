@@ -1,4 +1,5 @@
 import { resolveFo4PromptFamily } from '../../games/creation-engine/prompts/fo4/families/resolve';
+import { resolveSf1PromptFamily } from '../../games/creation-engine/prompts/sf1/resolve';
 import {
   partitionByPromptFamily,
   resolveBatchPromptFamily,
@@ -30,7 +31,41 @@ describe('resolveFo4PromptFamily', () => {
   });
 });
 
+describe('resolveSf1PromptFamily', () => {
+  it("files the silent player's lines under dialog with every other response", () => {
+    expect(resolveSf1PromptFamily('INFO', 'NAM1')).toBe('dialog');
+    expect(resolveSf1PromptFamily('INFO', 'RNAM')).toBe('dialog');
+  });
+
+  it('reads terminal menus, slates and loading tips as prose', () => {
+    expect(resolveSf1PromptFamily('TMLM', 'BTXT')).toBe('prose');
+    expect(resolveSf1PromptFamily('TERM')).toBe('prose');
+    expect(resolveSf1PromptFamily('BOOK', 'DESC')).toBe('prose');
+    expect(resolveSf1PromptFamily('LSCR')).toBe('prose');
+  });
+
+  it('maps quests, messages and character creation', () => {
+    expect(resolveSf1PromptFamily('QUST', 'NNAM')).toBe('quest');
+    expect(resolveSf1PromptFamily('MESG')).toBe('quest');
+    expect(resolveSf1PromptFamily('DIAL')).toBe('quest');
+    expect(resolveSf1PromptFamily('HDPT')).toBe('face');
+    expect(resolveSf1PromptFamily('RACE')).toBe('face');
+  });
+
+  it('defaults names, ship parts and interface strings to item', () => {
+    expect(resolveSf1PromptFamily('GBFM', 'FULL')).toBe('item');
+    expect(resolveSf1PromptFamily('PNDT', 'FULL')).toBe('item');
+    expect(resolveSf1PromptFamily('UI', 'Translate_en')).toBe('item');
+    expect(resolveSf1PromptFamily(null)).toBe('item');
+  });
+});
+
 describe('resolvePromptFamily', () => {
+  it('uses the Starfield families for sf1', () => {
+    expect(resolvePromptFamily('sf1', 'TMLM', 'BTXT')).toBe('prose');
+    expect(resolvePromptFamily('sf1', 'INFO', 'NAM1')).toBe('dialog');
+  });
+
   it('returns default outside FO4', () => {
     expect(resolvePromptFamily('sse', 'INFO', 'NAM1')).toBe('default');
     expect(resolvePromptFamily('fnv', 'BOOK')).toBe('default');

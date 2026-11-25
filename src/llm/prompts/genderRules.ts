@@ -2,13 +2,27 @@
  * Ukrainian gender rules for Bethesda game prompts (not Disco Elysium).
  *
  * Fields come from the plugin. Do not guess player gender. Register («ти»/«ви»)
- * is per-game: most titles keep formal «ви»; Fallout 4 wasteland uses «ти».
+ * is per-game: most titles keep formal «ви»; Fallout 4 wasteland uses «ти»; a game
+ * that picks the register by character takes `per-character`.
  */
 
+import {
+  UK_PER_CHARACTER_REGISTER_TRANSLATE,
+  UK_PER_CHARACTER_SECOND_PERSON_TRANSLATE,
+  UK_PER_CHARACTER_SECOND_PERSON_VERIFY,
+  UK_PER_CHARACTER_YOUR_TO_PLAYER,
+} from './genderRulesPerCharacter';
 import { promptJsonItems } from './promptJsonFormat';
 
-/** How the game addresses the player in the second person. */
-export type UkPlayerRegister = 'formal-vy' | 'wasteland-ty';
+/**
+ * How the game addresses the player in the second person.
+ *
+ * `per-character` is `wasteland-ty` without Fallout 4 in it: the player's gender
+ * is hidden by recasting, and whether a character says «ти» or «ви» is the
+ * game's own rule. The text of the two older registers is frozen — touching it
+ * has measurably lowered Fallout 4 quality before.
+ */
+export type UkPlayerRegister = 'formal-vy' | 'wasteland-ty' | 'per-character';
 
 export const UK_GENDER_RECAST_ITEMS = [
   {
@@ -385,18 +399,20 @@ const UK_ENDEARMENT_VERIFY = `- «любий» / «люба» як пестли�
 
 const endearmentTranslate = (register: UkPlayerRegister): string => {
   const recast =
-    register === 'wasteland-ty'
-      ? 'Перефразуй увесь присудок: теперішній час, наказ, безособове. Не ховай рід через «ви».'
-      : 'Перефразуй увесь присудок: теперішній час, наказ, «ви»+множина або безособове.';
+    register === 'formal-vy'
+      ? 'Перефразуй увесь присудок: теперішній час, наказ, «ви»+множина або безособове.'
+      : 'Перефразуй увесь присудок: теперішній час, наказ, безособове. Не ховай рід через «ви».';
   const perfect =
-    register === 'wasteland-ty'
-      ? '"You\'re perfect, my dear." → «Оце так, золотко.»'
-      : '"You\'re perfect, my dear." → «Ви прекрасні, золотко.»';
-  return `- **Пестливі звертання** (honey, hon, sweetheart, sweetie, darling, darlin', dear, love, babe, baby): гендерно-нейтральні іменники «сонечко», «золотко», «серденько» — чергуй за тоном. НІКОЛИ «любий» / «люба» **до людини**. «my dear» → «моє сонечко» / «моє золотко» / «моє серденько». Якщо слово — прикметник до іменника («Home Sweet Home», «sweet girl», «любий Піп-бой») — звичайний прикметник, не звертання.
+    register === 'formal-vy'
+      ? '"You\'re perfect, my dear." → «Ви прекрасні, золотко.»'
+      : '"You\'re perfect, my dear." → «Оце так, золотко.»';
+  const adjective = register === 'per-character' ? '«любий дім»' : '«любий Піп-бой»';
+  return `- **Пестливі звертання** (honey, hon, sweetheart, sweetie, darling, darlin', dear, love, babe, baby): гендерно-нейтральні іменники «сонечко», «золотко», «серденько» — чергуй за тоном. НІКОЛИ «любий» / «люба» **до людини**. «my dear» → «моє сонечко» / «моє золотко» / «моє серденько». Якщо слово — прикметник до іменника («Home Sweet Home», «sweet girl», ${adjective}) — звичайний прикметник, не звертання.
 - **Весь рядок, не лише звертання**: у репліці ДО гравця (\`addressee_gender: "any"\`) або коли стать адресата невідома жодна форма другої особи не сміє маркувати рід — ні «ти міг би / ти допомогла / ти впевнена», ні «ви прекрасна». ${recast} "Thanks, honey. You were a big help." → «Дякую за допомогу, сонечко.»; "Hon, could you help me?" → «Сонечко, можеш допомогти?»; ${perfect} Якщо адресат — конкретний NPC з male/female, узгоджуй рід як звичайно.`;
 };
 
 const playerSecondPersonTranslate = (register: UkPlayerRegister): string => {
+  if (register === 'per-character') return UK_PER_CHARACTER_SECOND_PERSON_TRANSLATE;
   if (register === 'wasteland-ty') {
     return `  - **Немає розвилки на стать** (\`any\` / RNAM / \`addressee_kind=player\` при порожньому gender) → не калькуй минулий час і прикметник («я був/згоден/звик», «ти готовий/міг», «знайшла», «сам»). Перепиши **весь** присудок: спочатку теперішній час без роду, далі наказ, стан, іменник, результат. Слэш «зробив/ла», дві статі в одному рядку («Будь обережною там. Будь обережним там.») і «ви»/«будьте» як милиця роду — заборонені. Не вгадуй стать з професії чи тону.
   - \`addressee_gender: "any"\` / порожній gender при \`addressee_kind=player\` → **до гравця**. Не вгадуй Нору («готова») і не став чоловічий за замовчуванням («готовий/прийшов/здувся/привернув»). «Ну що, рушаємо?», «От і слушно», «Усе готово?», «Тоді рушай», «Схоже, тобі нелегко». Суб'єкт можна перенести («Інститут уже звернув на тебе увагу»), а не «ти привернув».
@@ -410,12 +426,15 @@ ${UK_WASTELAND_GENDER_RECAST_EXAMPLES}`;
   - \`speaker_gender: "male"/"female"\` при \`speaker: "Player"\` → **стать-специфічна версія гравця** (окремий INFO для Nate/Nora): переклади з відповідним родом першої особи.`;
 };
 
-const playerRegisterTranslate = (register: UkPlayerRegister): string =>
-  register === 'wasteland-ty'
+const playerRegisterTranslate = (register: UkPlayerRegister): string => {
+  if (register === 'per-character') return UK_PER_CHARACTER_REGISTER_TRANSLATE;
+  return register === 'wasteland-ty'
     ? `- **Звертання до гравця**: регістр «ти»/«ви» — за правилами гри (пустка на ти). Рід ховай перефразом, не ввічливістю. Слэш «зробив/ла» заборонено.`
     : `- **Звертання до гравця**: «ви» з формами множини («Ви готові?»), не «Ти готовий/готова?» — коли \`addressee_gender\` є \`any\` або поле відсутнє, а рядок звернений до гравця.`;
+};
 
 const playerSecondPersonVerify = (register: UkPlayerRegister): string => {
+  if (register === 'per-character') return UK_PER_CHARACTER_SECOND_PERSON_VERIFY;
   if (register === 'wasteland-ty') {
     return `  - Немає розвилки: калька з родом («ти готовий», «я був/згоден/звик», слеш «зробив/ла», дві статі підряд, «ви»/«будьте» лише щоб сховати рід) → **"suspicious"**; suggestion — одна репліка без роду.
   - \`addressee_gender: "any"\` (\`addressee: "Player"\`) → **до гравця**: нейтральний «ти» або перефраз → "ok". «Ви» лише коли голос мовця цього вимагає (Інститут, штаб, Кодсворт-компаньйон).
@@ -430,17 +449,20 @@ ${UK_WASTELAND_GENDER_RECAST_EXAMPLES_FULL}`;
   - \`speaker_gender: "male"/"female"\` при \`speaker: "Player"\` → стать-специфічна версія гравця: відповідний рід першої особи → "ok".`;
 };
 
-const yourToPlayer = (register: UkPlayerRegister): string =>
-  register === 'wasteland-ty'
+const yourToPlayer = (register: UkPlayerRegister): string => {
+  if (register === 'per-character') return UK_PER_CHARACTER_YOUR_TO_PLAYER;
+  return register === 'wasteland-ty'
     ? `- **«your» до гравця**: «твій/твоя/твоє» узгоджуй з **іменником** («Твоє повернення», «твій Піп-бой»), не з невидимою статтю гравця. Або іменник без присвійника. Не «Твій повернення», не «ваші» як милиця.`
     : `- **«your» до гравця**: «ваші», нейтральний іменник («Зброя в інвентарі») або перефраз без присвійника.`;
+};
 
 /**
  * Gender rules for a translation prompt.
  *
  * @param playerLabel - The game's player character in Ukrainian nominative,
  * e.g. «Драконоборець». Kept for call-site clarity.
- * @param register - Second-person default. Fallout 4 uses \`wasteland-ty\`.
+ * @param register - Second-person default. Fallout 4 uses \`wasteland-ty\`; a
+ * game with its own per-character «ти» / «ви» list uses \`per-character\`.
  */
 export const buildUkGenderTranslateRules = (
   playerLabel: string,

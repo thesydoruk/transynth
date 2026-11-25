@@ -14,8 +14,13 @@ description: Run a whole-corpus translation review in Transynth — cut a mod or
 | Sim Settlements 2, моди 120–123 (`ss2-uk-…`) | 2026-10-29 | 121 728 | 1 007  | 43 %       |
 | Disco Elysium, мод 133 (`disco-uk-…`)        | 2026-11-03 | 90 802  | 744    | 69 %       |
 
+Той самий конвеєр у режимі перекладу з нуля (батчі з порожнім `tr`, агент пише `old: ""`):
+Starfield, моди 259–272 (`starfield-uk-2026-11-24`) — 238 422 рядки, 2 081 батч; після
+перекладу — проходи уніфікації арбітрами (назви, "ти / ви" по персонажах, однакові репліки).
+
 Стиль, рід, регістр, голоси й канон — скіл гри: `fo4-uk-translate` (FO4, DLC, CC, моди;
-SS2 — його `references/ss2.md`), `disco-uk-translate`; цей скіл — лише конвеєр.
+SS2 — його `references/ss2.md`), `disco-uk-translate`, `starfield-uk-translate`; цей скіл —
+лише конвеєр.
 
 ## 0. Узгодь з користувачем до старту
 

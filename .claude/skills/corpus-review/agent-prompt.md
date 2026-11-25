@@ -2,8 +2,8 @@
 
 Підстав `<DIR>` (робоча тека вичитки, абсолютний шлях), `<REPO>` (корінь репозиторію),
 `<SKILL>` (скіл гри: `fo4-uk-translate` для FO4 і його модів, `disco-uk-translate` для Disco
-Elysium), список батчів і, для модів, нотатки з `references/mods.md` чи `references/ss2.md`
-скілу `fo4-uk-translate`.
+Elysium, `starfield-uk-translate` для Starfield), список батчів і, для модів, нотатки з
+`references/mods.md` чи `references/ss2.md` скілу `fo4-uk-translate`.
 
 ---
 
