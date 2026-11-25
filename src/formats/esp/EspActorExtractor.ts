@@ -26,6 +26,7 @@
  * from being read as the record's own.
  */
 import { log } from '../../logger';
+import { decodeGameText } from '../strings';
 import type { ActorRecord, EspActorIndex, VoiceTypeRecord } from '../types';
 import {
   GRUP_HEADER_SIZE,
@@ -122,7 +123,7 @@ export class EspActorExtractor {
             const lstringId = data.readUInt32LE(ds);
             if (lstringId !== 0) actor.nameLStringId = lstringId;
           } else {
-            const text = data.toString('utf8', ds, de).replace(/\0/g, '');
+            const text = decodeGameText(data, ds, de).replace(/\0/g, '');
             if (text) actor.nameText = text;
           }
         }

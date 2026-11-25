@@ -6,6 +6,7 @@
  * (or "*" to insert the base item FULL name, which is not stored as WNAM text).
  * The WNAM lstring is laid out the same in all three games.
  */
+import { decodeGameText } from '../strings';
 import { forEachSubrecord, type ComponentBrackets } from './recordData';
 
 export type InnrWnamRow = { path: string; text: string };
@@ -26,7 +27,7 @@ export const readInnrWnamText = (
     return lstrId === 0 ? null : String(lstrId);
   }
   if (subSize <= 0) return null;
-  const text = data.toString('utf8', dataStart, dataEnd).replace(/\0/g, '');
+  const text = decodeGameText(data, dataStart, dataEnd).replace(/\0/g, '');
   return isTranslatableWnamText(text) ? text : null;
 };
 

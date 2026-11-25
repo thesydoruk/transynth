@@ -1,3 +1,4 @@
+export { decodeGameText } from './gameText';
 export { parseStringsBuffer, stringsTypeFromPath, writeStringsBuffer } from './stringsBuffer';
 export { resolveLooseStringsDirForPlugin } from './looseStringsDir';
 export {

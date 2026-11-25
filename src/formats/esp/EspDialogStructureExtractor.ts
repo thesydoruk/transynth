@@ -14,6 +14,7 @@
  * string tables are resolved elsewhere.
  */
 import { log } from '../../logger';
+import { decodeGameText } from '../strings';
 import type { BranchRecord, DialOwnership, QuestRecord } from '../types';
 import {
   GRUP_HEADER_SIZE,
@@ -105,7 +106,7 @@ export class EspDialogStructureExtractor {
         if (subSig === 'EDID') {
           edid = data.toString('utf8', ds, de).replace(/\0/g, '');
         } else if (subSig === 'FULL' && subSize > 0 && !(this.isLocalized && subSize === 4)) {
-          const text = data.toString('utf8', ds, de).replace(/\0/g, '');
+          const text = decodeGameText(data, ds, de).replace(/\0/g, '');
           if (text) name = text;
         } else if (subSig === 'INDX' && (subSize === 2 || subSize === 4)) {
           // The stage number is the leading uint16 in every title. Skyrim and
