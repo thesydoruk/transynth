@@ -109,6 +109,7 @@ const registerFolderPlugins = async (
     extractRoot: params.extractDir,
     container: { fileName: params.fileName, archivePath: params.zipPath },
     scopeDirs: [params.extractDir],
+    srcLang: params.srcLang,
   });
   const plugins = filterPrimaryPlugins(discoverModFiles(params.extractDir).plugins).sort((a, b) =>
     comparePluginNames(path.basename(a), path.basename(b)),

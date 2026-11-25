@@ -66,6 +66,59 @@ describe('extractAllBethesdaArchivesInTreeWithManifest', () => {
   });
 });
 
+describe('voice archives in several languages', () => {
+  const take = 'sound/voice/dub.esm/npcfmoara/0004487f.wem';
+  const LANGUAGES = ['de', 'en', 'es', 'fr', 'ja'];
+
+  const writeVoiceArchives = (root: string, languages: readonly string[]): void => {
+    for (const language of languages) {
+      const ba2 = writeBa2([{ name: take, data: Buffer.from(`take in ${language}`) }]);
+      fs.writeFileSync(path.join(root, `Dub - Voices_${language}.ba2`), ba2);
+    }
+  };
+
+  it('keeps the takes of the source language whatever order the archives come in', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'extract-voice-lang-'));
+    tempArtifacts.push(root);
+    writeVoiceArchives(root, LANGUAGES);
+
+    const { archives, files } = extractAllBethesdaArchivesInTreeWithManifest(root, [root], 'en');
+
+    expect(fs.readFileSync(path.join(root, take), 'utf8')).toBe('take in en');
+    expect(files[take]?.sourceArchiveRelativePath).toBe('Dub - Voices_en.ba2');
+    expect(archives.filter((archive) => archive.extracted).map((a) => a.fileName)).toEqual([
+      'Dub - Voices_en.ba2',
+    ]);
+    expect(archives.find((a) => a.fileName === 'Dub - Voices_ja.ba2')).toMatchObject({
+      extracted: false,
+      skipReason: 'voice archive of another language',
+      entries: [],
+    });
+    // Nothing of the dropped archives stays behind to be found as a companion archive.
+    expect(fs.readdirSync(root).filter((name) => name.endsWith('.ba2'))).toEqual([]);
+  });
+
+  it('unpacks the only language there is when the source one is absent', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'extract-voice-lang-'));
+    tempArtifacts.push(root);
+    writeVoiceArchives(root, ['de']);
+
+    extractAllBethesdaArchivesInTreeWithManifest(root, [root], 'en');
+
+    expect(fs.readFileSync(path.join(root, take), 'utf8')).toBe('take in de');
+  });
+
+  it('passes the source language of the import down to the extraction', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'extract-voice-lang-'));
+    tempArtifacts.push(root);
+    writeVoiceArchives(root, LANGUAGES);
+
+    extractGameArchivesForImport({ extractRoot: root, srcLang: 'ja' });
+
+    expect(fs.readFileSync(path.join(root, take), 'utf8')).toBe('take in ja');
+  });
+});
+
 describe('extractGameArchivesForImport', () => {
   it('writes import-manifest.json with container metadata', () => {
     const uploadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'import-extract-'));

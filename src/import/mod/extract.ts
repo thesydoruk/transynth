@@ -57,6 +57,8 @@ export type BuildModImportExtractManifestOptions = {
     archivePath: string;
   };
   scopeDirs?: string[];
+  /** The language the mod is translated from: voice archives of other languages are dropped. */
+  srcLang?: string;
 };
 
 /** Extract in-game archives under `extractRoot` and build a provenance manifest. */
@@ -65,7 +67,11 @@ const buildModImportExtractManifest = (
 ): ModImportExtractManifest => {
   const extractRoot = path.resolve(options.extractRoot);
   const scopeDirs = options.scopeDirs ?? [extractRoot];
-  const { archives, files } = extractAllBethesdaArchivesInTreeWithManifest(extractRoot, scopeDirs);
+  const { archives, files } = extractAllBethesdaArchivesInTreeWithManifest(
+    extractRoot,
+    scopeDirs,
+    options.srcLang,
+  );
 
   const containerPacking = options.container
     ? containerPackingFromName(options.container.fileName)

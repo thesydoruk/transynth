@@ -9,3 +9,4 @@ export {
   isRepackableBethesdaArchive,
   shouldCompressArchiveEntry,
 } from './creationKitArchiveRules';
+export { foreignVoiceArchives } from './voiceArchiveLanguage';
