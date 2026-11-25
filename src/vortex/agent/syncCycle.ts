@@ -117,6 +117,7 @@ export const scanForSync = async (ctx: SyncContext) => {
     channel: ctx.config.channel,
     hashFile: cachedFileHasher(ctx.cache, undefined, counters),
     videos: ctx.config.videos,
+    srcLang: ctx.config.srcLang,
   });
   ctx.onInventory?.(inventory);
   const exportOrder = readExportOrder(ctx.config);

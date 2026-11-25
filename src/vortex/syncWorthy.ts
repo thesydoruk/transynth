@@ -60,6 +60,12 @@ export const hasVortexImportAnchor = (relPaths: readonly string[]): boolean =>
 export type VortexSyncFileOptions = {
   /** Count the cutscene videos (`Video/*.bk2`) as part of a unit. Off unless the agent dubs them. */
   videos?: boolean;
+  /**
+   * The language the mods are translated from. Given it, a unit leaves out the
+   * voice archives of other languages (`- Voices_ja.ba2` beside `- Voices_en.ba2`):
+   * they hold the same takes, and the server drops them unread.
+   */
+  srcLang?: string;
 };
 
 export const isVortexSyncFile = (
