@@ -29,11 +29,13 @@
  *
  * For localized plugins (TES4.flags & 0x80): translatable subrecords contain
  * a uint32 LString ID (4 bytes). Resolve with .STRINGS/.DLSTRINGS/.ILSTRINGS.
- * For non-localized: translatable subrecords contain null-terminated UTF-8 text.
+ * For non-localized: translatable subrecords contain null-terminated text, UTF-8
+ * or Windows-1252 (see `strings/gameText.ts`).
  */
 
 import fs from 'fs';
 import { inflateSync } from 'zlib';
+import { decodeGameText } from '../strings';
 import type { TranslatableSubrecords } from '../subrecords';
 import { extractInnrWnamRows } from './innrStrings';
 import { log } from '../../logger';
@@ -414,7 +416,7 @@ export class EspReader {
           }
         } else if (!this.info.isLocalized && subSize > 0) {
           // Direct text
-          const text = recordData.toString('utf8', dataStart, dataEnd).replace(/\0/g, '');
+          const text = decodeGameText(recordData, dataStart, dataEnd).replace(/\0/g, '');
           if (text) {
             subRows.push({ path: subSig, text });
           }

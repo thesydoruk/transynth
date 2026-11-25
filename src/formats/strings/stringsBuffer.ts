@@ -7,7 +7,8 @@
  *   count    : uint32  — number of entries
  *   dataSize : uint32  — total size of the text blob in bytes
  *   entries  : Array<{ id: uint32, offset: uint32 }> — count entries, each 8 bytes
- *   textBlob : Buffer  — dataSize bytes; each string is null-terminated UTF-8
+ *   textBlob : Buffer  — dataSize bytes; each string is null-terminated, UTF-8 or
+ *                        Windows-1252 (see `gameText.ts`); always written as UTF-8
  *
  * STRINGS uses null-terminated strings directly.
  * DLSTRINGS and ILSTRINGS prefix each string with a uint32 length before the text
@@ -16,6 +17,7 @@
 
 import { log } from '../../logger';
 import type { StringsEntry, StringsType } from '../types';
+import { decodeGameText } from './gameText';
 
 /**
  * Detect the string table type from a file path.
@@ -42,7 +44,7 @@ export const stringsTypeFromPath = (filePath: string): StringsType => {
  *
  * @param buf - Raw file contents.
  * @param type - String table variant that controls how the payload is decoded.
- * @returns A map from numeric string IDs to decoded UTF‑8 text.
+ * @returns A map from numeric string IDs to decoded text.
  */
 export const parseStringsBuffer = (buf: Buffer, type: StringsType): Map<number, string> => {
   const result = new Map<number, string>();
@@ -70,14 +72,14 @@ export const parseStringsBuffer = (buf: Buffer, type: StringsType): Map<number, 
     if (type === 'STRINGS') {
       // Null-terminated string
       const end = buf.indexOf(0, absOff);
-      text = buf.toString('utf8', absOff, end === -1 ? buf.length : end);
+      text = decodeGameText(buf, absOff, end === -1 ? buf.length : end);
     } else {
       // DLSTRINGS / ILSTRINGS: uint32 length prefix (includes null terminator)
       if (absOff + 4 > buf.length) continue;
       const len = buf.readUInt32LE(absOff);
       const strStart = absOff + 4;
       const strEnd = strStart + len - 1; // exclude null terminator
-      text = buf.toString('utf8', strStart, Math.min(strEnd, buf.length));
+      text = decodeGameText(buf, strStart, Math.min(strEnd, buf.length));
     }
 
     result.set(id, text);

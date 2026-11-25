@@ -15,6 +15,7 @@
 
 import { inflateSync, deflateSync } from 'zlib';
 import { log } from '../../logger';
+import { decodeGameText } from '../strings';
 import type { EspPatch } from '../types';
 import { buildRecordPatchPlan, groupPatchesBySig, type SubrecordSlot } from './espPatchPlan';
 
@@ -220,7 +221,7 @@ const scanSubrecords = (
       slots.push({
         position: bounds.length,
         sig: key,
-        text: recordBuf.toString('utf8', dataStart, end).replace(/\0/g, ''),
+        text: decodeGameText(recordBuf, dataStart, end).replace(/\0/g, ''),
       });
     }
     bounds.push({ start: pos, end, sig });
