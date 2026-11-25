@@ -20,9 +20,10 @@ import { SF1_FUNCTION_KEYWORDS } from '../data/functionKeywords';
 import { STARFIELD_RECORD_LAYOUT } from '../import/recordLayouts';
 import { noNpcReference } from '../data/npcReference';
 import { SF1_UK_GLOSSARY } from '../data/glossary/sf1-uk';
-import { SF1_UK_TRANSLATE_PROMPT } from '../prompts/sf1/translate';
-import { SF1_UK_VERIFY_PROMPT } from '../prompts/sf1/verify';
+import { SF1_UK_NAME_CANON } from '../data/names';
+import { sf1UkTranslatePrompt, sf1UkVerifyPrompt } from '../prompts/sf1/families';
 import { sf1Rules } from '../prompts/rules/sf1';
+import { resolveSf1PromptFamily } from '../prompts/sf1/resolve';
 
 /** Text languages Starfield ships (Steam: nine, no Russian), as file suffixes. */
 const SF1_OFFICIAL_LOCALES = new Set(['en', 'de', 'es', 'fr', 'it', 'ja', 'pl', 'ptbr', 'zhhans']);
@@ -96,10 +97,12 @@ export const starfield: CreationEngineTitle = {
   },
   prompts: {
     label: 'Starfield',
-    translateUk: () => SF1_UK_TRANSLATE_PROMPT,
-    verifyUk: () => SF1_UK_VERIFY_PROMPT,
+    translateUk: (family) => sf1UkTranslatePrompt(family ?? 'item'),
+    verifyUk: (family) => sf1UkVerifyPrompt(family ?? 'item'),
     rules: sf1Rules,
     glossary: SF1_UK_GLOSSARY,
+    nameCanon: SF1_UK_NAME_CANON,
     english: creationEngineEnglishSections('Starfield'),
+    resolveFamily: resolveSf1PromptFamily,
   },
 };

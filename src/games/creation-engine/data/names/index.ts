@@ -11,5 +11,14 @@
 import type { GameNameCanon } from '../../../contract';
 import fo4UkNames from './fo4-uk.json' with { type: 'json' };
 import fo4UkGeneric from './fo4-uk.generic.json' with { type: 'json' };
+import sf1UkNames from './sf1-uk.json' with { type: 'json' };
+import sf1UkGeneric from './sf1-uk.generic.json' with { type: 'json' };
 
 export const FO4_UK_NAME_CANON: GameNameCanon = { names: fo4UkNames, generic: fo4UkGeneric };
+
+/**
+ * Starfield name canon, EN → UK. There is no official Ukrainian release, so the
+ * canon is the project's own, settled in the 2026-11 translation of the base
+ * game and its add-ons.
+ */
+export const SF1_UK_NAME_CANON: GameNameCanon = { names: sf1UkNames, generic: sf1UkGeneric };
