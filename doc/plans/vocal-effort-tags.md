@@ -30,7 +30,7 @@ Items 2 and 4 live in `thesydoruk/fish-studio`, not here.
 
 ## Done on this branch
 
-Detection only. Nothing is wired into synthesis.
+Detection and the plugin reader. Nothing is wired into synthesis.
 
 - `src/voice/vocalEffort/features.ts` — per-clip median pitch (semitones) and high-band
   emphasis of the voiced frames. Both ignore level on purpose: shipped voice files are
@@ -44,12 +44,23 @@ Detection only. Nothing is wired into synthesis.
 - `scripts/scanVocalEffort.ts` (`npm run voice:scan-effort -- <dir> [--calm=<file>]`) —
   ranks a folder of decoded 16-bit WAVs laid out as `<speaker>/<clip>.wav`, prints TSV.
   `--calm` lists the clips a baseline may be built from. Acoustic gate only.
-- Tests: `src/voice/vocalEffort/__tests__/vocalEffort.test.ts`.
+- `src/formats/esp/EspVoiceDirectionExtractor.ts` — the topic (category, subtype) and the
+  actor notes of every INFO of a plugin; `infoResponseNumber.ts` is the response-number
+  rule it shares with `voice/infoResponseNumbers.ts`.
+- `GameVoiceAdapter.loadLineDirections(pluginPath)` (contract) — per voice key, whether the
+  line's topic is calm and what the actor was told. Creation Engine implements it in
+  `games/creation-engine/voice/lineDirections.ts`; nothing calls it yet.
+- Tests: `src/voice/vocalEffort/__tests__/vocalEffort.test.ts`,
+  `src/formats/esp/__tests__/voiceDirection.test.ts`,
+  `src/games/creation-engine/__tests__/lineDirections.test.ts`.
 
-**Verified:** lint, `tsc`, Prettier, 17 tests; the acoustic score against proxy labels on
-8,030 real clips (step 1); the tagging rule against 160 lines labelled by ear (step 4).
-**Not verified:** that a tag changes what the model says — nothing has been synthesized
-with one. The labels are one listener's single pass over five voice types.
+**Verified:** lint, `tsc`, Prettier, the tests; the acoustic score against proxy labels on
+8,030 real clips (step 1); the tagging rule against 160 lines labelled by ear (step 4); the
+tags against the live model, by measurement and by ear (step 2); the plugin reader against
+the real `Fallout4.esm` and `Starfield.esm` (step 3).
+**Not verified:** anything in the running pipeline — the pieces are not connected. The
+labels are one listener's passes over five Fallout 4 voice types; Starfield has layouts
+checked and nothing measured.
 
 ## Next steps
 
@@ -224,21 +235,52 @@ it was to answer is settled — tags work with the LoRA on). Requests are `abTag
 scoring `abMeasure.mts` and `abCompare.mjs`, the page `buildAbPage.mjs`, ratings
 `abLabels.mjs` and `abPick.mjs`, all in the archive folder of step 1.
 
-### 3. Read the plugin-side hints
+### 3. Read the plugin-side hints — done 2026-11-27
 
-Two things have to come from the plugin, and nothing parses them yet: the topic category,
-to pick the calm clips of a baseline, and the actor note, which `decideVocalEffort` takes
-as a cue. The FO4 layouts below were read off `Fallout4.esm` by the step 1 tooling (all
-74,996 `TRDA` are 20 bytes); Starfield's are still from memory. The shares are of the 7,810
-spoken lines of step 1 whose acoustic score reaches 2.0; the counts are labelled lines,
-shout / raised voice / calm.
+Two things come from the plugin: the topic of a line, to pick the calm clips of a baseline,
+and the actor note, which `decideVocalEffort` takes as a cue. `extractVoiceDirection` reads
+both, and `GameVoiceAdapter.loadLineDirections` hands them out under voice keys
+(`<origin>/FORMID6:variant`) as `{ calmTopic, actorNote }`.
 
-- **Topic category — for the baseline.** `DIAL` `DATA` byte 1 is the category, `SNAM` the
-  four-letter subtype. Combat (category 3: `ATCK`, `TAUT`, `CRIL`, `FLBK`, `HIT_`…) 91 %;
-  detection (5: `NOTC` 88 %, `COTN` 36 %) 63 %; scene (2) 8 %; miscellaneous (7: `IDLE`,
-  `HELO`, `GREE`) 4 %. Calm clips for a baseline are categories 2 and 7 plus custom topics.
-  As a cue the category does not hold up by ear: labelled combat lines were 11 / 15 / 9,
-  and pushed ones without a `!` 1 / 2 / 2, so `decideVocalEffort` does not take it.
+Layouts, read off the real masters: `Fallout4.esm` and `Starfield.esm` agree on everything
+this needs — DIAL `DATA` is 4 bytes with the category in byte 1, `SNAM` is the four-letter
+subtype, every INFO sits in a type-7 group of a known DIAL, and `NAM2` follows the `NAM1`
+of each response. They differ only in `TRDA` (20 bytes with a response number in Fallout 4,
+12 without one in Starfield), which the shared response-number rule already covers. So no
+per-title layout was added.
+
+On the masters the reader gives 81,510 voiced responses for `Fallout4.esm` (33,364 with a
+note) in a few seconds and 135,040 for `Starfield.esm` (28,041). Of the 8,055 corpus clips
+it places 8,007 — the rest have no line in the plugin — and agrees with the step 1 index on
+all but four, which replay another INFO's response (`DNAM`) and which the index had missed.
+
+**Calm is the subtype, a missing cue and something to say — all three.** The baseline of
+step 1 was built that way without the parts being told apart. Measured one at a time
+(shouted combat lines reaching 2.0, same corpus):
+
+| baseline built from                                 | shout notes / combat lines at 2.0 |
+| --------------------------------------------------- | --------------------------------- |
+| categories 0, 2, 7 and no cue                       | 59 % / 74 %                       |
+| subtypes `SCEN CUST HELO GREE IDLE IDAT`            | 16 % / 40 %                       |
+| … and no cue (`!`, shout note)                      | 74 % / 84 %                       |
+| … and words left once `*stage directions*` are gone | 90 % / 93 % — the step 1 baseline |
+
+- The category is not to be trusted: the raiders' hit, bleed-out, alert and lost-target
+  topics carry category 0, the one of ordinary player topics. `calmTopic` goes by subtype.
+- A calm topic is not a calm clip. The raiders' custom and scene topics hold the crowd
+  shouting at a fight and "Everybody up! We got trouble!"; their idles are coughs and
+  humming with no text. `hasEffortCue` (exported from `decide.ts`) is the cue test a
+  baseline shares with the tagging rule; "something to say" is what the TTS text rules
+  already decide.
+
+The shares below are of the 7,810 spoken lines of step 1 whose acoustic score reaches 2.0;
+the counts are labelled lines, shout / raised voice / calm.
+
+- **Topic.** Combat (category 3: `ATCK`, `TAUT`, `CRIL`, `FLBK`, `HIT_`…) 91 %; detection
+  (5: `NOTC` 88 %, `COTN` 36 %) 63 %; scene (2) 8 %; miscellaneous (7: `IDLE`, `HELO`,
+  `GREE`) 4 %. As a cue the topic does not hold up by ear: labelled combat lines were
+  11 / 15 / 9, and pushed ones without a `!` 1 / 2 / 2, so `decideVocalEffort` does not
+  take it.
 - **Text.** Lines with `!`: 82 %; without: 8 %. Labelled 17 / 26 / 4 — the cue of
   `shouting`, never enough alone.
 - **Actor notes.** `NAM2` follows its `NAM1`; filled on 37 % of the lines. Useful when it
@@ -248,11 +290,11 @@ shout / raised voice / calm.
   barks among them). `Angry` 35 %, `Afraid` 22 %, `Stern` 18 %, `Neutral` 9 %, `Friendly`
   3 %; labelled angry, afraid and in-pain lines were 2 / 12 / 3 — a raised voice, not a
   shout. Starfield's 12-byte `TRDA` is believed to hold an emotion FormID plus an
-  intensity float. If it is ever read, `infoResponseNumbers.ts` already walks `TRDA` for
-  the response number — extend that walk, do not add a second one.
+  intensity float. If it is ever read, `EspVoiceDirectionExtractor.ts` already walks
+  `TRDA` for the response number — extend that walk, do not add another.
 
-Game-specific parts go through `src/games/contract`; shared code must not compare game ids.
-`infoResponseNumbers.ts` is close to the 300-line limit — check the count and split first if needed.
+Not done here: Starfield is read, not measured — its subtypes carry the same names, but
+whether the same six are its calm ones nobody has checked.
 
 ### 4. Calibrate, then wire the tag in
 
@@ -277,6 +319,9 @@ rule is tuned for precision.
 
 Still to do:
 
+- Build each speaker's baseline from the clips whose line has `calmTopic`, no
+  `hasEffortCue` and a TTS text that is not skipped (step 3 has the numbers); pool the
+  speakers with fewer than `MIN_BASELINE_CLIPS` such clips.
 - Persist per-clip features or the decision so synthesis does not re-analyze every clip
   (speaker baselines need all of a speaker's clips; compute once per import).
 - Call `applyEffortTag` after `stripVoiceNonSpeechBlocks`, behind a per-game voice setting
