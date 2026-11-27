@@ -1,9 +1,10 @@
 import { useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
-import type { VoiceLinePreview } from '../../../../../../api';
+import type { VoiceEffortChoice, VoiceLinePreview } from '../../../../../../api';
 import type { ModAiJobEntry } from '../../../../../../modAiJobsStore';
 import { lineKey, type PlayKind } from '../../voiceLineKeys';
+import type { VoiceLineCounts } from '../../filterVoiceLines';
 import type { VoiceLineFilter } from '../../hooks/useVoiceState';
 import type { CommitAdvance } from './VoiceLineRow';
 import { VoiceLineRow } from './VoiceLineRow';
@@ -33,7 +34,14 @@ export interface VoiceLinesViewProps {
   hiddenLineCount: number;
   filter: VoiceLineFilter;
   onFilterChange: (filter: VoiceLineFilter) => void;
-  counts: { total: number; needsTranslation: number; needsVoice: number };
+  counts: VoiceLineCounts;
+  /** Vocal-effort tagging of the mod's game; unset when the game never tags lines. */
+  effort?: {
+    active: boolean;
+    /** {@link lineKey} of the line whose tag is being saved. */
+    pendingKey: string | null;
+    onChoose: (line: VoiceLinePreview, choice: VoiceEffortChoice) => void;
+  };
   find: string;
   onFindChange: (value: string) => void;
   playingTrack: string | null;
@@ -73,6 +81,7 @@ export const VoiceLinesView = ({
   filter,
   onFilterChange,
   counts,
+  effort,
   find,
   onFindChange,
   playingTrack,
@@ -128,6 +137,7 @@ export const VoiceLinesView = ({
         filter={filter}
         onFilterChange={onFilterChange}
         counts={counts}
+        showEffortFilter={Boolean(effort)}
         find={find}
         onFindChange={onFindChange}
         hiddenLineCount={hiddenLineCount}
@@ -175,6 +185,13 @@ export const VoiceLinesView = ({
                       regenerateLine?.speakerKey === line.speakerKey &&
                       regenerateLine.lineKey === line.lineKey &&
                       regenerateLine.variant === line.variant
+                    }
+                    effort={
+                      effort && {
+                        active: effort.active,
+                        pending: effort.pendingKey === lineKey(line),
+                        onChoose: effort.onChoose,
+                      }
                     }
                     onFocus={() => lineHandlers.onFocus(line)}
                     onEdit={() => lineHandlers.onEdit(line)}

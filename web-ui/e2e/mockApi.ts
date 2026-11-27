@@ -506,6 +506,10 @@ const voiceLines = Array.from({ length: 8 }, (_, i) => ({
   canGenerateVoice: i % 2 === 0,
   ttsSkipReason: null,
   voiceSimilarity: i % 3 === 0 ? 0.42 : null,
+  effortTag: i === 0 ? 'shouting' : i === 3 ? 'loud' : null,
+  effortAutoTag: i === 0 ? 'shouting' : null,
+  effortOverride: i === 3 ? 'loud' : null,
+  effortStrength: i % 2 === 0 ? 2.41 : null,
 }));
 
 type Answer = unknown | ((url: URL) => unknown);
@@ -541,7 +545,13 @@ const routes: Array<[RegExp, Answer]> = [
     /^\/api\/mods\/\d+\/voice\/lines$/,
     (url: URL) =>
       url.searchParams.has('speakerKey')
-        ? { ok: true, speakerKey: url.searchParams.get('speakerKey'), lines: voiceLines }
+        ? {
+            ok: true,
+            speakerKey: url.searchParams.get('speakerKey'),
+            lines: voiceLines,
+            effortTagsSupported: true,
+            effortTagsActive: true,
+          }
         : { ok: true, speakers: voiceSpeakers, totalLines: 13 },
   ],
   [

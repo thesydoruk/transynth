@@ -28,6 +28,7 @@ import {
 import { voiceTakeSource, type VoiceTakeSource } from './referenceVoiceTakeHooks';
 import { FUZ_TAKES, type BuiltVoiceTake, type VoiceTakeFormat } from './takeFormat';
 import { loadTakeSpeakerSexResolver } from './takeSpeakerSex';
+import type { EffortTag } from './vocalEffort';
 import { loadActiveVoiceEffortTags, lookupVoiceEffortTag } from './voiceEffortTags';
 import { voiceTtsPayloadVersionFromPrepared, voiceTtsRequestText } from './voiceTtsPayloadVersion';
 import { resolveTtsBaseUrl, resolveTtsLanguage, type TtsReferenceMode } from './voiceToolPaths';
@@ -54,6 +55,11 @@ export type SynthesizeModVoiceLineOptions = {
   referenceMode?: TtsReferenceMode;
   ttsBaseUrl?: string;
   synthesis?: Partial<TtsSynthesisParams>;
+  /**
+   * Effort tag to synthesize with in place of the stored one (null: none), for the
+   * regenerate review. Left out, the tag is looked up as every other path does.
+   */
+  effortTag?: EffortTag | null;
   /** Return true to abort before the TTS call when the stored stamp is already current. */
   skipIfCurrent?: (payloadVersion: string, takeRel: string) => Promise<boolean> | boolean;
 };
@@ -122,7 +128,16 @@ export const synthesizeModVoiceLineBuffers = async (
   const mod = await loadImportedMod(db, opts.modId);
   const game = opts.game ?? mod.game;
   const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
-  const effortTags = await loadActiveVoiceEffortTags(db, opts.modId, game);
+  const effortTag =
+    opts.effortTag !== undefined
+      ? opts.effortTag
+      : lookupVoiceEffortTag(
+          await loadActiveVoiceEffortTags(db, opts.modId, game),
+          speakerKey,
+          entry.lineKey,
+          entry.variant,
+          entry.originPlugin,
+        );
 
   // The version stamp must hash the line-source transcript and carry the same
   // effort tag, exactly like the batch path (processVoiceLocalizeEntry) —
@@ -133,13 +148,7 @@ export const synthesizeModVoiceLineBuffers = async (
     translation: row.translation,
     speakerSource: referenceSource,
     edid: row.edid,
-    effortTag: lookupVoiceEffortTag(
-      effortTags,
-      speakerKey,
-      entry.lineKey,
-      entry.variant,
-      entry.originPlugin,
-    ),
+    effortTag,
   });
   if (prepared.action === 'skip') {
     return {

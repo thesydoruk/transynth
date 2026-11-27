@@ -7,6 +7,7 @@ import {
 } from '../../../../../../components/CircularProgressButton';
 import type { ModAiJobEntry } from '../../../../../../modAiJobsStore';
 import { ProgressPill } from '../../../DialogsMode/components/ProgressPill';
+import type { VoiceLineCounts } from '../../filterVoiceLines';
 import type { VoiceLineFilter } from '../../hooks/useVoiceState';
 import styles from './VoiceLinesView.module.scss';
 
@@ -19,7 +20,9 @@ export interface VoiceLinesHeaderProps {
   hasReference: boolean;
   filter: VoiceLineFilter;
   onFilterChange: (filter: VoiceLineFilter) => void;
-  counts: { total: number; needsTranslation: number; needsVoice: number };
+  counts: VoiceLineCounts;
+  /** The game tags lines for vocal effort, so the "with effort tag" filter means something. */
+  showEffortFilter?: boolean;
   find: string;
   onFindChange: (value: string) => void;
   hiddenLineCount: number;
@@ -58,6 +61,7 @@ export const VoiceLinesHeader = ({
   filter,
   onFilterChange,
   counts,
+  showEffortFilter = false,
   find,
   onFindChange,
   hiddenLineCount,
@@ -82,6 +86,7 @@ export const VoiceLinesHeader = ({
     { value: 'all', count: counts.total },
     { value: 'needsTranslation', count: counts.needsTranslation },
     { value: 'needsVoice', count: counts.needsVoice },
+    ...(showEffortFilter ? [{ value: 'effortTagged' as const, count: counts.effortTagged }] : []),
   ];
 
   const voiceMenuItems: CircularProgressButtonMenuItem[] = [

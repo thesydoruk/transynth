@@ -15,6 +15,7 @@ import {
 } from './filterVoiceLines';
 import { useVoiceActions } from './hooks/useVoiceActions';
 import { useVoiceData } from './hooks/useVoiceData';
+import { useVoiceEffortChoice } from './hooks/useVoiceEffortChoice';
 import { useVoiceKeyboard } from './hooks/useVoiceKeyboard';
 import { useVoiceLineCursor } from './hooks/useVoiceLineCursor';
 import { useVoiceLineSave } from './hooks/useVoiceLineSave';
@@ -82,9 +83,12 @@ export const VoiceMode = ({
     () => applyVoiceStatusMatch(data.lines, statusMatch.allowedIds),
     [data.lines, statusMatch.allowedIds],
   );
+  // A game that never tags lines has no such chip; do not leave its filter stuck on.
+  const lineFilter =
+    state.filter === 'effortTagged' && !data.effortTagsSupported ? 'all' : state.filter;
   const visibleLines = useMemo(
-    () => selectVisibleVoiceLines(statusLines, state.filter, state.find),
-    [statusLines, state.filter, state.find],
+    () => selectVisibleVoiceLines(statusLines, lineFilter, state.find),
+    [statusLines, lineFilter, state.find],
   );
   const lineCounts = useMemo(() => voiceLineCounts(statusLines), [statusLines]);
   const headerCounts = useMemo(
@@ -109,6 +113,7 @@ export const VoiceMode = ({
     onGenerateSuccess: (line) => playback.handlePlay(line, 'translation'),
   });
 
+  const effortChoice = useVoiceEffortChoice(modId, data);
   const lineView = useVoiceLineView(visibleLines);
   const cursor = useVoiceLineCursor(lineView.lineIds, lineView.lineById);
   const save = useVoiceLineSave({
@@ -181,6 +186,7 @@ export const VoiceMode = ({
     actions.refError,
     actions.generateError,
     save.error,
+    effortChoice.error,
   ]);
 
   const handleSetReference = (line: VoiceLinePreview) => {
@@ -240,9 +246,10 @@ export const VoiceMode = ({
           hasReference={Boolean(data.activeSpeaker?.referencePick)}
           lines={visibleLines}
           hiddenLineCount={hiddenLineCount}
-          filter={state.filter}
+          filter={lineFilter}
           onFilterChange={state.setFilter}
           counts={lineCounts}
+          effort={effortChoice.effort}
           find={state.find}
           onFindChange={state.setFind}
           playingTrack={playback.playingTrack}
@@ -255,6 +262,7 @@ export const VoiceMode = ({
             actions.dismissRefError();
             actions.dismissGenerateError();
             save.dismissError();
+            effortChoice.dismissError();
           }}
           onPlay={playback.handlePlay}
           onSetReference={handleSetReference}
@@ -296,6 +304,8 @@ export const VoiceMode = ({
             srcLang={srcLang}
             targetLang={targetLang}
             hasCurrentTranslation={Boolean(regenerateLine.hasTranslationAudio)}
+            effortTagsSupported={data.effortTagsSupported}
+            effortTagsActive={data.effortTagsActive}
             onClose={() => setRegenerateLine(null)}
             onCommitted={async () => {
               setRegenerateLine(null);

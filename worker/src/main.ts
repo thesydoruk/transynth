@@ -77,7 +77,8 @@ const servedNames = servedIds.map((id) => QUEUE_NAME_BY_ID[id]);
 const activeOnServedQueues = () => listActiveJobs(servedNames);
 
 await migrateJobsToDedicatedQueues();
-if (servedIds.includes('tts')) {
+// Voice synthesis (tts) and vocal effort analysis (cpu) resume after a restart.
+if (servedIds.includes('tts') || servedIds.includes(queueIdForKind('voice-effort'))) {
   await recoverOrphanedVoiceGenerateJobs({ getActiveJobs: activeOnServedQueues });
 }
 if (servedIds.includes('llm')) {

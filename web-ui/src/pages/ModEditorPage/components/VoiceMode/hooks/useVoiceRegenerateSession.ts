@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   api,
+  type VoiceEffortChoice,
   type VoiceLinePreview,
   type VoiceRegenerateParams,
   type VoiceRegeneratePreview,
 } from '../../../../../api';
 import { VOICE_REGENERATE_KEEP_CURRENT_ID } from '../../../../SettingsPage/VoiceTab/voiceSettingsConfig';
 import type { CompareTrack } from '../compareTrack';
+import { currentEffortChoice } from '../voiceEffort';
 
 export const useVoiceRegenerateSession = (
   modId: number,
@@ -18,6 +20,8 @@ export const useVoiceRegenerateSession = (
   sessionId: string,
   onCommitted: () => void,
   stopPlayback: () => void,
+  /** Tags reach synthesis for the game; only then is a choice sent with an attempt. */
+  effortTagsActive = false,
 ) => {
   const { t } = useTranslation();
   const [params, setParams] = useState<VoiceRegenerateParams | null>(null);
@@ -29,6 +33,10 @@ export const useVoiceRegenerateSession = (
   const [generating, setGenerating] = useState(false);
   const [committing, setCommitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Starts from the line's state; keeping an attempt stores its choice on the line.
+  const [effortChoice, setEffortChoice] = useState<VoiceEffortChoice>(() =>
+    currentEffortChoice(line),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -82,6 +90,7 @@ export const useVoiceRegenerateSession = (
         speakerKey: line.speakerKey,
         originPlugin: line.originPlugin ?? undefined,
         params,
+        ...(effortTagsActive ? { effortChoice } : {}),
       });
       const preview: VoiceRegeneratePreview = {
         id: result.previewId,
@@ -90,6 +99,7 @@ export const useVoiceRegenerateSession = (
         audioUrl: result.audioUrl,
         params: result.params,
         voiceSimilarity: result.voiceSimilarity ?? null,
+        effortChoice: result.effortChoice ?? null,
       };
       setPreviews((current) => [...current, preview]);
       setSelectedId(preview.id);
@@ -128,6 +138,8 @@ export const useVoiceRegenerateSession = (
   return {
     params,
     setParams,
+    effortChoice,
+    setEffortChoice,
     selectedId,
     setSelectedId,
     loading,

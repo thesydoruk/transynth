@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { VoiceLinePreview } from '../../../../../../api';
+import type { VoiceEffortChoice, VoiceLinePreview } from '../../../../../../api';
 import { StatusBadge } from '../../../../../../components/StatusBadge';
 import type { CommitAdvance } from '../../../DialogsMode/components/DialogLineRow/DialogLineRow';
 import { playTrackKey, type PlayKind } from '../../voiceLineKeys';
 import { VoiceSimilarityScore } from '../../../VoiceSimilarityScore';
+import { VoiceEffortBadge } from './VoiceEffortBadge';
 import styles from './VoiceLineRow.module.scss';
 
 export type { CommitAdvance };
@@ -21,6 +22,12 @@ export interface VoiceLineRowProps {
   synthesizing?: boolean;
   flashed?: boolean;
   regenerateOpen: boolean;
+  /** Vocal-effort tagging: unset for a game that never tags lines. */
+  effort?: {
+    active: boolean;
+    pending: boolean;
+    onChoose: (line: VoiceLinePreview, choice: VoiceEffortChoice) => void;
+  };
   onFocus: () => void;
   onEdit: () => void;
   onCancel: () => void;
@@ -44,6 +51,7 @@ export const VoiceLineRow = ({
   synthesizing = false,
   flashed = false,
   regenerateOpen,
+  effort,
   onFocus,
   onEdit,
   onCancel,
@@ -167,6 +175,14 @@ export const VoiceLineRow = ({
                 hasTranslationAudio,
               )}
               {hasTranslationAudio && <VoiceSimilarityScore score={line.voiceSimilarity} />}
+              {effort && !line.isOrphanAudio && (
+                <VoiceEffortBadge
+                  line={line}
+                  active={effort.active}
+                  pending={effort.pending}
+                  onChoose={effort.onChoose}
+                />
+              )}
             </>
           )}
         </div>

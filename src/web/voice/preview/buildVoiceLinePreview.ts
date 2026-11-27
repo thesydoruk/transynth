@@ -17,6 +17,7 @@ import { voiceSpeakerRefMatches } from '../../../voice/voiceSpeakerRefs';
 import { lookupVoiceSimilarity } from '../../../voice/voiceSynthesisState';
 import type { VoiceLineCatalog } from '../../../voice/lineCatalog';
 import type { VoiceLinePreview, VoiceSpeakerSummary } from './types';
+import { voiceLineEffortOf, type VoiceLineEffort } from './voiceLineEffort';
 
 /**
  * True when no INFO record carries this FormID — neither in the mod nor in an
@@ -32,6 +33,7 @@ export const buildVoiceLinePreview = (
   context: VoiceLineCatalog,
   entry: VoiceFileEntry,
   speakerKey: string,
+  effort: VoiceLineEffort = voiceLineEffortOf(null),
 ): VoiceLinePreview => {
   const mapKey = voiceTranslationMapKey(entry.lineKey, entry.variant, entry.originPlugin);
   const sourceRow = context.sources.get(mapKey);
@@ -126,6 +128,7 @@ export const buildVoiceLinePreview = (
           entry.originPlugin,
         )
       : null,
+    ...effort,
   };
 };
 

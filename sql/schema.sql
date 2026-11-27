@@ -854,9 +854,17 @@ CREATE TABLE IF NOT EXISTS voice_clip_effort (
   PRIMARY KEY (mod_id, origin_plugin, speaker_key, line_key, variant)
 );
 
-CREATE INDEX IF NOT EXISTS idx_voice_clip_effort_tagged
+-- What a person decided for the take: NULL leaves the derived tag in force,
+-- 'none' means no tag, 'loud' / 'shouting' set one. Analysis never writes it.
+ALTER TABLE voice_clip_effort ADD COLUMN IF NOT EXISTS tag_override TEXT;
+-- A choice made for a take never analyzed creates its row with nothing measured;
+-- NULL `analyzed_at` tells analysis the take still has to be measured.
+ALTER TABLE voice_clip_effort ALTER COLUMN analyzed_at DROP NOT NULL;
+
+DROP INDEX IF EXISTS idx_voice_clip_effort_tagged;
+CREATE INDEX IF NOT EXISTS idx_voice_clip_effort_effective
   ON voice_clip_effort(mod_id)
-  WHERE tag IS NOT NULL;
+  WHERE tag IS NOT NULL OR tag_override IS NOT NULL;
 
 -- ── Voice clips: one row per audio file a mod ships ──────────────────────────
 -- Every game indexes its takes differently — Creation Engine by speaker folder

@@ -64,7 +64,26 @@ export type VoiceLinePreview = {
   ttsSkipReason: VoiceTtsSkipReason | null;
   /** Stored ECAPA cosine for the dubbed take, when known. */
   voiceSimilarity: number | null;
+  /** Vocal-effort tag in force for the take: a person's choice, else the analysis's. */
+  effortTag: VoiceEffortTag | null;
+  /** The tag the analysis derived, whatever a person chose. */
+  effortAutoTag: VoiceEffortTag | null;
+  /** A person's choice; null leaves the derived tag in force. */
+  effortOverride: VoiceEffortOverride | null;
+  /** Measured effort against the speaker's calm baseline; null when not measured. */
+  effortStrength: number | null;
 };
+
+export type VoiceEffortTag = 'shouting' | 'loud';
+export type VoiceEffortOverride = VoiceEffortTag | 'none';
+/** A tag choice for a line: 'auto' leaves it to the analysis. */
+export type VoiceEffortChoice = 'auto' | VoiceEffortOverride;
+
+/** Effort fields of one line, as PUT /api/mods/:id/voice/effort-override returns them. */
+export type VoiceLineEffort = Pick<
+  VoiceLinePreview,
+  'effortTag' | 'effortAutoTag' | 'effortOverride' | 'effortStrength'
+>;
 
 export type VoiceSpeakerRefPick = {
   lineKey: string;
@@ -82,6 +101,10 @@ export type VoiceSpeakerSummary = {
   dubbedCount: number;
   /** Subset of {@link lineCount} with no dialogue record, so never dubbable. */
   orphanCount: number;
+  /** The speaker's takes were analyzed for vocal effort. */
+  effortAnalyzed?: boolean;
+  /** Analysis found enough calm lines to judge the rest by; without it no line is tagged. */
+  effortHasBaseline?: boolean;
 };
 
 export type VoiceSpeakersResponse =
@@ -89,7 +112,15 @@ export type VoiceSpeakersResponse =
   | { ok: false; reason: string; message: string };
 
 export type VoiceSpeakerLinesResponse =
-  | { ok: true; speakerKey: string; lines: VoiceLinePreview[] }
+  | {
+      ok: true;
+      speakerKey: string;
+      lines: VoiceLinePreview[];
+      /** The mod's game tags lines for vocal effort at all. */
+      effortTagsSupported?: boolean;
+      /** Tags reach synthesis: supported and switched on in Settings → Voice. */
+      effortTagsActive?: boolean;
+    }
   | { ok: false; reason: string; message: string };
 
 /** Playable voice lines of a mod, listed as `FORMID6:variant` keys. */
@@ -118,6 +149,8 @@ export type VoiceRegeneratePreview = {
   params: VoiceRegenerateParams;
   /** ECAPA cosine of this attempt against the source take; null when not scored. */
   voiceSimilarity: number | null;
+  /** The effort-tag choice the attempt was made under; null when none applied. */
+  effortChoice?: VoiceEffortChoice | null;
 };
 
 /** Per-line synthesis event from GET /api/mods/:id/voice/live. */

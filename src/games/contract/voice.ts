@@ -8,6 +8,7 @@ import type { VoiceLineCatalog, VoiceLineCatalogError } from '../../voice/lineCa
 import type { VoiceGenerateLineResult } from '../../web/voice/preview/types';
 import type { VoiceResynthParams } from '../../voice/voiceResynth';
 import type { VoiceTakeFormat, VoiceTakeSidecar } from '../../voice/takeFormat/types';
+import type { EffortTag } from '../../voice/vocalEffort';
 
 /**
  * Which lines a mod-wide voice job touches:
@@ -252,10 +253,17 @@ export type GameVoiceAdapter = {
   /** Synthesize one line and write it into the localize directory. */
   synthesizeLine(db: Tx, request: VoiceLineRequest): Promise<VoiceGenerateLineResult>;
 
-  /** Synthesize one line in memory for the regeneration review flow. */
+  /**
+   * Synthesize one line in memory for the regeneration review flow. `effortTag`,
+   * when given, replaces the line's stored vocal-effort tag (null: no tag), so a
+   * person can hear the line both ways; a game that never tags lines ignores it.
+   */
   buildLinePreview(
     db: Tx,
-    request: Omit<VoiceLineRequest, 'localizeDir'> & { referenceMode: TtsReferenceMode },
+    request: Omit<VoiceLineRequest, 'localizeDir'> & {
+      referenceMode: TtsReferenceMode;
+      effortTag?: EffortTag | null;
+    },
   ): Promise<VoiceLinePreviewBuild>;
 
   /**

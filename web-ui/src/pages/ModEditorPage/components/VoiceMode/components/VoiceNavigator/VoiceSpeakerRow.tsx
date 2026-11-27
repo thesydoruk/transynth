@@ -65,6 +65,12 @@ export const VoiceSpeakerRow = memo(
                 {GENDER_SYMBOL[speaker.gender]}
               </span>
             )}
+            {speaker.effortAnalyzed && !speaker.effortHasBaseline && (
+              <span className={styles.noEffortBaseline} title={t('voice.effort.noBaseline')}>
+                {' '}
+                ⊘
+              </span>
+            )}
           </span>
           <span className={styles.rowLines}>{speaker.lineCount}</span>
         </span>

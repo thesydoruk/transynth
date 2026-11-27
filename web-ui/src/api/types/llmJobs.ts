@@ -160,7 +160,13 @@ export type LlmTranslateJobSnapshot = {
   error: string | null;
 };
 
-export type ModAiJobKind = 'translate' | 'verify' | 'skip-detect' | 'gender-detect' | 'voice';
+export type ModAiJobKind =
+  | 'translate'
+  | 'verify'
+  | 'skip-detect'
+  | 'gender-detect'
+  | 'voice'
+  | 'voice-effort';
 export type ModTranslateMode = 'tm' | 'llm';
 
 export type ActiveModAiJob = {

@@ -7,6 +7,10 @@
  * seen and then decides again for all of them, because one new take can move
  * its speaker's baseline. Nothing here synthesizes or touches a localized
  * take: the tags only take effect where a game has them switched on.
+ *
+ * Measurements are saved chunk by chunk (see `measureTakesInChunks`), so a
+ * stopped or killed run is resumed by running it again. A stopped run does not
+ * plan: the tags already in force stay until a run gets to the end.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -15,12 +19,13 @@ import type { Tx } from '../db';
 import { gamePlugin } from '../games/registry';
 import { loadModImportPaths } from '../import/mod/resolvePaths';
 import { loadImportedMod } from '../modImport';
-import { mapWithConcurrency } from '../utils/concurrency';
 import { ensureDir } from '../utils/file';
 import type { VoiceFileEntry } from './discoverVoiceFiles';
 import { voiceTranslationMapKey } from './loadVoiceTranslations';
+import { measureTakesInChunks, type MeasureTakesResult } from './measureTakesInChunks';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { canSynthesizeVoiceLine } from './prepareVoiceTtsText';
+import { saveClipEffortFeatures } from './saveClipEffortFeatures';
 import { readPcmFromWav } from './speakerReference/pcm';
 import {
   buildSpeakerBaselines,
@@ -47,6 +52,8 @@ export type AnalyzeVocalEffortResult = {
   loud: number;
   skipped: boolean;
   reason?: string;
+  /** Stopped before every take was measured; nothing was planned. */
+  cancelled?: boolean;
 };
 
 export type AnalyzeVocalEffortOptions = {
@@ -54,7 +61,18 @@ export type AnalyzeVocalEffortOptions = {
   /** Measure every take again instead of only the new ones. */
   force?: boolean;
   log?: (message: string) => void;
+  /**
+   * Takes with a measurement out of all the mod's takes: first with what earlier
+   * runs left, then after every take this run handles (a failed one counts too).
+   */
+  onProgress?: (done: number, total: number) => void;
+  /** Checked before each take; a stop keeps what was measured and skips planning. */
+  shouldCancel?: () => boolean;
+  /** Takes per saved chunk — what a killed run can lose at most. */
+  chunkSize?: number;
 };
+
+const DEFAULT_CHUNK_SIZE = 500;
 
 const measureTake = async (
   entry: VoiceFileEntry,
@@ -125,22 +143,42 @@ export const analyzeModVocalEffort = async (
     ? new Map<string, EffortFeatures | null>()
     : await loadClipEffortFeatures(db, modId);
   const pending = [...takes].filter(([key]) => !features.has(key));
+  const earlier = takes.size - pending.length;
+  options.onProgress?.(earlier, takes.size);
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'voice-effort-'));
+  let measuredRun: MeasureTakesResult;
   try {
-    await mapWithConcurrency(pending, Math.max(1, options.workers ?? 4), async ([key, take], i) => {
-      try {
-        features.set(key, await measureTake(take.entry, path.join(tempRoot, String(i))));
-        result.measured += 1;
-      } catch {
-        result.failed += 1;
-      }
-      const done = result.measured + result.failed;
-      if (done % 2000 === 0)
-        log(`Vocal effort #${modId}: ${done}/${pending.length} takes measured`);
+    measuredRun = await measureTakesInChunks({
+      pending,
+      workers: options.workers ?? 4,
+      chunkSize: options.chunkSize ?? DEFAULT_CHUNK_SIZE,
+      shouldCancel: options.shouldCancel,
+      measure: (take, i) => measureTake(take.entry, path.join(tempRoot, String(i))),
+      save: (chunk) =>
+        saveClipEffortFeatures(
+          db,
+          modId,
+          chunk.map(({ take, features: measured }) => ({
+            speakerKey: take.speakerKey,
+            lineKey: take.entry.lineKey,
+            variant: take.entry.variant,
+            originPlugin: take.entry.originPlugin,
+            features: measured,
+          })),
+        ),
+      onTake: (handled) => {
+        options.onProgress?.(earlier + handled, takes.size);
+        if (handled % 2000 === 0)
+          log(`Vocal effort #${modId}: ${handled}/${pending.length} takes measured`);
+      },
     });
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
+  result.measured = measuredRun.measured;
+  result.failed = measuredRun.failed;
+  if (measuredRun.cancelled) return { ...result, cancelled: true };
+  for (const [key, value] of measuredRun.features) features.set(key, value);
 
   const directions = voice.loadLineDirections(paths.pluginPath);
   const clips: EffortClip[] = [];

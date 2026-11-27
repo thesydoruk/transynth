@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { VoiceLinePreview } from '../../../../../api';
 import {
   applyVoiceStatusMatch,
+  hasEffortTag,
   needsTranslation,
   selectVisibleVoiceLines,
   voiceLineCounts,
@@ -27,6 +28,10 @@ const line = (
   canGenerateVoice: false,
   ttsSkipReason: null,
   voiceSimilarity: null,
+  effortTag: null,
+  effortAutoTag: null,
+  effortOverride: null,
+  effortStrength: null,
   ...partial,
 });
 
@@ -55,5 +60,24 @@ describe('selectVisibleVoiceLines', () => {
     expect(needsTranslation(lines[0]!)).toBe(true);
     expect(selectVisibleVoiceLines(lines, 'needsTranslation', 'alp')).toHaveLength(1);
     expect(voiceLineCounts(lines).needsTranslation).toBe(1);
+  });
+
+  it('keeps the lines with an effort tag in force, hand-set ones included', () => {
+    const lines = [
+      line({ stringId: 1, effortTag: 'shouting', effortAutoTag: 'shouting' }),
+      line({ stringId: 2, effortTag: 'loud', effortOverride: 'loud' }),
+      // The analysis would shout this one; a person took the tag away.
+      line({ stringId: 3, effortAutoTag: 'shouting', effortOverride: 'none' }),
+      line({ stringId: 4 }),
+    ];
+    expect(selectVisibleVoiceLines(lines, 'effortTagged', '').map((item) => item.stringId)).toEqual(
+      [1, 2],
+    );
+    expect(voiceLineCounts(lines).effortTagged).toBe(2);
+  });
+
+  it('treats a line from a server without effort fields as untagged', () => {
+    const { effortTag: _dropped, ...legacy } = line({ stringId: 1 });
+    expect(hasEffortTag(legacy as VoiceLinePreview)).toBe(false);
   });
 });

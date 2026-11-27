@@ -7,6 +7,9 @@
  * later run measures only new takes and decides again for all. Synthesis is not
  * touched: tags take effect only for a game that has them switched on in
  * Settings → Voice, and then only the lines that gained a tag become stale.
+ * Measurements are saved every few hundred takes: an interrupted run continues
+ * where it stopped when started again. The Mods page runs the same analysis as
+ * a job (voice menu → Analyze vocal effort).
  *
  * Usage:
  *   npm run voice:analyze-effort -- --mod=33

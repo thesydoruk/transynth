@@ -17,14 +17,22 @@ export type VoiceEffortTagMap = ReadonlyMap<string, EffortTag>;
 
 const NO_TAGS: VoiceEffortTagMap = new Map();
 
+/** Whether the game has effort tags switched on in Settings → Voice. */
+export const effortTagsSwitchedOn = async (
+  db: Tx,
+  game: string | null | undefined,
+): Promise<boolean> => {
+  const settings = await getAllProjectSettings(db);
+  return gameTtsMatchFor(settings['voice.game_tts'], game).effortTags;
+};
+
 /** Tags of the mod's takes; empty when the game has effort tags switched off. */
 export const loadActiveVoiceEffortTags = async (
   db: Tx,
   modId: number,
   game: string | null | undefined,
 ): Promise<VoiceEffortTagMap> => {
-  const settings = await getAllProjectSettings(db);
-  if (!gameTtsMatchFor(settings['voice.game_tts'], game).effortTags) return NO_TAGS;
+  if (!(await effortTagsSwitchedOn(db, game))) return NO_TAGS;
   return loadVoiceEffortTags(db, modId);
 };
 

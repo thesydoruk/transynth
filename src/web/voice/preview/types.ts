@@ -1,6 +1,8 @@
 import type { SpeakerGender } from '../../../dialog';
 import type { VoiceSpeakerRefPick } from '../../../voice/voiceSpeakerRefs';
 import type { VoiceTtsSkipReason } from '../../../voice/prepareVoiceTtsText';
+import type { EffortTag } from '../../../voice/vocalEffort';
+import type { EffortTagOverride } from '../../../voice/voiceEffortStore';
 
 export type { VoiceTtsSkipReason };
 
@@ -33,6 +35,14 @@ export type VoiceLinePreview = {
   ttsSkipReason: VoiceTtsSkipReason | null;
   /** ECAPA cosine vs the clone prompt; null when the take has no stored score. */
   voiceSimilarity: number | null;
+  /** Effort tag in force for the take: a person's choice, else the analysis's. */
+  effortTag: EffortTag | null;
+  /** The tag the analysis derived, whatever a person chose. */
+  effortAutoTag: EffortTag | null;
+  /** A person's choice; null leaves the derived tag in force. */
+  effortOverride: EffortTagOverride | null;
+  /** Measured effort against the speaker's calm baseline; null when not measured. */
+  effortStrength: number | null;
 };
 
 /** Speaker row for the voice navigator — counts only, no line payloads. */
@@ -46,6 +56,10 @@ export type VoiceSpeakerSummary = {
   dubbedCount: number;
   /** Subset of {@link lineCount} with no dialogue record, so never dubbable. */
   orphanCount: number;
+  /** The speaker's takes were analyzed for vocal effort. */
+  effortAnalyzed: boolean;
+  /** Analysis found enough calm lines to judge the others by; without it no line is tagged. */
+  effortHasBaseline: boolean;
 };
 
 export type VoiceListErrorReason =
@@ -64,7 +78,15 @@ export type VoiceSpeakersListResult =
     };
 
 export type VoiceSpeakerLinesResult =
-  | { ok: true; speakerKey: string; lines: VoiceLinePreview[] }
+  | {
+      ok: true;
+      speakerKey: string;
+      lines: VoiceLinePreview[];
+      /** The game can tag lines for vocal effort at all. */
+      effortTagsSupported: boolean;
+      /** Tags reach synthesis: the game supports them and has them switched on. */
+      effortTagsActive: boolean;
+    }
   | {
       ok: false;
       reason: VoiceListErrorReason;

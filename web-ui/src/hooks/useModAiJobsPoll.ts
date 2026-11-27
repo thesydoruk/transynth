@@ -8,6 +8,7 @@ import {
   type ModAiJobStatus,
 } from '../modAiJobsStore';
 import type { ActiveModAiJob } from '../api';
+import { reportVoiceEffortResult } from '../voiceEffortResults';
 
 const TERMINAL_TTL_MS = 20_000;
 /** Give up on a hung `/api/ai-jobs/active` so the next poll can try again. */
@@ -55,6 +56,14 @@ const fetchTerminalStatus = async (
     }
     if (kind === 'voice') {
       const snap = await api.voiceGenerate.status(jobId);
+      return snap.status === 'running' ? null : snap.status;
+    }
+    if (kind === 'voice-effort') {
+      const snap = await api.voiceEffortAnalysis.status(jobId);
+      // A run this tab did not start (or one re-queued after a restart) has its result only here.
+      if (snap.status === 'completed' && snap.result) {
+        reportVoiceEffortResult({ jobId, result: snap.result });
+      }
       return snap.status === 'running' ? null : snap.status;
     }
     if (kind === 'gender-detect') {

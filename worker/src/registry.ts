@@ -13,6 +13,7 @@ import { modImportHandler } from './jobs/import/mod/handler';
 import { skipDetectHandler } from './jobs/skipDetect/handler';
 import { tmApplyHandler } from './jobs/tmApply/handler';
 import { voiceGenerateHandler } from './jobs/voice/handler';
+import { voiceEffortHandler } from './jobs/voiceEffort/handler';
 import { langpackExportHandler } from './jobs/langpackExport/handler';
 import { vortexSyncHandler } from './jobs/vortexSync/handler';
 import { videoSeparateHandler } from './jobs/videoSeparate/handler';
@@ -27,6 +28,7 @@ const handlers: Record<JobKind, JobHandler> = {
   'skip-detect': skipDetectHandler,
   'gender-detect': genderDetectHandler,
   'voice-generate': voiceGenerateHandler,
+  'voice-effort': voiceEffortHandler,
   'batch-translate': batchTranslateHandler,
   'apply-imported': applyImportedHandler,
   'mod-import': modImportHandler,

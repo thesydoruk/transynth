@@ -39,6 +39,8 @@ export const JOB_KIND_SPECS: Record<JobKind, JobKindSpec> = {
   // audio-intel (Disco spoken spans) and bethesda-tools (LIP/xWMA) are per-game extras a
   // voice job may call; they wait on their own health when used, not as declared demand.
   'voice-generate': { queue: 'tts', needs: ['tts'] },
+  // Decodes and measures original takes with ffmpeg; nothing on the GPU hosts.
+  'voice-effort': { queue: 'cpu', needs: [] },
   'tm-apply': { queue: 'cpu', needs: [] },
   'apply-imported': { queue: 'cpu', needs: [] },
   'mod-import': { queue: 'cpu', needs: [] },

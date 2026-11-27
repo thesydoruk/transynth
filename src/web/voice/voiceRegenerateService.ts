@@ -11,7 +11,8 @@ import { originFromVoiceRelPath } from '../../voice/voiceOrigin';
 import { recordVoiceTakeByLineKey } from '../../voice/referenceVoiceTakeHooks';
 import { getAllProjectSettings } from '../services/projectSettings';
 import { convertAudioToPreviewWav } from './preview/audioCache';
-import { resolveModVoiceContext } from './preview';
+import { resolveModVoiceContext, type VoiceEffortChoice } from './preview';
+import { keepRegenerateEffort, resolveRegenerateEffort } from './voiceRegenerateEffort';
 import {
   commitPreviewTake,
   discardVoiceRegenerateSession,
@@ -43,6 +44,8 @@ export type VoiceRegeneratePreviewResult =
       audioUrl: string;
       params: VoiceRegenerateParams;
       voiceSimilarity: number | null;
+      /** The effort-tag choice the attempt was made under; null when none applied. */
+      effortChoice: VoiceEffortChoice | null;
     }
   | { ok: false; reason: string; message: string };
 
@@ -104,6 +107,7 @@ export const generateVoiceRegeneratePreview = async (
   params: VoiceRegenerateParams,
   speakerKey?: string,
   originPlugin?: string | null,
+  effortChoice?: VoiceEffortChoice,
 ): Promise<VoiceRegeneratePreviewResult> => {
   if (!SESSION_ID_RE.test(sessionId)) {
     return { ok: false, reason: 'invalid_session', message: 'Invalid session id' };
@@ -152,6 +156,13 @@ export const generateVoiceRegeneratePreview = async (
     return { ok: false, reason: 'session_missing', message: 'This game has no voice support' };
   }
 
+  const lineOrigin = originPlugin || meta.originPlugin || null;
+  const effort = await resolveRegenerateEffort(db, modId, mod.game, effortChoice, {
+    speakerKey,
+    lineKey,
+    variant,
+    originPlugin: lineOrigin,
+  });
   const built = await voice.buildLinePreview(db, {
     modId,
     packageDir: resolved.ctx.packageDir,
@@ -162,7 +173,8 @@ export const generateVoiceRegeneratePreview = async (
     tgtLang: targetLang,
     referenceMode,
     speakerKey,
-    originPlugin: originPlugin || meta.originPlugin || null,
+    originPlugin: lineOrigin,
+    ...(effort ? { effortTag: effort.effortTag } : {}),
   });
   if (!built.ok) return built;
 
@@ -195,6 +207,7 @@ export const generateVoiceRegeneratePreview = async (
     ...(stored.sidecars.length > 0 ? { sidecars: stored.sidecars } : {}),
     speakerKey: previewSpeakerKey ?? speakerKey,
     voiceSimilarity,
+    ...(effort ? { effort: effort.effort } : {}),
   };
   meta.previews.push(previewMeta);
   writeSessionMeta(modId, sessionId, meta);
@@ -206,6 +219,7 @@ export const generateVoiceRegeneratePreview = async (
     audioUrl: `/api/mods/${modId}/voice/regenerate/${sessionId}/${previewId}.wav`,
     params,
     voiceSimilarity,
+    effortChoice: effort?.effort.choice ?? null,
   };
 };
 
@@ -276,6 +290,9 @@ export const commitVoiceRegenerateSession = async (
     ttsTextVersion: preview.payloadVersion,
     voiceSimilarity: preview.voiceSimilarity,
   });
+  // Same step as the take: its stamp holds the chosen tag, and the batch job
+  // computes that tag only once it is the line's override.
+  await keepRegenerateEffort(db, modId, meta.lineKey, meta.variant, preview.effort);
 
   const relPath = preview.fuzRel;
   discardVoiceRegenerateSession(modId, sessionId);

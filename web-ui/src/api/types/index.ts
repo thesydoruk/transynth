@@ -22,3 +22,4 @@ export * from './vortex';
 export * from './video';
 export * from './services';
 export * from './fleet';
+export * from './voiceEffortAnalysis';

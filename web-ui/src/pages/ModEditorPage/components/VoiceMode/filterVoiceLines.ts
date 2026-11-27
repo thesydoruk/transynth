@@ -1,5 +1,6 @@
 import type { VoiceLinePreview } from '../../../../api';
 import type { VoiceLineFilter } from './hooks/useVoiceState';
+import { lineEffortTag } from './voiceEffort';
 
 /** Orphan audio has no dialogue record, so it is not translation work. */
 export const needsTranslation = (line: VoiceLinePreview): boolean =>
@@ -18,10 +19,21 @@ export const applyVoiceStatusMatch = (
   return lines.filter((line) => line.stringId != null && allowedIds.has(line.stringId));
 };
 
-export const voiceLineCounts = (lines: VoiceLinePreview[]) => ({
+/** Lines with a vocal-effort tag in force — the ones TTS hears shouted or loud. */
+export const hasEffortTag = (line: VoiceLinePreview): boolean => lineEffortTag(line) !== null;
+
+export type VoiceLineCounts = {
+  total: number;
+  needsTranslation: number;
+  needsVoice: number;
+  effortTagged: number;
+};
+
+export const voiceLineCounts = (lines: VoiceLinePreview[]): VoiceLineCounts => ({
   total: lines.length,
   needsTranslation: lines.filter(needsTranslation).length,
   needsVoice: lines.filter((line) => line.canGenerateVoice).length,
+  effortTagged: lines.filter(hasEffortTag).length,
 });
 
 export const selectVisibleVoiceLines = (
@@ -32,6 +44,7 @@ export const selectVisibleVoiceLines = (
   let filtered = lines;
   if (filter === 'needsTranslation') filtered = lines.filter(needsTranslation);
   else if (filter === 'needsVoice') filtered = lines.filter((line) => line.canGenerateVoice);
+  else if (filter === 'effortTagged') filtered = lines.filter(hasEffortTag);
   const query = find.trim().toLowerCase();
   if (!query) return filtered;
   return filtered.filter(

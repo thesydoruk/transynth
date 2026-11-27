@@ -10,6 +10,7 @@ import { ModAiControls } from '../../../components/ModAiControls';
 import { useModAiJobsForMod } from '../../../hooks/useModAiJobsForMod';
 import type { ModExportAction } from '../modsShared';
 import { formatModDisplayName } from '../modVersions';
+import { ModContentKindField } from './ModContentKindField';
 import s from './ModWorkspaceRow.module.scss';
 
 /** Badge colour per non-mod content kind; plain mods get no badge. */
@@ -18,8 +19,6 @@ const KIND_BADGE_COLOR: Partial<Record<ModContentKind, string>> = {
   dlc: '#1565c0',
   addon: '#6a1b9a',
 };
-
-const KIND_OPTIONS: ModContentKind[] = ['base', 'dlc', 'addon', 'mod'];
 
 export interface ModWorkspaceRowProps {
   mod: Mod;
@@ -56,6 +55,9 @@ export interface ModWorkspaceRowProps {
   onAiVoiceAll?: () => void;
   onAiVoiceLowSimilarity?: () => void;
   onAiVoiceStop?: () => void;
+  /** Set only for a game whose mods can be analyzed for vocal effort. */
+  onAiVoiceAnalyzeEffort?: () => void;
+  onAiVoiceEffortStop?: () => void;
 }
 
 /** Imported mod row — translation progress plus import/export workspace actions. */
@@ -91,6 +93,8 @@ export const ModWorkspaceRow = ({
   onAiVoiceAll,
   onAiVoiceLowSimilarity,
   onAiVoiceStop,
+  onAiVoiceAnalyzeEffort,
+  onAiVoiceEffortStop,
 }: ModWorkspaceRowProps) => {
   const { t } = useTranslation();
   const aiJobs = useModAiJobsForMod(mod.id);
@@ -193,6 +197,7 @@ export const ModWorkspaceRow = ({
             skipDetect={aiJobs.skipDetect}
             genderDetect={aiJobs.genderDetect}
             voice={aiJobs.voice}
+            voiceEffort={aiJobs.voiceEffort}
             onTranslateTm={onAiTranslateTm ?? (() => {})}
             onTranslateLlm={onAiTranslateLlm ?? (() => {})}
             onTranslateStop={onAiTranslateStop ?? (() => {})}
@@ -206,6 +211,8 @@ export const ModWorkspaceRow = ({
             onVoiceAll={onAiVoiceAll ?? (() => {})}
             onVoiceLowSimilarity={onAiVoiceLowSimilarity ?? (() => {})}
             onVoiceStop={onAiVoiceStop ?? (() => {})}
+            onVoiceAnalyzeEffort={onAiVoiceAnalyzeEffort}
+            onVoiceEffortStop={onAiVoiceEffortStop}
           />
         )}
         <div className={parentS.actions}>
@@ -250,28 +257,7 @@ export const ModWorkspaceRow = ({
                     </button>
                   ))}
                 {!multiSelectActive && onContentKindChange && (
-                  <label className={s.kindField}>
-                    <span>{t('mods.contentType')}</span>
-                    <select
-                      value={mod.content_kind_manual ? mod.content_kind : 'auto'}
-                      onChange={(e) =>
-                        onContentKindChange(
-                          e.target.value === 'auto' ? null : (e.target.value as ModContentKind),
-                        )
-                      }
-                    >
-                      <option value="auto">
-                        {mod.content_kind_manual
-                          ? t('mods.contentAuto')
-                          : t('mods.contentAutoKind', { kind: t(`mods.kind.${mod.content_kind}`) })}
-                      </option>
-                      {KIND_OPTIONS.map((kind) => (
-                        <option key={kind} value={kind}>
-                          {t(`mods.kind.${kind}`)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <ModContentKindField mod={mod} onChange={onContentKindChange} />
                 )}
                 <ModDataMenuItems
                   clearingRows={clearingRows}

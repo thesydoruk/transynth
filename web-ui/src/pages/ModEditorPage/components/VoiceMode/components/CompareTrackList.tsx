@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { VoiceEffortTag } from '../../../../../api';
 import { Button } from '../../../../../components/Button';
 import { VOICE_REGENERATE_KEEP_CURRENT_ID } from '../../../../SettingsPage/VoiceTab/voiceSettingsConfig';
 import { VoiceSimilarityScore } from '../../VoiceSimilarityScore';
@@ -10,6 +11,8 @@ type CompareTrackListProps = {
   tracks: CompareTrack[];
   /** Stored score of the dub already on disk, shown on the "current" row. */
   currentSimilarity: number | null;
+  /** The analysis's tag, named for an attempt made under "auto". */
+  autoEffortTag?: VoiceEffortTag | null;
   selectedId: string;
   onSelect: (id: string) => void;
   playingTrack: string | null;
@@ -21,6 +24,7 @@ type CompareTrackListProps = {
 export const CompareTrackList = ({
   tracks,
   currentSimilarity,
+  autoEffortTag = null,
   selectedId,
   onSelect,
   playingTrack,
@@ -81,6 +85,12 @@ export const CompareTrackList = ({
                   {track.preview.params.line_reference
                     ? t('modEditor.voiceRegenerateRefLine')
                     : t('modEditor.voiceRegenerateRefSpeaker')}
+                  {track.preview.effortChoice &&
+                    ` · ${t('voice.effort.attemptTag', {
+                      tag: t(`voice.effort.choice.${track.preview.effortChoice}`, {
+                        tag: t(`voice.effort.tag.${autoEffortTag ?? 'none'}`),
+                      }),
+                    })}`}
                 </span>
               )}
             </div>

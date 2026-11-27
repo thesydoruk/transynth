@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import type { Mod } from '../../api';
 import { useContentLangs } from '../../hooks/useContentLangs';
 import { useModAiJobsPoll } from '../../hooks/useModAiJobsPoll';
+import { VoiceEffortResultHost } from '../../components/VoiceEffortResultDialog';
 import { DEFAULT_GAME_ID } from '../../langDefaults';
 import { ModListHeader } from './ModListHeader';
 import { ModsPageEmptyState } from './ModsPageEmptyState';
@@ -21,6 +22,7 @@ import { useGameInfo } from '../../hooks/useGameInfo';
 import { useModsPageData, useModsView, useModsWorkspaceState } from './hooks';
 import { countActivity } from './modsPageUtils';
 import { filterMods, splitByContent } from './modsView';
+import { formatModDisplayName } from './modVersions';
 import { ActivitySection } from './sections/ActivitySection';
 import { ExportsSection } from './sections/ExportsSection';
 import { GameHeader } from './sections/GameHeader';
@@ -100,6 +102,12 @@ export const ModsPage = () => {
         )}
 
         <ModsPageModals />
+        <VoiceEffortResultHost
+          modName={(modId) => {
+            const mod = allMods.find((m) => m.id === modId);
+            return mod ? formatModDisplayName(mod) : undefined;
+          }}
+        />
       </div>
     </ModsWorkspaceContext.Provider>
   );

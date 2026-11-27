@@ -37,6 +37,10 @@ const line = (partial: Partial<VoiceLinePreview> = {}): VoiceLinePreview => ({
   canGenerateVoice: true,
   ttsSkipReason: null,
   voiceSimilarity: null,
+  effortTag: null,
+  effortAutoTag: null,
+  effortOverride: null,
+  effortStrength: null,
   ...partial,
 });
 

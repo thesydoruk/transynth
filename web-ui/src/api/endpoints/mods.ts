@@ -16,6 +16,7 @@ import type {
   VoiceAvailabilityResponse,
   VoiceSpeakerLinesResponse,
   VoiceSpeakersResponse,
+  VoiceEffortChoice,
   VoiceRegenerateParams,
   VoiceRegeneratePreview,
   VoiceSpeakerRefPick,
@@ -140,6 +141,7 @@ export const modsEndpoints = {
       speakerKey?: string;
       originPlugin?: string;
       params: VoiceRegenerateParams;
+      effortChoice?: VoiceEffortChoice;
     },
   ) =>
     req<{
@@ -149,6 +151,7 @@ export const modsEndpoints = {
       audioUrl: string;
       params: VoiceRegenerateParams;
       voiceSimilarity: number | null;
+      effortChoice?: VoiceEffortChoice | null;
     }>(`/api/mods/${modId}/voice/regenerate/${sessionId}/preview`, {
       method: 'POST',
       body: JSON.stringify(body),

@@ -143,6 +143,7 @@ export const createCreationEngineVoiceAdapter = (
       speakerKey: request.speakerKey,
       originPlugin: request.originPlugin,
       takes,
+      ...(request.effortTag !== undefined ? { effortTag: request.effortTag } : {}),
     });
     if (!built.ok) return built;
     return {
