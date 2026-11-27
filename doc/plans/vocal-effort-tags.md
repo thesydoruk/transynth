@@ -86,7 +86,7 @@ are from memory — confirm each in xEdit before coding against it.
   gunfire"). Check how often it is filled in `Fallout4.esm` before relying on it.
 
 Game-specific parts go through `src/games/contract`; shared code must not compare game ids.
-`infoResponseNumbers.ts` is already past 300 lines — split before adding to it.
+`infoResponseNumbers.ts` is close to the 300-line limit — check the count and split first if needed.
 
 ### 4. Calibrate, then wire the tag in
 
