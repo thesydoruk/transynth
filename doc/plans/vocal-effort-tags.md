@@ -30,7 +30,8 @@ Items 2 and 4 live in `thesydoruk/fish-studio`, not here.
 
 ## Done on this branch
 
-Detection and the plugin reader. Nothing is wired into synthesis.
+Detection, the plugin reader, the analysis pass and the wiring into synthesis — behind a
+per-game switch that is off.
 
 - `src/voice/vocalEffort/features.ts` — per-clip median pitch (semitones) and high-band
   emphasis of the voiced frames. Both ignore level on purpose: shipped voice files are
@@ -39,8 +40,7 @@ Detection and the plugin reader. Nothing is wired into synthesis.
   caller passes the speaker's **calm** clips, not all of them (see step 1).
 - `src/voice/vocalEffort/decide.ts` — two gates → `shouting` / `loud` / none: the clip
   must sound pushed (the weaker of the pitch and brightness z-scores), and for `shouting`
-  the line must say so (`!` or a shout in the actor note). Plus `applyEffortTag` (not
-  called anywhere yet).
+  the line must say so (`!` or a shout in the actor note). Plus `applyEffortTag`.
 - `scripts/scanVocalEffort.ts` (`npm run voice:scan-effort -- <dir> [--calm=<file>]`) —
   ranks a folder of decoded 16-bit WAVs laid out as `<speaker>/<clip>.wav`, prints TSV.
   `--calm` lists the clips a baseline may be built from. Acoustic gate only.
@@ -49,18 +49,25 @@ Detection and the plugin reader. Nothing is wired into synthesis.
   rule it shares with `voice/infoResponseNumbers.ts`.
 - `GameVoiceAdapter.loadLineDirections(pluginPath)` (contract) — per voice key, whether the
   line's topic is calm and what the actor was told. Creation Engine implements it in
-  `games/creation-engine/voice/lineDirections.ts`; nothing calls it yet.
-- Tests: `src/voice/vocalEffort/__tests__/vocalEffort.test.ts`,
+  `games/creation-engine/voice/lineDirections.ts`.
+- `src/voice/vocalEffort/plan.ts`, `src/voice/analyzeVocalEffort.ts`,
+  `src/voice/voiceEffortStore.ts` (table `voice_clip_effort`), `src/voice/voiceEffortTags.ts`
+  and `scripts/analyzeVocalEffort.ts` — step 4.
+- Tests: `src/voice/vocalEffort/__tests__/` (`vocalEffort`, `plan`),
   `src/formats/esp/__tests__/voiceDirection.test.ts`,
-  `src/games/creation-engine/__tests__/lineDirections.test.ts`.
+  `src/games/creation-engine/__tests__/lineDirections.test.ts`,
+  `src/voice/__tests__/voiceTtsPayloadVersion.test.ts`, and on a real database
+  `src/voice/__tests__/voiceEffortStore.db.test.ts`.
 
 **Verified:** lint, `tsc`, Prettier, the tests; the acoustic score against proxy labels on
 8,030 real clips (step 1); the tagging rule against 160 lines labelled by ear (step 4); the
 tags against the live model, by measurement and by ear (step 2); the plugin reader against
-the real `Fallout4.esm` and `Starfield.esm` (step 3).
-**Not verified:** anything in the running pipeline — the pieces are not connected. The
-labels are one listener's passes over five Fallout 4 voice types; Starfield has layouts
-checked and nothing measured.
+the real `Fallout4.esm` and `Starfield.esm` (step 3); the planner on the corpus and the
+store on a real database (step 4).
+**Not verified:** a voice job with the switch on — the analysis command has not run end
+to end and no take has been synthesized through the pipeline with a tag. The labels are
+one listener's passes over five Fallout 4 voice types; Starfield has layouts checked and
+nothing measured.
 
 ## Next steps
 
@@ -317,18 +324,43 @@ rule is tuned for precision.
 - Shout against raised voice is the soft edge (AUC 0.78), and the listener says so too. A
   raised voice tagged `[shouting]` is the error to listen for in step 2.
 
-Still to do:
+**Wired in 2026-11-27**, off by default.
 
-- Build each speaker's baseline from the clips whose line has `calmTopic`, no
-  `hasEffortCue` and a TTS text that is not skipped (step 3 has the numbers); pool the
-  speakers with fewer than `MIN_BASELINE_CLIPS` such clips.
-- Persist per-clip features or the decision so synthesis does not re-analyze every clip
-  (speaker baselines need all of a speaker's clips; compute once per import).
-- Call `applyEffortTag` after `stripVoiceNonSpeechBlocks`, behind a per-game voice setting
-  that defaults to off. The tag changes `text`, so it changes `payloadVersion` and marks
-  takes stale — make sure only lines that actually get a tag are re-synthesized.
-- Tag only the TTS text. Lip-sync text (`remoteFfxanim` strips `[tags]`) and timing must
-  not see it.
+- **Planning** — `vocalEffort/plan.ts`: `planVocalEffort` takes every clip of a mod, builds
+  each speaker's baseline from the clips that are calm in all three ways (step 3) and
+  decides every line with words. A speaker with fewer than 30 such clips gets no tags
+  rather than a pooled baseline — pooling would judge a woman against men. Thirty is a
+  compromise: a baseline sampled down to 8 clips agrees with the full one on 85 % of its
+  tags, to 30 on 89 %, to 100 on 94 %.
+- **Analysis** — `voice/analyzeVocalEffort.ts`, run as `npm run voice:analyze-effort --
+--mod=ID`: decodes and measures each original take once, reads the plugin's directions,
+  plans, and stores features, strength and tag per take in `voice_clip_effort`. A later run
+  measures only new takes and decides again for all of them.
+- **Switch** — `effortTags` in the per-game `voice.game_tts` setting (Settings → Voice,
+  "Shout where the original shouts"). Off, nothing changes anywhere:
+  `loadActiveVoiceEffortTags` hands out no tags.
+- **Text** — the tag rides on the prepared line (`effortTag`), not in its text. The
+  synthesis request and the version stamp use `voiceTtsRequestText` (`[shouting] …`); the
+  lip-sync builder still gets the bare words. A line that gains a tag gets a new stamp, so
+  its take, and only its take, goes stale — in the batch job, the work count, the editor's
+  stale marks and the single-line preview alike.
+- **Reuse** — a take made under one tag is not offered to a line under another.
+
+On the corpus, with the branch's own reader, text rules and planner: 489 of 7,793 speakable
+lines get `shouting` and 115 `loud`; by the labels 14 / 4 / 0 and 0 / 5 / 1. The two
+labelled lines that left the `shouting` cell are grunts ("Agh! _cough_", "Rrarggh!"), which
+are never synthesized.
+
+Not done, not verified:
+
+- `analyzeModVocalEffort` has not run end to end — its parts have (planner and reader on
+  the corpus, the store on a real database). Run it on one small imported mod first.
+- Analysis is a command, not part of import or of the voice job.
+- A patch that dubs a master's line against the master's take (`voiceWorkList`, step 2 of
+  the list) looks the tag up among its own takes and finds none; such lines stay untagged.
+- Starfield: readable, analyzable, never measured. Leave its switch off until it is.
+- `[loud]` leaves four takes in ten calm (step 2); whether to keep sending it is a
+  listening decision once real jobs have run.
 
 ### 5. Independent fixes, if tags are not enough
 
