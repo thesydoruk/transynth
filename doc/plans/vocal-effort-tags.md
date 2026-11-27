@@ -355,7 +355,8 @@ Not done, not verified:
 
 - `analyzeModVocalEffort` has not run end to end — its parts have (planner and reader on
   the corpus, the store on a real database). Run it on one small imported mod first.
-- Analysis is a command, not part of import or of the voice job.
+- Analysis is started by hand — from the Mods page (step 6) or the command — not by import
+  or by the voice job.
 - A patch that dubs a master's line against the master's take (`voiceWorkList`, step 2 of
   the list) looks the tag up among its own takes and finds none; such lines stay untagged.
 - Starfield: readable, analyzable, never measured. Leave its switch off until it is.
@@ -375,6 +376,46 @@ Not done, not verified:
 - In `fish-studio`: per-request sampling so shouted lines can use a wider `top_p`.
 - Voice conversion (RVC / Seed-VC) from the original shouted clip for key scenes; LoRA
   retraining with expressive Ukrainian data. Both are heavy — last resort.
+
+### 6. Interface — built 2026-11-27, not yet seen in a browser
+
+Everything below is offered only for a game whose voice adapter has `loadLineDirections`
+(`GameInfo.vocalEffort` in `GET /api/games`); nothing compares game ids.
+
+**Mods page.** The voice menu has "Analyze vocal effort": a `voice-effort` job on the `cpu`
+queue (`worker/src/jobs/voiceEffort/`) with progress, a stop, and a result dialog (takes,
+measured now, failed, speakers with a baseline, lines tagged). The analysis saves its
+measurements every 500 takes (`measureTakesInChunks`, `saveClipEffortFeatures`), so a
+worker killed by a deploy loses at most one chunk; worker recovery re-queues the job and it
+continues from the takes that have no row. A stop keeps what was measured and skips
+planning, so the tags in force stay. Starting it is refused while a voice job runs for the
+mod — synthesis reads the tags when it starts.
+
+**Mod editor, voice mode.**
+
+- A badge on each line, next to the similarity score: «крик» / «гучно», a struck-through
+  «без тегу» where a person removed a derived tag, a faint «+ тег» where there is none;
+  dimmed when the game's switch is off. Tooltip: strength, and derived or set by hand.
+- A filter chip for lines with a tag in force.
+- A menu on the badge — auto / shouting / loud / no tag — stored in
+  `voice_clip_effort.tag_override` (`PUT /api/mods/:id/voice/effort-override`). Analysis
+  never writes that column. A choice for a take never analyzed makes a row with NULL
+  `analyzed_at`, which analysis still measures. A choice is kept while the switch is off and
+  does nothing until it is on.
+- A mark on speakers that were analyzed and have no baseline.
+- In the regenerate dialog, a tag choice for the preview take, offered only while the
+  game's tags are on (a take stamped with a tag would otherwise look stale forever).
+  Keeping a take stores its choice as the line's override, so its stamp is what the batch
+  job computes; "auto" there means the derived tag and clears an override.
+
+**Settings → Voice.** Under the switch: how many mods of the game are analyzed, how many
+takes have a tag in force and how many of those are already synthesized
+(`GET /api/games/:id/voice-effort-summary`). Turning it on asks first, naming the number of
+takes that go stale — or saying that nothing changes until a mod is analyzed.
+
+Not verified: none of it has been opened in a browser; the job has not run against a
+queue and a worker; a preview has not been synthesized with a chosen tag.
+`web-ui/src/api/endpoints/mods.ts` was over the 300-line limit before (307) and is at 310.
 
 ## Rules that apply
 
