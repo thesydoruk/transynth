@@ -40,6 +40,7 @@
  */
 
 import { isPhoneticVocalizationLine } from './phoneticVocalization';
+import type { EffortTag } from './vocalEffort/decide';
 
 /**
  * How one game's text markup is handled before TTS.
@@ -84,7 +85,17 @@ export type VoiceTtsSkipReason =
 
 export type PrepareVoiceTtsTextResult =
   | { action: 'skip'; reason: VoiceTtsSkipReason }
-  | { action: 'synthesize'; text: string; speakerText: string | undefined };
+  | {
+      action: 'synthesize';
+      /** The words to speak. Lip-sync and timing read this; it never carries a tag. */
+      text: string;
+      speakerText: string | undefined;
+      /**
+       * Vocal effort of the original take, sent to the TTS server as a tag in
+       * front of `text` (`voiceTtsRequestText`) and part of the version stamp.
+       */
+      effortTag?: EffortTag;
+    };
 
 const normalizeLine = (text: string | null | undefined): string => text?.trim() ?? '';
 
@@ -279,6 +290,8 @@ export const prepareVoiceTtsText = (input: {
   speakerSource: string | null | undefined;
   edid?: string | null;
   markup?: VoiceTtsMarkupStyle;
+  /** Effort tag of the line's original take, when the game has tags switched on. */
+  effortTag?: EffortTag | null;
 }): PrepareVoiceTtsTextResult => {
   const markup = input.markup ?? BETHESDA_VOICE_MARKUP;
   const skipReason = detectVoiceTtsSkipReason(
@@ -299,5 +312,6 @@ export const prepareVoiceTtsText = (input: {
     action: 'synthesize',
     text,
     speakerText: speakerText || undefined,
+    ...(input.effortTag ? { effortTag: input.effortTag } : {}),
   };
 };

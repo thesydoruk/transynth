@@ -8,6 +8,12 @@
 export type GameTtsMatchSettings = {
   matchLoudness: boolean;
   matchTiming: boolean;
+  /**
+   * Send the vocal-effort tag of a line's original take (`[shouting]`, `[loud]`)
+   * with its text. Off unless switched on: the takes of tagged lines go stale
+   * the moment it is turned on, and only mods that were analyzed have tags.
+   */
+  effortTags: boolean;
 };
 
 export type GameTtsSettingsMap = Record<string, GameTtsMatchSettings>;
@@ -15,6 +21,7 @@ export type GameTtsSettingsMap = Record<string, GameTtsMatchSettings>;
 export const GAME_TTS_MATCH_DEFAULTS: GameTtsMatchSettings = {
   matchLoudness: true,
   matchTiming: true,
+  effortTags: false,
 };
 
 const asBoolean = (value: unknown, fallback: boolean): boolean =>
@@ -31,6 +38,7 @@ export const normalizeGameTtsSettings = (value: unknown): GameTtsSettingsMap => 
     out[gameId] = {
       matchLoudness: asBoolean(row.matchLoudness, GAME_TTS_MATCH_DEFAULTS.matchLoudness),
       matchTiming: asBoolean(row.matchTiming, GAME_TTS_MATCH_DEFAULTS.matchTiming),
+      effortTags: asBoolean(row.effortTags, GAME_TTS_MATCH_DEFAULTS.effortTags),
     };
   }
   return out;

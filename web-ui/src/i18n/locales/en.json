@@ -1330,6 +1330,8 @@
       "sectionGameTtsDesc": "The xtts-engine match_timing flag is stored per game. Sampling parameters below still apply to every game.",
       "matchTiming": "Match timing to the reference",
       "matchTimingDesc": "xtts-engine fits the take to the duration of the first speaker clip (stretch speech only, never more than ~15% faster than the actor). Turn off if lines feel rushed or padded.",
+      "effortTags": "Shout where the original shouts",
+      "effortTagsDesc": "Lines whose original take is shouted or spoken in a raised voice are sent to TTS with a [shouting] or [loud] tag. Only mods analyzed with voice:analyze-effort have tags. Turning this on makes the takes of tagged lines stale; the rest are untouched.",
       "sectionSynthesis": "Synthesis",
       "sectionSynthesisDesc": "What to do with a take xtts-engine returns. The server generates each line once and reports a silent or cut-off take and the voice similarity; below the threshold transynth asks for more takes and keeps the best one.",
       "synthRetryBelow": "Voice similarity threshold",

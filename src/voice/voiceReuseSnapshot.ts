@@ -19,6 +19,7 @@ import {
   lookupVoiceSimilarity,
   lookupVoiceSynthesisVersion,
 } from './voiceSynthesisState';
+import { loadActiveVoiceEffortTags, lookupVoiceEffortTag } from './voiceEffortTags';
 import { resolveTtsLanguage } from './voiceToolPaths';
 import {
   computeVoiceTtsPayloadVersion,
@@ -32,6 +33,7 @@ export const ttsVersionForLine = (line: ReuseVoiceLineKey, tgtLang: string): str
     translation: line.translation,
     // Same speaker text as synthesis, or a reused master-backed take would look stale.
     speakerSource: line.speakerSource ?? line.sourceText,
+    effortTag: line.effortTag,
   });
   if (prepared.action === 'synthesize') {
     return voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
@@ -79,6 +81,7 @@ export const loadVoiceReuseSnapshot = async (
 
   const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, lang);
   const storedSimilarities = await loadVoiceSimilarityMap(db, modId, lang);
+  const effortTags = await loadActiveVoiceEffortTags(db, modId, mod.game);
   const localizeDir = paths.localizeDir;
   // A take counts as there only with the files that travel with it.
   const sidecarExtensions = voiceTakesOf(voice).sidecarExtensions;
@@ -100,6 +103,13 @@ export const loadVoiceReuseSnapshot = async (
     sourceText: take.source,
     translation: take.translation,
     ...(take.speakerSource ? { speakerSource: take.speakerSource } : {}),
+    effortTag: lookupVoiceEffortTag(
+      effortTags,
+      take.speakerKey,
+      take.entry.lineKey,
+      take.entry.variant,
+      take.entry.originPlugin,
+    ),
     sourceAbsPath: take.entry.absolutePath,
     sourceRelPath: take.entry.relPath,
     destRelPath: take.destRelPath,

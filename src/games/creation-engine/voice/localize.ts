@@ -20,6 +20,7 @@ import {
   loadVoiceSynthesisVersionMap,
   lookupVoiceSynthesisVersion,
 } from '../../../voice/voiceSynthesisState';
+import { loadActiveVoiceEffortTags, lookupVoiceEffortTag } from '../../../voice/voiceEffortTags';
 import { voiceTtsPayloadVersionFromPrepared } from '../../../voice/voiceTtsPayloadVersion';
 import { loadVoiceResynthContext, voiceTakeNeedsWork } from '../../../voice/voiceResynth';
 import { loadVoiceWorkList } from '../../../voice/voiceWorkList';
@@ -38,6 +39,7 @@ export const countCreationEngineVoiceWork = async (
     : undefined;
   const forceAll = scope === 'all';
   const speakerFilter = request.speakerKey?.trim() || '';
+  const effortTags = await loadActiveVoiceEffortTags(db, modId, request.game);
   let total = 0;
 
   for (const pkg of packages) {
@@ -60,15 +62,22 @@ export const countCreationEngineVoiceWork = async (
       if (speakerFilter && voiceSpeakerKey(entry, work.voiceRootRel) !== speakerFilter) continue;
       if (!canSynthesizeVoiceLine(row.source, row.translation, row.edid)) continue;
 
+      const speakerKey = voiceSpeakerKey(entry, work.voiceRootRel);
       const prepared = prepareVoiceTtsText({
         lineSource: row.source,
         translation: row.translation,
         speakerSource: referenceSource ?? row.source,
         edid: row.edid,
+        effortTag: lookupVoiceEffortTag(
+          effortTags,
+          speakerKey,
+          entry.lineKey,
+          entry.variant,
+          entry.originPlugin,
+        ),
       });
       if (prepared.action !== 'synthesize') continue;
 
-      const speakerKey = voiceSpeakerKey(entry, work.voiceRootRel);
       const takeDest = toDiskPath(pkg.localizeDir, takes.localizedRelPath(entry));
       const due = voiceTakeNeedsWork({
         force: forceAll,

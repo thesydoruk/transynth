@@ -187,6 +187,7 @@ const reuseSynthesizedVoiceUnsafe = async (
         originPlugin: line.originPlugin,
         sourceText: line.sourceText,
         translation: line.translation,
+        effortTag: line.effortTag,
         sourceAbsPath: line.sourceAbsPath,
         sourceRelPath: line.sourceRelPath,
         localizedAbsPath,
