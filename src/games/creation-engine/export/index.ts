@@ -8,10 +8,10 @@
 import path from 'node:path';
 import { log } from '../../../logger';
 import { resolveModImportExtractRoot } from '../../../modStorage/paths';
-import { exportGameArchives } from '../../../web/export/exportArchives';
-import { exportPatchedEsp } from '../../../web/export/exportEsp';
+import { exportGameArchives } from './exportArchives';
+import { exportPatchedEsp } from './exportEsp';
 import type { ZipPackEntry } from '../../../web/export/exportTypes';
-import { stageFullLocalizedMod } from '../../../web/export/fullModStaging';
+import { stageFullLocalizedMod } from './fullModStaging';
 import {
   splitLangpackVoiceEntries,
   uaSoundPackNames,

@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Ba2Reader, isBa2GnrArchive } from '../formats/ba2';
 import { readPluginHeader } from '../formats/esp/pluginHeader';
-import { parsePluginStringsFileName } from '../import/stringsPack/constants';
+import { parsePluginStringsFileName } from '../formats/strings/stringsFileName';
 
 const TES4_LOCALIZED = 0x80;
 const TABLE_EXTENSIONS = ['strings', 'dlstrings', 'ilstrings'] as const;

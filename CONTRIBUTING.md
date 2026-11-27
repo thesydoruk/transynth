@@ -41,7 +41,7 @@ Pull requests run Prettier, ESLint, `tsc`, `npm test`, the database tests, `npm 
 ## Layout
 
 - `src/web` enqueues jobs through `worker/src/api`. The worker imports `src/web/data` and services. Do not grow that cycle; a shared jobs layer comes later.
-- Plugin import lives in `src/import/mod`. HTTP and UI call it `modImport`. Keep both names; do not rename the tree in passing.
+- Plugin import lives in `src/import/mod`; a step only one engine uses lives in that engine's plugin (`src/games/creation-engine/import`). HTTP and UI call it `modImport`. Keep both names; do not rename the tree in passing.
 - Games are plugins under `src/games/`. Shared code must never compare a game id to a literal — add to the contract in `src/games/contract` instead. See [Adding a Game](doc/eng/17-adding-a-game.md).
 - Route handlers under `src/web/routes` have almost no tests. Add a colocated `*.test.ts` when you change a route.
 

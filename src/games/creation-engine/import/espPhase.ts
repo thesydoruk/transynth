@@ -7,12 +7,12 @@
  * caller to skip the remaining phases.
  */
 import { logImport } from '../../../logging/loggers';
-import { localeSourcesByLocale } from '../../../import/mod/localeSources';
+import { localeSourcesByLocale } from './localeSources';
 import {
   loadLocaleStringsByType,
   generateImportCsvRows,
   resolveEnglishLocaleMaps,
-} from '../../../import/mod/localeRows';
+} from './localeRows';
 import { buildNpcNameMap } from '../../../import/mod/speakerMaps';
 import { markFailed, markPaused } from '../../../import/mod/jobStatus';
 import type { ModImportRunContext } from '../../contract';

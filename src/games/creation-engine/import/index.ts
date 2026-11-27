@@ -17,12 +17,12 @@ import {
   discoverModFiles,
 } from '../../../import/mod/discovery';
 import { filterPrimaryPlugins } from '../../../import/mod/importAnchor';
-import { discoverLocaleSources } from '../../../import/mod/localeSources';
-import { estimateLocalizedImportTotal } from '../../../import/mod/localeRows';
-import { countMcmTranslationRecords } from '../../../import/mod/mcmLocales';
+import { discoverLocaleSources } from './localeSources';
+import { estimateLocalizedImportTotal } from './localeRows';
+import { countMcmTranslationRecords } from './mcmLocales';
 import { resolveModDirectoryFromPath } from '../../../formats/mcm';
 import { finalizeModImport } from '../../../import/mod/run/finalize';
-import { persistBethesdaVoiceClips } from '../../../voice/persistBethesdaVoiceClips';
+import { persistBethesdaVoiceClips } from '../voice/persistBethesdaVoiceClips';
 import { importVideoManifests, videoModDir } from '../../../video/importPhase';
 import { isVideoManifestPath, listVideoManifests } from '../../../video/manifest';
 import type { AnchorDescription, GameImportAdapter, ModImportRunContext } from '../../contract';

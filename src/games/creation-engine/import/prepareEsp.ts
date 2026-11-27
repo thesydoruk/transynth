@@ -8,20 +8,14 @@ import { EspReader, type EspStringRow } from '../../../formats/esp';
 import { logImport } from '../../../logging/loggers';
 import { trackModImportBulkResults, type DialogGraphImportContext } from '../../../import/bulk';
 import { buildPluginSpeakerIndex } from '../../../import/dialogSpeakers';
-import {
-  buildSpeakerActorIndex,
-  loadPluginPathByBasename,
-} from '../../../import/dialogSpeakers/masterPlugins';
+import { buildSpeakerActorIndex, loadPluginPathByBasename } from './masterPlugins';
 import { discoverArchiveCandidatesForPlugin } from '../../../import/mod/discovery';
-import {
-  estimateLocalizedImportTotal,
-  resolveEnglishLocaleMaps,
-} from '../../../import/mod/localeRows';
+import { estimateLocalizedImportTotal, resolveEnglishLocaleMaps } from './localeRows';
 import {
   discoverLocaleSources,
   localeSourcesByLocale,
   type LocaleStringsSource,
-} from '../../../import/mod/localeSources';
+} from './localeSources';
 import { resolveSingleImportLocale } from '../../../import/mod/localeHelpers';
 import { buildSpeakerFormIdMap } from '../../../import/mod/speakerMaps';
 import {

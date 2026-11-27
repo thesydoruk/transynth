@@ -98,29 +98,6 @@ describe('no game-neutral layer names a record type', () => {
 });
 
 /**
- * Modules outside `src/games/` that still import a plugin's internals.
- *
- * These are Creation Engine helpers that predate the plugin layout and sit in
- * shared folders — none of them branches between games, so none can give a new
- * title the wrong answer, but each is a file a new engine's author has to read
- * and decide about. The list is allowed to shrink and nothing else: a new entry
- * fails this test.
- */
-const KNOWN_PLUGIN_IMPORTERS = [
-  'src/import/dialogSpeakers/masterPlugins.ts',
-  'src/import/mod/localeSources.ts',
-  'src/import/stringsPack/espIndex.ts',
-  'src/import/stringsPack/importStringsPack.ts',
-  'src/locale/exportSlots.ts',
-  'src/modImport/bethesdaArchivePaths.ts',
-  'src/modImport/packBethesdaArchives.ts',
-  'src/web/export/archiveExportPlan.ts',
-  'src/web/export/exportArchives.ts',
-  'src/web/export/sourceStringsLoader.ts',
-  'src/web/export/translationOverlay.ts',
-];
-
-/**
  * Every plugin directory under `src/games/`, read from disk rather than listed,
  * so a newly added game is covered without anyone remembering to add it.
  */
@@ -138,25 +115,15 @@ describe('plugin internals stay inside the plugin', () => {
     expect(PLUGIN_DIRS).toEqual(expect.arrayContaining(['creation-engine', 'disco-elysium']));
   });
 
-  it('grows no new importer of a plugin outside src/games', () => {
+  it('has no importer of a plugin outside src/games', () => {
+    // Code only one plugin uses lives inside it; code several use takes explicit
+    // parameters. Shared code that needs a game's answer asks through the contract.
     const offenders = nonPluginFiles()
       // A test may reach for a concrete title as a fixture; production code may not.
       .filter(({ rel }) => !isTest(rel))
       .filter(({ text }) => importsPlugin.test(text))
-      .map(({ rel }) => rel)
-      .filter((rel) => !KNOWN_PLUGIN_IMPORTERS.includes(rel));
+      .map(({ rel }) => rel);
 
     expect(offenders).toEqual([]);
-  });
-
-  it('keeps the known list honest — every entry still importing a plugin', () => {
-    // Stops the list outliving the debt: once a module is moved or cleaned up,
-    // its line here has to go too.
-    const stale = KNOWN_PLUGIN_IMPORTERS.filter((rel) => {
-      const abs = path.join(ROOT, rel);
-      return !fs.existsSync(abs) || !importsPlugin.test(fs.readFileSync(abs, 'utf8'));
-    });
-
-    expect(stale).toEqual([]);
   });
 });

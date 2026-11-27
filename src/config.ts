@@ -1,7 +1,6 @@
 import './loadEnv';
 import { resolveDatabaseUrl } from './databaseUrl';
 import { log } from './logger';
-import { resolveChampollionPath } from './champollionPath';
 import {
   parseVllmServersJson,
   resolveVllmServers,
@@ -251,9 +250,6 @@ export const CONFIG = {
   // These are used as fallback defaults when the caller does not specify a language.
   defaultSrcLang: process.env.SRC_LANG || 'en',
   defaultTgtLang: process.env.TGT_LANG || 'uk',
-
-  /** Absolute path to Champollion for on-demand PEX decompilation in the editor. */
-  champollionPath: resolveChampollionPath(),
 };
 
 /** @see CONFIG.dbChunkSize */

@@ -8,7 +8,7 @@
 import { resolveModDirectoryFromPath, resolveMcmLocaleKey } from '../../../formats/mcm';
 import { CONFIG } from '../../../config';
 import { logImport } from '../../../logging/loggers';
-import { ensureChampollionInstalled } from '../../../champollionPath';
+import { ensureChampollionInstalled } from '../../../formats/pex/champollion';
 import {
   bulkInsertModImportRows,
   bulkUpsertImportTranslations,
@@ -16,21 +16,18 @@ import {
   type ModImportBulkResult,
   type ModImportBulkRow,
 } from '../../../import/bulk';
-import {
-  decompilePexScriptMap,
-  type DecompiledPexScript,
-} from '../../../web/export/pexDecompileService';
+import { decompilePexScriptMap, type DecompiledPexScript } from '../../../formats/pex/pexDecompile';
 import { MOD_IMPORT_DEFAULT_SOURCE_LOCALE } from '../../../import/mod/localeHelpers';
 import {
   collectMcmLocalesForModParallel,
   buildMcmImportRows,
   loadMcmKeyMetaForMod,
-} from '../../../import/mod/mcmLocales';
+} from './mcmLocales';
 import {
   buildInterfaceTranslateCsvRows,
   collectInterfaceTranslateLocales,
-} from '../../../import/mod/interfaceTranslate';
-import { collectPexStrings, buildPexCsvRows } from '../../../import/mod/pexStrings';
+} from './interfaceTranslate';
+import { collectPexStrings, buildPexCsvRows } from './pexStrings';
 import { commitExtrasStop, extrasStopRequested } from '../../../import/mod/run/extrasStop';
 import type { ModImportBatchWriter } from '../../../import/mod/run/batchWriter';
 import type { ModImportRunContext } from '../../contract';
