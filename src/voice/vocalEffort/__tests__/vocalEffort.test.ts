@@ -47,6 +47,23 @@ describe('extractEffortFeatures', () => {
     expect(soft.f0MedianSt).toBeCloseTo(loud.f0MedianSt, 1);
   });
 
+  it('does not hear hiss between the words as brightness', () => {
+    const voiced = tone(200, 2);
+    // A sibilant: loud white noise, far brighter than the voice around it.
+    let seed = 12345;
+    const hiss = new Int16Array(SAMPLE_RATE / 2).map(() => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return Math.round((seed / 2147483648 - 0.5) * 16000);
+    });
+    const withHiss = new Int16Array([...voiced, ...hiss, ...voiced]);
+
+    const clean = extractEffortFeatures(voiced, SAMPLE_RATE)!;
+    const hissed = extractEffortFeatures(withHiss, SAMPLE_RATE)!;
+    expect(hissed.voicedRatio).toBeLessThan(0.9);
+    // The frames straddling voice and hiss still count; over every frame the gap is ~15 dB.
+    expect(Math.abs(hissed.brightnessDb - clean.brightnessDb)).toBeLessThan(2);
+  });
+
   it('returns null for silence and for clips too short to judge', () => {
     expect(extractEffortFeatures(new Int16Array(SAMPLE_RATE), SAMPLE_RATE)).toBeNull();
     expect(extractEffortFeatures(tone(200, 1.5, 0.02), SAMPLE_RATE)).toBeNull();
@@ -72,44 +89,59 @@ describe('speaker baseline', () => {
     expect(semitonesToHz(withOutliers.f0MedianSt.median)).toBeLessThan(130);
   });
 
+  it('needs the calm clips of a speaker who mostly shouts', () => {
+    const shouts = [300, 310, 320, 305, 315, 325, 295, 330, 312, 318].map((f0) =>
+      features(f0, 0.8),
+    );
+    const shouted = features(310, 0.8);
+
+    const fromEverything = effortZScores(shouted, buildSpeakerBaseline([...calm, ...shouts])!);
+    const fromCalm = effortZScores(shouted, buildSpeakerBaseline(calm)!);
+    expect(fromEverything.f0Median).toBeLessThan(1);
+    expect(fromCalm.f0Median).toBeGreaterThan(3);
+  });
+
   it('has no baseline without clips', () => {
     expect(buildSpeakerBaseline([])).toBeNull();
   });
 });
 
 describe('decideVocalEffort', () => {
-  it('leaves ordinary dialogue untagged', () => {
-    expect(decideVocalEffort({ sourceText: 'Nice weather today.' }).tag).toBeNull();
-    expect(decideVocalEffort({ sourceText: 'Thanks!' }).tag).toBeNull();
+  const pushed = { f0Median: 3, brightness: 2.2 };
+  const calm = { f0Median: 0.3, brightness: -0.2 };
+
+  it('tags a pushed clip whose line says it is shouted', () => {
+    expect(decideVocalEffort({ acoustic: pushed, sourceText: 'Get down!' }).tag).toBe('shouting');
+    expect(
+      decideVocalEffort({ acoustic: pushed, sourceText: 'Go.', scriptNote: 'Yelling to allies' })
+        .tag,
+    ).toBe('shouting');
   });
 
-  it('tags combat barks as shouting', () => {
-    expect(decideVocalEffort({ combatBark: true, sourceText: 'Get down!' }).tag).toBe('shouting');
+  it('does not take the text at its word when the clip is calm', () => {
+    expect(decideVocalEffort({ acoustic: calm, sourceText: 'Thanks!' }).tag).toBeNull();
+    expect(
+      decideVocalEffort({ acoustic: calm, scriptNote: 'Shouting over gunfire' }).tag,
+    ).toBeNull();
   });
 
-  it('follows the actor direction', () => {
-    expect(decideVocalEffort({ scriptNote: 'Shouting over gunfire' }).tag).toBe('shouting');
-    expect(decideVocalEffort({ scriptNote: 'thoughtful, quiet' }).tag).toBeNull();
+  it('never tags a line it has no clip for', () => {
+    const decision = decideVocalEffort({ sourceText: 'Get down!' });
+    expect(decision).toEqual({ strength: null, cued: true, tag: null });
   });
 
-  it('tags on acoustics alone when the clip stands far out', () => {
-    const acoustic = { f0Median: 3, f0P90: 3, brightness: 2.5 };
-    expect(decideVocalEffort({ acoustic, sourceText: 'I said no.' }).tag).toBe('shouting');
+  it('calls a pushed clip without a cue loud, and only from a higher strength', () => {
+    expect(decideVocalEffort({ acoustic: pushed, sourceText: 'I said no.' }).tag).toBeNull();
+    const harder = { f0Median: 3.4, brightness: 2.6 };
+    expect(decideVocalEffort({ acoustic: harder, sourceText: 'I said no.' }).tag).toBe('loud');
   });
 
-  it('does not tag on pitch alone', () => {
-    const acoustic = { f0Median: 2, f0P90: 2, brightness: -0.5 };
-    expect(decideVocalEffort({ acoustic }).tag).toBeNull();
-  });
-
-  it('screams only with fear or pain behind a high score', () => {
-    const acoustic = { f0Median: 4, f0P90: 4, brightness: 3 };
-    expect(decideVocalEffort({ acoustic, combatBark: true, emotion: 'fear' }).tag).toBe(
-      'screaming',
-    );
-    expect(decideVocalEffort({ acoustic, combatBark: true, emotion: 'anger' }).tag).toBe(
-      'shouting',
-    );
+  it('needs pitch and brightness together', () => {
+    const highOnly = { f0Median: 5.7, brightness: 0.1 };
+    const brightOnly = { f0Median: 0.2, brightness: 4.9 };
+    expect(decideVocalEffort({ acoustic: highOnly, sourceText: 'Hear me?!' }).tag).toBeNull();
+    expect(decideVocalEffort({ acoustic: brightOnly, sourceText: 'Shit!' }).tag).toBeNull();
+    expect(decideVocalEffort({ acoustic: highOnly }).strength).toBeCloseTo(0.1);
   });
 });
 

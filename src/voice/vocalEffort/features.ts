@@ -5,11 +5,16 @@
  * shout and a murmur carry the same RMS. What survives normalization is the
  * way the voice changes when it is raised:
  *
- *   - pitch climbs (F0 median and the upper tail),
+ *   - pitch climbs (F0 median),
  *   - the spectrum flattens, i.e. more energy sits in the high band.
  *
  * Both are only meaningful against the same speaker's ordinary speech, so the
  * numbers here are raw; `baseline.ts` turns them into z-scores per speaker.
+ *
+ * Measured on 8,030 original Fallout 4 clips (five voice types): the upper
+ * pitch tail (p90) separates shouts worse than the median — it is where the
+ * octave errors land — and brightness over every active frame scores hissed
+ * lines ("Shh!", "Chicken shit.") as shouts, so it is taken over voiced frames.
  */
 
 /** Rate the signal is decimated to before analysis; pitch needs no more. */
@@ -29,9 +34,11 @@ const FIRST_PEAK_RATIO = 0.9;
 export type EffortFeatures = {
   /** Median pitch of the voiced frames, in semitones above 100 Hz. */
   f0MedianSt: number;
-  /** 90th percentile of the same — the pitch the voice reaches when pushed. */
-  f0P90St: number;
-  /** High-band emphasis in dB: energy of the first difference over total energy. */
+  /**
+   * High-band emphasis of the voiced frames in dB: energy of the first
+   * difference over total energy. Unvoiced frames are left out, or sibilants
+   * and breath would pass for a pushed voice.
+   */
   brightnessDb: number;
   /** Voiced frames over active frames; low values mean the pitch is not to be trusted. */
   voicedRatio: number;
@@ -52,11 +59,8 @@ const decimate = (samples: Int16Array, sampleRate: number): { x: Float32Array; r
   return { x, rate: sampleRate / factor };
 };
 
-const percentile = (sorted: number[], p: number): number => {
-  if (sorted.length === 0) return Number.NaN;
-  const index = Math.min(sorted.length - 1, Math.max(0, Math.round(p * (sorted.length - 1))));
-  return sorted[index]!;
-};
+const medianOfSorted = (sorted: number[]): number =>
+  sorted.length === 0 ? Number.NaN : sorted[Math.round((sorted.length - 1) / 2)]!;
 
 /** Pitch of one frame in Hz, or null when the frame is unvoiced. */
 const framePitchHz = (
@@ -130,19 +134,19 @@ export const extractEffortFeatures = (
     }
     if (Math.sqrt(frameEnergy / size) < SILENCE_RMS) continue;
     activeFrames += 1;
-    energy += frameEnergy;
-    diffEnergy += frameDiff;
 
     const hz = framePitchHz(x, start, size, rate);
-    if (hz != null) pitches.push(hzToSemitones(hz));
+    if (hz == null) continue;
+    pitches.push(hzToSemitones(hz));
+    energy += frameEnergy;
+    diffEnergy += frameDiff;
   }
 
   if (activeFrames < 5 || pitches.length < 3 || energy <= 0 || diffEnergy <= 0) return null;
   pitches.sort((a, b) => a - b);
 
   return {
-    f0MedianSt: percentile(pitches, 0.5),
-    f0P90St: percentile(pitches, 0.9),
+    f0MedianSt: medianOfSorted(pitches),
     brightnessDb: 10 * Math.log10(diffEnergy / energy),
     voicedRatio: pitches.length / activeFrames,
   };

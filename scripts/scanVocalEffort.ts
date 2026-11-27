@@ -7,12 +7,17 @@
  * prints one TSV row per clip, most strained first. Listen to the top, the
  * bottom and the rows around the thresholds in `vocalEffort/decide.ts`.
  *
- * Only the acoustic hint is scored here; text, actor notes and combat topics
- * need the plugin and are not wired in yet. Nothing is written anywhere.
+ * `--calm=<file>` names the clips a baseline may be built from, one
+ * `<speaker>/<clip>` per line (no extension). Without it every clip counts,
+ * which hides the shouts of a voice type that mostly shouts.
+ *
+ * Only the acoustic gate is scored here: the text and the actor note, which
+ * `shouting` also needs, come from the plugin and are not wired in yet. So the
+ * tag column shows `loud` at most. Nothing is written anywhere.
  *
  * Usage:
  *   npm run voice:scan-effort -- <dir>
- *   npm run voice:scan-effort -- <dir> --speaker=NPCFPiper --limit=200
+ *   npm run voice:scan-effort -- <dir> --calm=calm.txt --speaker=NPCFPiper --limit=200
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -33,13 +38,25 @@ const arg = (name: string): string | undefined => {
 
 const root = process.argv.slice(2).find((value) => !value.startsWith('--'));
 if (!root || !fs.statSync(root, { throwIfNoEntry: false })?.isDirectory()) {
-  console.error('Usage: npm run voice:scan-effort -- <dir> [--speaker=NAME] [--limit=N]');
+  console.error(
+    'Usage: npm run voice:scan-effort -- <dir> [--calm=FILE] [--speaker=NAME] [--limit=N]',
+  );
   process.exit(1);
 }
 const onlySpeaker = arg('speaker');
 const limit = Number(arg('limit') ?? 0) || undefined;
+const calmFile = arg('calm');
+const calmKeys = calmFile
+  ? new Set(
+      fs
+        .readFileSync(calmFile, 'utf8')
+        .split(/\r?\n/)
+        .map((line) => line.trim().replace(/\\/g, '/').toLowerCase())
+        .filter(Boolean),
+    )
+  : null;
 
-type Clip = { speaker: string; file: string; features: EffortFeatures };
+type Clip = { speaker: string; file: string; features: EffortFeatures; calm: boolean };
 
 const clips: Clip[] = [];
 let unreadable = 0;
@@ -51,48 +68,51 @@ for (const entry of fs.readdirSync(root, { recursive: true, withFileTypes: true 
   try {
     const { samples, sampleRate } = readPcmFromWav(file);
     const features = extractEffortFeatures(samples, sampleRate);
-    if (features) clips.push({ speaker, file: path.relative(root, file), features });
+    const key = `${speaker}/${path.basename(entry.name, path.extname(entry.name))}`.toLowerCase();
+    const calm = calmKeys ? calmKeys.has(key) : true;
+    if (features) clips.push({ speaker, file: path.relative(root, file), features, calm });
     else unreadable += 1;
   } catch {
     unreadable += 1;
   }
 }
 
-const bySpeaker = new Map<string, Clip[]>();
+const speakers = new Set(clips.map((clip) => clip.speaker));
+const calmBySpeaker = new Map<string, EffortFeatures[]>();
 for (const clip of clips) {
-  const list = bySpeaker.get(clip.speaker) ?? [];
-  list.push(clip);
-  bySpeaker.set(clip.speaker, list);
+  if (!clip.calm) continue;
+  const list = calmBySpeaker.get(clip.speaker) ?? [];
+  list.push(clip.features);
+  calmBySpeaker.set(clip.speaker, list);
 }
-// Speakers with a handful of clips borrow the baseline of everyone scanned.
-const pooled = buildSpeakerBaseline(clips.map((clip) => clip.features));
+// Speakers with a handful of calm clips borrow the baseline of everyone scanned.
+const pooled = buildSpeakerBaseline([...calmBySpeaker.values()].flat());
+const baselines = new Map(
+  [...calmBySpeaker]
+    .filter(([, own]) => own.length >= MIN_BASELINE_CLIPS)
+    .map(([speaker, own]) => [speaker, buildSpeakerBaseline(own)]),
+);
 
 const rows = clips.flatMap((clip) => {
-  const own = bySpeaker.get(clip.speaker) ?? [];
-  const baseline =
-    own.length >= MIN_BASELINE_CLIPS
-      ? buildSpeakerBaseline(own.map((item) => item.features))
-      : pooled;
+  const own = baselines.get(clip.speaker);
+  const baseline = own ?? pooled;
   if (!baseline) return [];
   const acoustic = effortZScores(clip.features, baseline);
-  const { score, tag } = decideVocalEffort({ acoustic });
-  return [{ clip, acoustic, score, tag, pooled: own.length < MIN_BASELINE_CLIPS }];
+  const { strength, tag } = decideVocalEffort({ acoustic });
+  return [{ clip, acoustic, strength: strength ?? 0, tag, pooled: !own }];
 });
-// The acoustic part is clamped, so ties are broken by how far out the clip really is.
-const strain = (z: { f0Median: number; brightness: number }): number => z.f0Median + z.brightness;
-rows.sort((a, b) => b.score - a.score || strain(b.acoustic) - strain(a.acoustic));
+rows.sort((a, b) => b.strength - a.strength);
 
 const fixed = (value: number): string => value.toFixed(2);
 console.log(
-  ['score', 'tag', 'zF0', 'zF0p90', 'zBright', 'voiced', 'baseline', 'speaker', 'file'].join('\t'),
+  ['strength', 'tag', 'zF0', 'zBright', 'voiced', 'baseline', 'speaker', 'file'].join('\t'),
 );
 for (const row of rows.slice(0, limit)) {
   console.log(
     [
-      fixed(row.score),
+      fixed(row.strength),
       row.tag ?? '-',
       fixed(row.acoustic.f0Median),
-      fixed(row.acoustic.f0P90),
       fixed(row.acoustic.brightness),
       fixed(row.clip.features.voicedRatio),
       row.pooled ? 'pooled' : 'speaker',
@@ -102,5 +122,5 @@ for (const row of rows.slice(0, limit)) {
   );
 }
 console.error(
-  `${rows.length} clips from ${bySpeaker.size} speakers; ${unreadable} skipped (no speech or not 16-bit WAV)`,
+  `${rows.length} clips from ${speakers.size} speakers; ${unreadable} skipped (no speech or not 16-bit WAV)`,
 );
