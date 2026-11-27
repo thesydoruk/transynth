@@ -1,7 +1,4 @@
-import {
-  interfaceTranslateArchivePathForSlot,
-  interfaceTranslateExportSlots,
-} from '../interfaceTranslateSlots';
+import { interfaceTranslateArchivePathForSlot } from '../interfaceTranslateSlots';
 import {
   interfaceTranslateKeyFromRecordPath,
   interfaceTranslateLocaleFromPath,
@@ -37,8 +34,7 @@ describe('interfaceTranslate', () => {
     expect(interfaceTranslateLocaleFromPath('MCM_en.txt')).toBeNull();
   });
 
-  it('maps unofficial FO4 targets to en and ru Translate files', () => {
-    expect(interfaceTranslateExportSlots('uk', 'fo4')).toEqual(['en', 'ru']);
+  it('names the Translate file of an install slot', () => {
     expect(interfaceTranslateArchivePathForSlot('en')).toBe('Interface\\Translate_en.txt');
     expect(interfaceTranslateArchivePathForSlot('ru')).toBe('Interface\\Translate_ru.txt');
   });

@@ -13,8 +13,6 @@ export type {
 } from './pluginSpeakerIndex';
 export { buildPluginSpeakerIndex } from './pluginSpeakerIndex';
 
-export { buildSpeakerActorIndex, loadPluginPathByBasename } from './masterPlugins';
-
 export type { DialogSpeakerRow, SpeakerSourceNode } from './speakerRows';
 
 export type { DialogSpeakerResolution } from './persist';

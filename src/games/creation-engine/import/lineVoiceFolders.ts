@@ -7,10 +7,7 @@
  * list with the folders of WEM-named takes and the player's scene choices.
  */
 import type { EspActorIndex, EspReader, EspStringRow } from '../../../formats/esp';
-import {
-  resolveLineVoiceFolders,
-  type LineVoiceFolders,
-} from '../../../import/dialogSpeakers/lineVoiceTypes';
+import { resolveLineVoiceFolders, type LineVoiceFolders } from './lineVoiceTypes';
 import { PLAYER_ALIAS_ID } from '../../../import/dialogSpeakers/addressees';
 import type { PluginSpeakerIndex } from '../../../import/dialogSpeakers/pluginSpeakerIndex';
 import {

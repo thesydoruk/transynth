@@ -11,7 +11,7 @@
 import type { Tx } from '../../../db';
 import { resolveImportPackages, toDiskPath } from '../../../modImport';
 import { voiceTranslationMapKey } from '../../../voice/loadVoiceTranslations';
-import { localizeVoicePackage } from '../../../voice/localizeVoicePackage';
+import { localizeVoicePackage } from './localizeVoicePackage';
 import { canSynthesizeVoiceLine, prepareVoiceTtsText } from '../../../voice/prepareVoiceTtsText';
 import { voiceSpeakerKey } from '../../../voice/speakerReference';
 import type { VoiceTakeFormat } from '../../../voice/takeFormat';

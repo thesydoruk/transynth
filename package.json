@@ -28,7 +28,6 @@
     "w3:voice-pack": "tsx src/games/witcher3/voice/packCli.ts",
     "vortex:sync": "tsx scripts/vortexSync.ts",
     "vortex:agent": "tsx scripts/vortexAgent.ts",
-    "scan:strings": "tsx scripts/scanStrings.ts",
     "voice:clear": "tsx scripts/clearGeneratedVoice.ts",
     "voice:backfill-similarity": "tsx scripts/backfillVoiceSimilarity.ts",
     "voice:reindex-takes": "tsx scripts/reindexVoiceTakes.ts",

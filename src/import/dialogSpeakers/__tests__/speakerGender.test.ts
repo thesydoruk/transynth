@@ -1,6 +1,6 @@
 import { genderFromVoiceTypeHeuristic, genderFromVoiceTypeName } from '../../../dialog';
 import type { ActorRecord, VoiceTypeRecord } from '../../../formats/types';
-import { mergeActorIndexes } from '../masterPlugins';
+import { mergeActorIndexes } from '../../../games/creation-engine/import/masterPlugins';
 import { buildPluginSpeakerIndex, genderFromVoiceTypeIndex } from '../pluginSpeakerIndex';
 import { buildActorSpeakerRowsFromIndex } from '../actorSpeakerRows';
 import { buildDialogSpeakerRows } from '../speakerRows';

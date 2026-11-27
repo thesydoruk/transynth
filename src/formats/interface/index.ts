@@ -5,10 +5,7 @@ export {
   writeFontConfig,
 } from './fontConfig';
 export type { CharListLine, FontConfig, FontConfigLine, FontMapLine } from './fontConfig';
-export {
-  interfaceTranslateArchivePathForSlot,
-  interfaceTranslateExportSlots,
-} from './interfaceTranslateSlots';
+export { interfaceTranslateArchivePathForSlot } from './interfaceTranslateSlots';
 export {
   interfaceTranslateKeyFromRecordPath,
   interfaceTranslateLocaleFromPath,

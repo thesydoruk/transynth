@@ -14,15 +14,11 @@
 import fs from 'node:fs';
 import type { DialogSpeakerRefresh, DialogSpeakerRefreshContext } from '../../contract';
 import { EspReader } from '../../../formats/esp';
-import {
-  buildPluginSpeakerIndex,
-  buildSpeakerActorIndex,
-  loadPluginPathByBasename,
-  resolveModDialogSpeakers,
-} from '../../../import/dialogSpeakers';
+import { buildPluginSpeakerIndex, resolveModDialogSpeakers } from '../../../import/dialogSpeakers';
+import { buildSpeakerActorIndex, loadPluginPathByBasename } from './masterPlugins';
 import { discoverArchiveCandidatesForPlugin } from '../../../import/mod/discovery';
-import { discoverLocaleSources } from '../../../import/mod/localeSources';
-import { resolveEnglishLocaleMaps } from '../../../import/mod/localeRows';
+import { discoverLocaleSources } from './localeSources';
+import { resolveEnglishLocaleMaps } from './localeRows';
 import { resolveModStoredPath } from '../../../modStorage/paths';
 import type { CreationEngineTitle } from '../title';
 import { buildLineVoiceFolders } from './lineVoiceFolders';

@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from '@jest/globals';
 import { resolveLooseStringsDirForPlugin } from '../looseStringsDir';
-import { discoverLocaleSources } from '../../../import/mod/localeSources';
+import { discoverLocaleSources } from '../../../games/creation-engine/import/localeSources';
 
 const tempDirs: string[] = [];
 

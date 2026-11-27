@@ -18,11 +18,11 @@ import {
   loadVoiceSourcesDetailed,
   loadVoiceTranslations,
 } from '../../../voice/loadVoiceTranslations';
-import { persistBethesdaVoiceClips } from '../../../voice/persistBethesdaVoiceClips';
+import { persistBethesdaVoiceClips } from './persistBethesdaVoiceClips';
 import { BETHESDA_VOICE_MARKUP } from '../../../voice/prepareVoiceTtsText';
 import { voiceSpeakerKey } from '../../../voice/speakerReference';
 import type { VoiceTakeFormat } from '../../../voice/takeFormat';
-import { collectVoiceSourceFormids } from '../../../voice/voiceSourceFormids';
+import { collectVoiceSourceFormids } from './voiceSourceFormids';
 import { loadVoiceSpeakerRefs } from '../../../voice/voiceSpeakerRefs';
 import { loadVoiceSimilarityMap } from '../../../voice/voiceSynthesisState';
 import { loadVoiceWorkList } from '../../../voice/voiceWorkList';

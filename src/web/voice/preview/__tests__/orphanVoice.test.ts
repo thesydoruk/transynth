@@ -1,7 +1,7 @@
 import type { VoiceFileEntry } from '../../../../voice/discoverVoiceFiles';
 import type { InheritedVoiceLookup, MasterModRef } from '../../../../voice/inheritedVoiceText';
 import { voiceTranslationMapKey } from '../../../../voice/loadVoiceTranslations';
-import { collectVoiceSourceFormids } from '../../../../voice/voiceSourceFormids';
+import { collectVoiceSourceFormids } from '../../../../games/creation-engine/voice/voiceSourceFormids';
 import { isOrphanVoiceEntry } from '../buildVoiceLinePreview';
 
 const entry = (lineKey: string, variant: number): VoiceFileEntry => ({

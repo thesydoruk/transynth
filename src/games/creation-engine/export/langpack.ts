@@ -5,18 +5,15 @@ import { patchStringsMap } from '../../../formats/esp';
 import { patchPexBuffer, collectModPexSources } from '../../../formats/pex';
 import { writeStringsBuffer } from '../../../formats/strings';
 import { log } from '../../../logger';
-import { exportLocaleSlots } from '../../../locale/exportSlots';
-import { exportPatchedEsp } from '../../../web/export/exportEsp';
-import { getPexTranslationOverlays } from '../../../web/export/exportPex';
+import { exportLocaleSlots } from './exportSlots';
+import { exportPatchedEsp } from './exportEsp';
+import { getPexTranslationOverlays } from './exportPex';
 import { collectExportableVoiceFiles } from '../../../web/export/exportVoiceFiles';
-import { collectInterfacePatchEntries } from '../../../web/export/exportInterfacePatch';
-import { collectMcmPatchEntries } from '../../../web/export/exportMcmPatch';
+import { collectInterfacePatchEntries } from './exportInterfacePatch';
+import { collectMcmPatchEntries } from './exportMcmPatch';
 import type { ZipPackEntry } from '../../../web/export/exportTypes';
-import { loadSourceStringsFiles } from '../../../web/export/sourceStringsLoader';
-import {
-  getTranslationOverlaysByType,
-  hasTranslationOverlayChanges,
-} from '../../../web/export/translationOverlay';
+import { loadSourceStringsFiles } from './sourceStringsLoader';
+import { getTranslationOverlaysByType, hasTranslationOverlayChanges } from './translationOverlay';
 
 /**
  * Loose localized files for one Creation Engine mod: patched string tables,
