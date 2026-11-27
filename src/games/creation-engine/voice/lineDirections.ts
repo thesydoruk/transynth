@@ -22,6 +22,7 @@ import {
   DEFAULT_ESP_RECORD_LAYOUT,
   extractVoiceDirection,
   type EspRecordLayout,
+  type VoiceDirection,
 } from '../../../formats/esp';
 import { loadInfoVoiceSlots } from '../../../voice/infoResponseNumbers';
 import { originFormidKey } from '../../../voice/voiceOrigin';
@@ -51,18 +52,22 @@ export const loadCreationEngineLineDirections = (
   layout: EspRecordLayout = DEFAULT_ESP_RECORD_LAYOUT,
 ): Map<string, VoiceLineDirection> => {
   const directions = new Map<string, VoiceLineDirection>();
-  let buf: Buffer;
+  if (!fs.existsSync(pluginPath)) return directions;
+
+  // The slots first: that reader holds the whole plugin while it parses and lets
+  // go of it on return. Reading our own copy before would keep two in memory at
+  // once — 2.8 GB for `Starfield.esm`.
+  const slots = loadInfoVoiceSlots(pluginPath, layout.plugin);
+  let voiceDirection: VoiceDirection;
   try {
-    buf = fs.readFileSync(pluginPath);
+    voiceDirection = extractVoiceDirection(fs.readFileSync(pluginPath), layout);
   } catch {
     return directions;
   }
-
-  const slots = loadInfoVoiceSlots(pluginPath, layout.plugin);
   // INFOs with no response of their own replay another's (`DNAM`); the topic is still theirs.
   const borrowerCalm = new Map<string, boolean>();
 
-  for (const [formId, info] of extractVoiceDirection(buf, layout)) {
+  for (const [formId, info] of voiceDirection) {
     const origin = slots.origins.originOfFormid(formId);
     const lineKey = slots.origins.lineKeyOfFormid(formId);
     const calmTopic = info.topic != null && CALM_TOPIC_SUBTYPES.has(info.topic.subtype);

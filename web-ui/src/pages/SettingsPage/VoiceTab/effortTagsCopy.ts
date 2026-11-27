@@ -25,3 +25,23 @@ export const effortTagsConfirmMessage = (
   }
   return t('settings.voice.effortTagsConfirmStale', { count: summary.synthesizedTaggedTakes });
 };
+
+/**
+ * Does switching tags off need a question first? A take made with a tag carries
+ * it in its stamp, so with the switch off it reads as stale. Only when the game
+ * is known to have no voiced line with a tag is there nothing to lose.
+ */
+export const effortTagsOffNeedsConfirm = (summary: VoiceEffortGameSummary | undefined): boolean =>
+  !summary || summary.synthesizedTaggedTakes > 0;
+
+/**
+ * What turning the switch off will do. The count is an upper bound: it is the
+ * voiced lines with a tag, some of which may never have been re-made with it.
+ */
+export const effortTagsOffConfirmMessage = (
+  t: TFunction,
+  summary: VoiceEffortGameSummary | undefined,
+): string =>
+  summary
+    ? t('settings.voice.effortTagsOffConfirm', { count: summary.synthesizedTaggedTakes })
+    : t('settings.voice.effortTagsOffConfirmUnknown');

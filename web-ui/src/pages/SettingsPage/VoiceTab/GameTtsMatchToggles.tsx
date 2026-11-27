@@ -5,7 +5,12 @@ import { api } from '../../../api';
 import { ConfirmModal } from '../../../components/ConfirmModal';
 import parentS from '../SettingsPage.module.scss';
 import controlS from '../WorkflowTab/WorkflowTab.module.scss';
-import { effortTagsConfirmMessage, effortTagsHint } from './effortTagsCopy';
+import {
+  effortTagsConfirmMessage,
+  effortTagsHint,
+  effortTagsOffConfirmMessage,
+  effortTagsOffNeedsConfirm,
+} from './effortTagsCopy';
 import { GAME_TTS_MATCH_TOGGLES, type GameTtsMatchSettings } from './voiceSettingsConfig';
 
 type GameTtsMatchTogglesProps = {
@@ -26,7 +31,8 @@ export const GameTtsMatchToggles = ({
   onChange,
 }: GameTtsMatchTogglesProps) => {
   const { t } = useTranslation();
-  const [confirmEffortTags, setConfirmEffortTags] = useState(false);
+  /** The value the effort-tags switch is about to take, while the user is asked. */
+  const [confirmEffortTags, setConfirmEffortTags] = useState<boolean | null>(null);
   const summary = useQuery({
     queryKey: ['voiceEffortSummary', gameId],
     queryFn: () => api.voiceEffortAnalysis.gameSummary(gameId),
@@ -36,10 +42,15 @@ export const GameTtsMatchToggles = ({
 
   const toggle = (field: keyof GameTtsMatchSettings) => {
     const next = !value[field];
-    // Switching tags on makes takes stale; for a game that cannot be analyzed it changes nothing.
-    if (field === 'effortTags' && next && vocalEffort) {
+    // Either way the switch makes takes stale: on, those of lines with a tag; off, the
+    // ones made with it. For a game that cannot be analyzed it changes nothing.
+    if (
+      field === 'effortTags' &&
+      vocalEffort &&
+      (next || effortTagsOffNeedsConfirm(summary.data))
+    ) {
       void summary.refetch();
-      setConfirmEffortTags(true);
+      setConfirmEffortTags(next);
       return;
     }
     onChange({ [field]: next });
@@ -73,17 +84,29 @@ export const GameTtsMatchToggles = ({
           </div>
         );
       })}
-      {confirmEffortTags && (
+      {confirmEffortTags != null && (
         <ConfirmModal
-          title={t('settings.voice.effortTagsConfirmTitle')}
-          message={effortTagsConfirmMessage(t, summary.data)}
-          confirmLabel={t('settings.voice.effortTagsConfirmButton')}
+          title={t(
+            confirmEffortTags
+              ? 'settings.voice.effortTagsConfirmTitle'
+              : 'settings.voice.effortTagsOffConfirmTitle',
+          )}
+          message={
+            confirmEffortTags
+              ? effortTagsConfirmMessage(t, summary.data)
+              : effortTagsOffConfirmMessage(t, summary.data)
+          }
+          confirmLabel={t(
+            confirmEffortTags
+              ? 'settings.voice.effortTagsConfirmButton'
+              : 'settings.voice.effortTagsOffConfirmButton',
+          )}
           pending={summary.isFetching && !summary.data}
           onConfirm={() => {
-            setConfirmEffortTags(false);
-            onChange({ effortTags: true });
+            setConfirmEffortTags(null);
+            onChange({ effortTags: confirmEffortTags });
           }}
-          onClose={() => setConfirmEffortTags(false)}
+          onClose={() => setConfirmEffortTags(null)}
         />
       )}
     </div>

@@ -16,6 +16,7 @@ tools. See [THIRD_PARTY.md](../THIRD_PARTY.md).
 - [Voice mode](#voice-mode)
 - [Dialogs playback](#dialogs-playback)
 - [Running synthesis](#running-synthesis)
+- [Shouted lines](#shouted-lines)
 - [Disco: what gets spoken](#disco-what-gets-spoken)
 - [Disco: which line a take belongs to](#disco-which-line-a-take-belongs-to)
 - [The Witcher 3: voice](#the-witcher-3-voice)
@@ -121,6 +122,44 @@ import, not into the extracted English voice archive. FO4 langpack export
 packs those clips into uncompressed `UASoundPack - Main.ba2` plus dummy
 `UASoundPack.esp`. Disco writes localized
 `.wav` files into the langpack tree.
+
+---
+
+## Shouted lines
+
+Cloned from a shouted original, a line usually comes out as raised talking. For
+Creation Engine games Transynth can tell the TTS model which lines are shouted:
+it sends them with an inline tag, `[shouting]` or the milder `[loud]`.
+
+It works in three steps.
+
+1. **Analyze the mod.** Mods page → the mod's voice menu → **Analyze vocal
+   effort** (or `npm run voice:analyze-effort -- --mod=ID`). The job decodes
+   every original take once and measures how hard the actor pushes — pitch and
+   brightness, against the same speaker's calm lines (greetings, idles, scenes
+   without `!`). It can be stopped and continues where it stopped; a base game
+   takes a while the first time. Synthesis for the mod cannot start while it
+   runs, and the other way round.
+2. **Look at the result.** In Voice mode each line shows its tag next to the
+   similarity score, and a filter lists the tagged lines. A line is `shouting`
+   when its original take sounds pushed and the line says so itself — a `!` in
+   the text or a shout in the actor note; a pushed take without that cue is
+   `loud`. Click the tag to set it by hand (auto / shouting / loud / no tag):
+   the analysis never overwrites a choice. A speaker with fewer than 30 calm
+   lines is marked and gets no tags — there is nothing to judge that voice
+   against.
+3. **Switch it on.** Settings → Voice → the game → **Shout where the original
+   shouts**. From then on tagged lines are synthesized with their tag. The takes
+   of those lines made before become stale, so the next **Missing only** job
+   makes them again; no other take is touched. Switching it off does the
+   reverse to the takes made with a tag. The page says how many takes that is
+   before it changes anything.
+
+In the regenerate dialog a preview take can be made under another tag and
+compared by ear; keeping it stores that tag for the line.
+
+The tag is only sent to TTS. The spoken text, the lip animation and the take's
+timing never see it.
 
 ---
 
