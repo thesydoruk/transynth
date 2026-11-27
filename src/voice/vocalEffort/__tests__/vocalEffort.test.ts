@@ -1,5 +1,5 @@
 import { buildSpeakerBaseline, effortZScores } from '../baseline';
-import { applyEffortTag, decideVocalEffort } from '../decide';
+import { applyEffortTag, decideVocalEffort, hasEffortCue } from '../decide';
 import { extractEffortFeatures, type EffortFeatures } from '../features';
 
 const SAMPLE_RATE = 44_100;
@@ -142,6 +142,16 @@ describe('decideVocalEffort', () => {
     expect(decideVocalEffort({ acoustic: highOnly, sourceText: 'Hear me?!' }).tag).toBeNull();
     expect(decideVocalEffort({ acoustic: brightOnly, sourceText: 'Shit!' }).tag).toBeNull();
     expect(decideVocalEffort({ acoustic: highOnly }).strength).toBeCloseTo(0.1);
+  });
+});
+
+describe('hasEffortCue', () => {
+  it('hears a cue in the text or in the actor note', () => {
+    expect(hasEffortCue({ sourceText: 'Everybody up! We got trouble!' })).toBe(true);
+    expect(hasEffortCue({ sourceText: 'Hurry.', scriptNote: 'quick shout as you flee' })).toBe(
+      true,
+    );
+    expect(hasEffortCue({ sourceText: 'Nice weather.', scriptNote: 'friendly' })).toBe(false);
   });
 });
 

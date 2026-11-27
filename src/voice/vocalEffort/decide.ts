@@ -51,7 +51,13 @@ const LOUD_STRENGTH = 2.5;
 
 const NOTE_SHOUT_RE = /\b(shout\w*|yell\w*|scream\w*|holler\w*|bellow\w*|roar\w*)\b/i;
 
-const isCued = (signals: EffortSignals): boolean =>
+/**
+ * Does the line itself say it is shouted — a `!` in its text or a shout in the
+ * actor note? Also what keeps a line out of a speaker's calm baseline: a
+ * raider's scene line "Everybody up! We got trouble!" is a calm topic and not
+ * a calm clip.
+ */
+export const hasEffortCue = (signals: Pick<EffortSignals, 'sourceText' | 'scriptNote'>): boolean =>
   (signals.sourceText ?? '').includes('!') || NOTE_SHOUT_RE.test(signals.scriptNote ?? '');
 
 /**
@@ -61,7 +67,7 @@ const isCued = (signals: EffortSignals): boolean =>
  * decideVocalEffort({ sourceText: 'Get down!' }).tag; // null — no clip to hear
  */
 export const decideVocalEffort = (signals: EffortSignals): EffortDecision => {
-  const cued = isCued(signals);
+  const cued = hasEffortCue(signals);
   const { acoustic } = signals;
   if (!acoustic) return { strength: null, cued, tag: null };
 

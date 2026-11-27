@@ -156,6 +156,20 @@ export type VoiceReindexResult = {
   transcribed: number;
 };
 
+/**
+ * What a game's own data says about how one voiced line is delivered — the
+ * hints vocal-effort tagging reads next to the take itself.
+ */
+export type VoiceLineDirection = {
+  /**
+   * The line belongs to ordinary talk (a greeting, an idle remark, a scene),
+   * not to combat or alarm. A speaker's calm voice is measured on these lines.
+   */
+  calmTopic: boolean;
+  /** What the script told the voice actor about the line, when it said anything. */
+  actorNote: string | null;
+};
+
 export type GameVoiceAdapter = {
   /** Extension of a localized take on disk, e.g. `.fuz`, `.wem` or `.wav`. */
   readonly sourceExtension: string;
@@ -270,6 +284,15 @@ export type GameVoiceAdapter = {
     db: Tx,
     request: { modId: number; pluginPath: string; srcLang: string; targetLang: string },
   ): Promise<VoiceLineCatalog | VoiceLineCatalogError>;
+
+  /**
+   * How each voiced line of a plugin is delivered, as far as the game's data
+   * says: keyed like the voice text maps, `<origin>/FORMID6:variant` for games
+   * whose takes have an owning plugin and `FORMID6:variant` otherwise. A line
+   * the data says nothing about is absent. Games that record no such thing
+   * leave this out, and their lines are never tagged for vocal effort.
+   */
+  loadLineDirections?(pluginPath: string): Map<string, VoiceLineDirection>;
 
   /**
    * Re-derive an imported mod's take index from the pack on disk: which files

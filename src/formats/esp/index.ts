@@ -20,6 +20,13 @@ export type {
   SceneRecord,
 } from './EspReader';
 export { patchEsp, patchStringsMap } from './espPatcher';
+export { extractVoiceDirection } from './EspVoiceDirectionExtractor';
+export type {
+  DialogTopicKind,
+  InfoVoiceDirection,
+  VoiceDirection,
+} from './EspVoiceDirectionExtractor';
+export { readInfoResponseNumber } from './infoResponseNumber';
 export {
   formIdMasterIndex,
   pluginKindFromFlags,

@@ -36,6 +36,7 @@ export const createCreationEnginePlugin = (title: CreationEngineTitle): GamePlug
     dialog: creationEngineDialogAdapter,
     voice: createCreationEngineVoiceAdapter(
       voiceTakeFormat(title.voice.takes, title.records?.plugin),
+      title.records,
     ),
     deployment: title.deployment,
     content: createCreationEngineContentAdapter(title),

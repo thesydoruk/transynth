@@ -38,11 +38,17 @@ import { CONFIG } from '../../../config';
 import { resolveVoicePackageContext } from '../../../web/voice/preview/context';
 import { discoverVoiceEntries, findVoiceEntry } from '../../../web/voice/preview/voiceEntries';
 import type { GameVoiceAdapter } from '../../contract';
+import type { EspRecordLayout } from '../../../formats/esp';
 import { loadCreationEngineVoiceCatalog } from './lineCatalog';
+import { loadCreationEngineLineDirections } from './lineDirections';
 import { countCreationEngineVoiceWork, localizeCreationEngineVoice } from './localize';
 
+/**
+ * @param records - The title's record layout; omitted, plugins read as Fallout 4.
+ */
 export const createCreationEngineVoiceAdapter = (
   takes: VoiceTakeFormat = FUZ_TAKES,
+  records?: EspRecordLayout,
 ): GameVoiceAdapter => ({
   sourceExtension: takes.extension,
   takes,
@@ -177,6 +183,8 @@ export const createCreationEngineVoiceAdapter = (
   },
 
   loadLineCatalog: (db, request) => loadCreationEngineVoiceCatalog(db, request, takes),
+
+  loadLineDirections: (pluginPath) => loadCreationEngineLineDirections(pluginPath, records),
 });
 
 /** The adapter of every title that keeps the default `.fuz` takes. */
