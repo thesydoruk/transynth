@@ -1,0 +1,90 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { findFileIgnoringCase, getBa2Reader } from '../../../formats/ba2';
+import {
+  interfaceTranslateLocaleFromPath,
+  isInterfaceTranslatePath,
+  parseInterfaceTranslateBuffer,
+} from '../../../formats/interface';
+import { listCompanionGnrlBa2ForPlugin } from '../../../import/mod/discovery';
+import type { CsvRow } from '../../../types';
+
+const loadInterfaceTranslateFromBa2 = (ba2Path: string): Map<string, Map<string, string>> => {
+  const reader = getBa2Reader(ba2Path);
+  const locales = new Map<string, Map<string, string>>();
+
+  for (const entry of reader.listByExt('txt')) {
+    const baseName = path.basename(entry.name);
+    if (!isInterfaceTranslatePath(baseName)) continue;
+
+    const locale = interfaceTranslateLocaleFromPath(baseName);
+    if (!locale) continue;
+
+    const map = parseInterfaceTranslateBuffer(reader.extractEntry(entry));
+    if (map.size === 0) continue;
+    locales.set(locale, map);
+  }
+
+  return locales;
+};
+
+/**
+ * Loose `Interface/Translate_*.txt` next to the plugin. An archive unpacked on
+ * the server keeps the case its entries have — Starfield's are `interface/` —
+ * so the folder is found whatever its case, as the game finds it.
+ */
+const loadInterfaceTranslateFromLooseFiles = (modDir: string): Map<string, Map<string, string>> => {
+  const locales = new Map<string, Map<string, string>>();
+  const ifaceDir = findFileIgnoringCase(modDir, 'Interface');
+  if (!ifaceDir || !fs.statSync(ifaceDir).isDirectory()) return locales;
+
+  for (const file of fs.readdirSync(ifaceDir)) {
+    if (!isInterfaceTranslatePath(file)) continue;
+    const locale = interfaceTranslateLocaleFromPath(file);
+    if (!locale) continue;
+
+    const map = parseInterfaceTranslateBuffer(fs.readFileSync(path.join(ifaceDir, file)));
+    if (map.size === 0) continue;
+    locales.set(locale, map);
+  }
+
+  return locales;
+};
+
+/** Collect all `Interface/Translate_*.txt` locales for one plugin package. */
+export const collectInterfaceTranslateLocales = (
+  modDir: string,
+  anchorPath: string,
+): Map<string, Map<string, string>> => {
+  const merged = new Map<string, Map<string, string>>();
+
+  for (const ba2Path of listCompanionGnrlBa2ForPlugin(anchorPath)) {
+    try {
+      for (const [locale, map] of loadInterfaceTranslateFromBa2(ba2Path)) {
+        if (!merged.has(locale)) merged.set(locale, new Map());
+        for (const [key, text] of map) merged.get(locale)!.set(key, text);
+      }
+    } catch {
+      // Skip unreadable archives.
+    }
+  }
+
+  for (const [locale, map] of loadInterfaceTranslateFromLooseFiles(modDir)) {
+    if (!merged.has(locale)) merged.set(locale, new Map());
+    for (const [key, text] of map) merged.get(locale)!.set(key, text);
+  }
+
+  return merged;
+};
+
+export const buildInterfaceTranslateCsvRows = (
+  locale: string,
+  translateMap: Map<string, string>,
+): CsvRow[] =>
+  Array.from(translateMap.entries()).map(([key, text]) => ({
+    FormID: '',
+    Signature: 'UI',
+    Path: `Interface\\Translate_${locale}\\${key}`,
+    PathSimplified: `Interface\\Translate_${locale}\\${key}`,
+    Source: text,
+  }));

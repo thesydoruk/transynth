@@ -10,7 +10,7 @@ import type { EspReader } from '../../../formats/esp';
 import { logImport } from '../../../logging/loggers';
 import type { DialogGraphImportContext } from '../../../import/bulk';
 import { resolveModDialogSpeakers } from '../../../import/dialogSpeakers';
-import { importDialogStructure } from '../../../import/dialogStructure';
+import { importDialogStructure } from './dialogStructure';
 import type { ModImportRunContext } from '../../contract';
 import { importSceneRecords } from './sceneImport';
 

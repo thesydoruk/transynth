@@ -8,7 +8,7 @@ import {
   clearSameAsSourceTranslations,
   deleteModData,
 } from '../../data/queries';
-import { getPexSourceSnippetForString } from '../../export/pexDecompileService';
+import { getPexSourceSnippetForString } from '../../services/pexSourceSnippet';
 import { deleteModsCompletely } from '../../../import/mod/deleteMods';
 import { snapshotModsToReference } from '../../services/referenceHooks';
 import { resolveModContentKind } from '../../services/modContentKind';
