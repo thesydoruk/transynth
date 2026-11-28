@@ -45,9 +45,15 @@ export type AnalyzeVocalEffortResult = {
   measured: number;
   /** Takes that could not be decoded; they are tried again next time. */
   failed: number;
+  /** Takes whose line has words to say; grunts and sound labels are never tagged. */
+  spokenTakes: number;
+  /** Of `spokenTakes`, the takes that were judged: measured, and their speaker has a baseline. */
+  judgedTakes: number;
   speakers: number;
   /** Speakers with enough calm lines to be judged. */
   speakersWithBaseline: number;
+  /** Takes of the speakers without a baseline — how much the small voices leave out. */
+  takesWithoutBaseline: number;
   shouting: number;
   loud: number;
   skipped: boolean;
@@ -98,8 +104,11 @@ export const analyzeModVocalEffort = async (
     takes: 0,
     measured: 0,
     failed: 0,
+    spokenTakes: 0,
+    judgedTakes: 0,
     speakers: 0,
     speakersWithBaseline: 0,
+    takesWithoutBaseline: 0,
     shouting: 0,
     loud: 0,
     skipped: false,
@@ -218,7 +227,13 @@ export const analyzeModVocalEffort = async (
   });
   await saveClipEffort(db, modId, rows);
 
+  // Half the speakers of a base game are too small for a baseline and hold a
+  // fiftieth of its lines, so the result counts lines as well as speakers.
+  const baselines = buildSpeakerBaselines(clips);
+  result.spokenTakes = clips.filter((clip) => clip.speakable).length;
+  result.judgedTakes = decisions.size;
   result.speakers = new Set(clips.map((clip) => clip.speakerKey)).size;
-  result.speakersWithBaseline = buildSpeakerBaselines(clips).size;
+  result.speakersWithBaseline = baselines.size;
+  result.takesWithoutBaseline = clips.filter((clip) => !baselines.has(clip.speakerKey)).length;
   return result;
 };

@@ -45,7 +45,9 @@ try {
   } else {
     console.log(
       `#${modId}: ${result.takes} takes, ${result.measured} measured now, ${result.failed} failed; ` +
-        `${result.speakersWithBaseline} of ${result.speakers} speakers have a baseline; ` +
+        `${result.judgedTakes} of ${result.spokenTakes} lines with words judged; ` +
+        `${result.speakers - result.speakersWithBaseline} of ${result.speakers} speakers have no baseline ` +
+        `(${result.takesWithoutBaseline} takes); ` +
         `${result.shouting} shouting, ${result.loud} loud`,
     );
   }

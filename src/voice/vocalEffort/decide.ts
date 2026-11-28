@@ -7,18 +7,25 @@ import type { EffortZScores } from './baseline';
  * The rule is two gates, set on 160 hand-labelled Fallout 4 lines (shout /
  * raised voice / calm, five voice types):
  *
- *   1. The clip must sound pushed — pitch and brightness both well above the
+ *   1. The clip must sound pushed — pitch and brightness both above the
  *      speaker's calm lines. The weaker of the two is the strength: either one
  *      alone is common in calm speech (a short "Here." rides high in pitch).
  *   2. For `shouting` the line must also say so — a `!` in the text or a
- *      shout in the actor note. Of 20 labelled lines passing both gates, 14
- *      were shouts, 6 a raised voice and none calm; without the second gate a
- *      fifth of the lines at that strength were calm.
+ *      shout in the actor note. Of 25 labelled lines passing both gates, 15
+ *      were shouts, 10 a raised voice and none calm; without the second gate
+ *      a fifth of the lines at that strength were calm.
  *
- * A pushed clip with no such cue is `loud`, from a higher strength (5 of 6
- * labelled were a raised voice). A combat topic and the facial emotion decide
- * nothing here: labelled combat lines without `!` were as often calm as
- * shouted, and angry or frightened faces mostly spoke in a raised voice.
+ * The second gate is what keeps calm lines out, so the first can sit low: a
+ * strength of 2 passed 14 shouts and 4 raised voices, 1.5 one shout and six
+ * raised voices more, still no calm line. A raised voice tagged `shouting` is
+ * the better mistake — rated blind, an untagged raised-voice line came out
+ * calm in 27 takes of 30, a tagged one in 4.
+ *
+ * A pushed clip with no such cue is `loud`, from a much higher strength (5 of
+ * 6 labelled were a raised voice; from 2 a quarter would be calm). A combat
+ * topic and the facial emotion decide nothing here: labelled combat lines
+ * without `!` were as often calm as shouted, and angry or frightened faces
+ * mostly spoke in a raised voice.
  *
  * Without a clip there is no tag: the text alone marked 17 shouts, 26 raised
  * voices and 4 calm lines.
@@ -45,7 +52,7 @@ export type EffortDecision = {
 };
 
 /** Strength a cued line needs to be tagged `shouting`. */
-const SHOUT_STRENGTH = 2;
+const SHOUT_STRENGTH = 1.5;
 /** Strength an uncued line needs to be tagged `loud`. */
 const LOUD_STRENGTH = 2.5;
 

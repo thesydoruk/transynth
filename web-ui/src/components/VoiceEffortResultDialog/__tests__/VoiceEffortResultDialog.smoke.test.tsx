@@ -7,8 +7,11 @@ const RESULT = {
   takes: 1200,
   measured: 800,
   failed: 3,
+  spokenTakes: 1100,
+  judgedTakes: 1045,
   speakers: 14,
   speakersWithBaseline: 9,
+  takesWithoutBaseline: 40,
   shouting: 61,
   loud: 12,
   skipped: false,
@@ -24,6 +27,8 @@ describe('VoiceEffortResultDialog', () => {
     }
     // Failed takes get the "tried again next time" note.
     expect(screen.getByText('modEditor.voiceEffortResult.failedHint')).toBeInTheDocument();
+    // Lines left out by small voices are explained, not just counted.
+    expect(screen.getByText('modEditor.voiceEffortResult.smallVoicesHint')).toBeInTheDocument();
 
     // The header's close button and the footer's both close it; press the footer's.
     fireEvent.click(screen.getAllByRole('button', { name: 'common.close' }).at(-1)!);
