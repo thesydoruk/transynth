@@ -209,6 +209,7 @@ export const voiceTtsSkipMessage = (reason: VoiceTtsSkipReason): string => {
  * - `edid` matches `CA_Interject_Stub_*`
  * - entire `lineSource` is `*...*`, `(...)`, `[...]` or a `<sound label>`
  * - entire `translation` is `*...*`, `(...)`, `[...]` or a `<sound label>`
+ * - `lineSource` is nothing but stage directions (`*Gasping* *Coughing*`)
  * - leftover source or translation after strip is a grunt / filler / laugh
  * - leftover translation is all sounds written without a vowel («Гх!», «М-м-м...»)
  *
@@ -233,6 +234,8 @@ const detectVoiceTtsSkipReason = (
     return 'non_speech_marker';
   }
   const sourceSpeak = stripVoiceNonSpeechBlocks(source, markup);
+  // Several directions in a row, or one inside other markup: `*Gasping* *Coughing*`.
+  if (source && !sourceSpeak) return 'non_speech_marker';
   const targetSpeak = stripVoiceNonSpeechBlocks(target, markup);
   if (isPhoneticVocalizationLine(sourceSpeak) || isWordlessSpokenLine(targetSpeak)) {
     return 'phonetic_vocalization';
