@@ -138,6 +138,28 @@ const PHONETIC_PATTERNS: RegExp[] = [
   /^b+l+[ae]+r+g+h*$/i,
 ];
 
+/**
+ * Combat barks and screams the voice types share (hit, bash, death and attack
+ * topics, crowd yells). Asked as a question the same letters are a word —
+ * Starfield's "Yah?" is a spoken yes — so these never match a token with a `?`.
+ */
+const BARK_PATTERNS: RegExp[] = [
+  /^n+u+h+$/i, // Nuh — not "Nuh-uh", which is a spoken no
+  /^h+u+n+h+$/i, // Hunh
+  /^y+a+h+$/i, // Yah, Yaaah
+  /^h+y+a+h*$/i, // Hya, Hyah — not "Hiya", a greeting
+  /^h+u+a+h+$/i, // Huah
+  /^k+i+a+h+$/i, // Kiah
+  /^n+y+a+h+$/i, // Nyah
+  /^k+e+h+$/i, // Keh
+  /^[uo]+m+p+h+$/i, // Umph, Oomph
+  /^r+a+h+$/i, // Rah
+  /^r+a+w*r+$/i, // Rar, Rawr
+  /^(?:a{2,}h*|a+h{2,})$/i, // Aaa, Aah, Ahhh — not "Ah", a word
+  /^[aeuhnry]*[aeu]+g+h+$/i, // Augh, Hagh, Yeagh, Uragh, Nugh
+  /^[aeuhnry]*r+g+h+$/i, // Hargh, Nergh, Yrgh
+];
+
 /** Ukrainian phonetic counterparts: Агх, Уф, Наргх, Грраргх, Ннх. */
 const UK_PHONETIC_PATTERNS: RegExp[] = [
   /^[а]+р*г+х*$/iu,
@@ -171,6 +193,7 @@ const isVocalizationToken = (raw: string): boolean => {
   if (KEEP_WORDS.has(lower)) return false;
   if (SFX_WORDS.has(lower)) return true;
   if (FILLER_RE.test(token) || LAUGH_RE.test(token)) return true;
+  if (!raw.includes('?') && matchesAny(token, BARK_PATTERNS)) return true;
   return matchesAny(token, PHONETIC_PATTERNS) || matchesAny(token, UK_PHONETIC_PATTERNS);
 };
 
@@ -205,7 +228,8 @@ const everyToken = (text: string, isSound: (token: string) => boolean): boolean 
   const line = text.trim();
   if (!line) return false;
   if (PUNCT_ONLY_RE.test(line)) return true;
-  const tokens = line.split(/\s+/).map(stripTokenPunct).filter(Boolean);
+  // Tokens keep their punctuation: a `?` tells a bark from a word.
+  const tokens = line.split(/\s+/).filter((token) => stripTokenPunct(token));
   return tokens.length > 0 && tokens.every(isSound);
 };
 
