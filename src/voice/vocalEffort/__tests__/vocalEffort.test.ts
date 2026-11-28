@@ -118,6 +118,16 @@ describe('decideVocalEffort', () => {
     ).toBe('shouting');
   });
 
+  it('asks less of a cued clip than of an uncued one', () => {
+    const somewhatPushed = { f0Median: 2.4, brightness: 1.6 };
+    const barelyRaised = { f0Median: 2.4, brightness: 1.3 };
+    expect(decideVocalEffort({ acoustic: somewhatPushed, sourceText: 'Weak!' }).tag).toBe(
+      'shouting',
+    );
+    expect(decideVocalEffort({ acoustic: barelyRaised, sourceText: 'Weak!' }).tag).toBeNull();
+    expect(decideVocalEffort({ acoustic: somewhatPushed, sourceText: 'Weak.' }).tag).toBeNull();
+  });
+
   it('does not take the text at its word when the clip is calm', () => {
     expect(decideVocalEffort({ acoustic: calm, sourceText: 'Thanks!' }).tag).toBeNull();
     expect(

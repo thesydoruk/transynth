@@ -18,15 +18,28 @@ export const VoiceEffortResultDialog = ({
   onClose,
 }: VoiceEffortResultDialogProps) => {
   const { t } = useTranslation();
+  // Half the voices of a base game are too small to judge and hold a fiftieth
+  // of its lines: the share of lines says how complete the analysis is.
+  const judgedPercent =
+    result.spokenTakes > 0 ? Math.round((1000 * result.judgedTakes) / result.spokenTakes) / 10 : 0;
   const rows: Array<[string, string]> = [
     [t('modEditor.voiceEffortResult.takes'), String(result.takes)],
     [t('modEditor.voiceEffortResult.measured'), String(result.measured)],
     [t('modEditor.voiceEffortResult.failed'), String(result.failed)],
     [
-      t('modEditor.voiceEffortResult.speakers'),
-      t('modEditor.voiceEffortResult.speakersValue', {
-        withBaseline: result.speakersWithBaseline,
+      t('modEditor.voiceEffortResult.judged'),
+      t('modEditor.voiceEffortResult.judgedValue', {
+        judged: result.judgedTakes,
+        spoken: result.spokenTakes,
+        percent: judgedPercent,
+      }),
+    ],
+    [
+      t('modEditor.voiceEffortResult.smallVoices'),
+      t('modEditor.voiceEffortResult.smallVoicesValue', {
+        voices: result.speakers - result.speakersWithBaseline,
         total: result.speakers,
+        takes: result.takesWithoutBaseline,
       }),
     ],
     [t('modEditor.voiceEffortResult.shouting'), String(result.shouting)],
@@ -55,6 +68,9 @@ export const VoiceEffortResultDialog = ({
         </dl>
         {result.failed > 0 && (
           <p className={s.hint}>{t('modEditor.voiceEffortResult.failedHint')}</p>
+        )}
+        {result.takesWithoutBaseline > 0 && (
+          <p className={s.hint}>{t('modEditor.voiceEffortResult.smallVoicesHint')}</p>
         )}
         <p className={s.hint}>{t('modEditor.voiceEffortResult.next')}</p>
       </div>

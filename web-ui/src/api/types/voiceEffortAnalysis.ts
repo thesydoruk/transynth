@@ -7,9 +7,15 @@ export type VoiceEffortResult = {
   measured: number;
   /** Takes that could not be decoded; the next run tries them again. */
   failed: number;
+  /** Takes whose line has words to say; grunts and sound labels are never tagged. */
+  spokenTakes: number;
+  /** Of `spokenTakes`, the takes that were judged: measured, and their speaker has a baseline. */
+  judgedTakes: number;
   speakers: number;
   /** Speakers with enough calm lines to be judged. */
   speakersWithBaseline: number;
+  /** Takes of the speakers without a baseline — how much the small voices leave out. */
+  takesWithoutBaseline: number;
   shouting: number;
   loud: number;
   skipped: boolean;
