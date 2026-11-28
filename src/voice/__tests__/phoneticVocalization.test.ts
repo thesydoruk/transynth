@@ -33,6 +33,55 @@ describe('isPhoneticVocalizationLine', () => {
     }
   });
 
+  it('matches the combat barks and screams the voice types share', () => {
+    for (const line of [
+      'Nuh.',
+      'Hunh!',
+      'Yah!',
+      'Yeagh!',
+      'Hya!',
+      'Hyah!!',
+      'Huah!',
+      'Kiah!',
+      'Nyah!',
+      'Keh!',
+      'Umph..',
+      'Rah!',
+      'RAWR!',
+      'Raarr!',
+      'Ahh!',
+      'Aaaah!',
+      'AAHHHH!',
+      'Augh...',
+      'Hagh!',
+      'Uragh!!!',
+      'Hargh!',
+      'Aaaayyyaarrrrgghh!',
+      'Aaaa, aaaa, aaa!',
+    ]) {
+      expect(isPhoneticVocalizationLine(line)).toBe(true);
+    }
+  });
+
+  it('keeps the words that only look like a bark', () => {
+    for (const line of [
+      'Yah?',
+      'Nuh-uh.',
+      'Hiya!',
+      'Yeah.',
+      'Nah.',
+      'Huh?',
+      'Enough!',
+      'Tough.',
+      'High.',
+      'Rough...',
+      'Yay!',
+      'Aha!',
+    ]) {
+      expect(isPhoneticVocalizationLine(line)).toBe(false);
+    }
+  });
+
   it('matches fillers and laughs the user asked to skip', () => {
     for (const line of ['Hmm', 'Hm', 'Hmm…', 'Hmm?', 'Ha!', 'Hah!', 'Hahaha', 'Ha ha ha!']) {
       expect(isPhoneticVocalizationLine(line)).toBe(true);
