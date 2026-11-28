@@ -11,9 +11,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Tx } from '../../../db';
+import type { GameVoiceAdapter } from '../../../games/contract';
 import { toDiskPath } from '../../../modImport';
 import { modImportLocalizeDir, resolveModImportExtractRoot } from '../../../modStorage';
 import { PATHS } from '../../../paths';
+import type { VoiceFileEntry } from '../../../voice/discoverVoiceFiles';
 import { removeVoiceTake } from '../../../voice/takeSidecars';
 import { normalizeVoiceOrigin, originFromVoiceRelPath } from '../../../voice/voiceOrigin';
 import {
@@ -121,27 +123,56 @@ export const removeVoiceTranslationForMod = async (
   );
   if (!found.ok) return found;
 
-  const takeRelPath = meta.voice.localizedTakeRelPath(found.entry);
-  const previewCacheDir = path.join(PATHS.voicePreview, String(modId), 'translation');
+  const removed = await removeTakeOfVoiceEntry(db, {
+    modId,
+    voice: meta.voice,
+    ctx: resolved.ctx,
+    targetLang: resolved.targetLang,
+    entry: found.entry,
+    speakerKey,
+    originPlugin,
+  });
+  return { ok: true, ...removed };
+};
+
+/**
+ * The same removal for a take already resolved — one line's files in the mod's
+ * trees for `targetLang`, and its stamp. For callers that walk a whole catalog
+ * and would otherwise look every line up again.
+ */
+export const removeTakeOfVoiceEntry = async (
+  db: Tx,
+  opts: {
+    modId: number;
+    voice: Pick<GameVoiceAdapter, 'localizedTakeRelPath' | 'takes'>;
+    ctx: VoicePackageContext;
+    targetLang: string;
+    entry: VoiceFileEntry;
+    speakerKey?: string | null;
+    originPlugin?: string | null;
+  },
+): Promise<{ takesRemoved: number; stampsRemoved: number }> => {
+  const takeRelPath = opts.voice.localizedTakeRelPath(opts.entry);
+  const previewCacheDir = path.join(PATHS.voicePreview, String(opts.modId), 'translation');
   let takesRemoved = 0;
-  for (const localizeDir of voiceLocalizeDirsFor(resolved.ctx, resolved.targetLang)) {
+  for (const localizeDir of voiceLocalizeDirsFor(opts.ctx, opts.targetLang)) {
     takesRemoved += removeLocalizedTakeFiles({
       localizeDir,
       takeRelPath,
-      entry: found.entry,
-      sidecarExtensions: meta.voice.takes?.sidecarExtensions ?? [],
+      entry: opts.entry,
+      sidecarExtensions: opts.voice.takes?.sidecarExtensions ?? [],
       previewCacheDir,
     });
   }
 
   // Keyed exactly as synthesis stamps the take it writes at this path.
   const stampsRemoved = await deleteVoiceSynthesisStamp(db, {
-    modId,
-    lineKey,
-    variant,
-    targetLang: resolved.targetLang,
-    speakerKey: speakerKey?.trim() || speakerKeyFromVoiceRelPath(takeRelPath),
-    originPlugin: originFromVoiceRelPath(takeRelPath) ?? normalizeVoiceOrigin(originPlugin),
+    modId: opts.modId,
+    lineKey: opts.entry.lineKey,
+    variant: opts.entry.variant,
+    targetLang: opts.targetLang,
+    speakerKey: opts.speakerKey?.trim() || speakerKeyFromVoiceRelPath(takeRelPath),
+    originPlugin: originFromVoiceRelPath(takeRelPath) ?? normalizeVoiceOrigin(opts.originPlugin),
   });
-  return { ok: true, takesRemoved, stampsRemoved };
+  return { takesRemoved, stampsRemoved };
 };
