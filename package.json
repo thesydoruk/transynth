@@ -34,6 +34,7 @@
     "voice:reference:backfill": "tsx scripts/voiceReferenceBackfill.ts",
     "voice:scan-effort": "tsx scripts/scanVocalEffort.ts",
     "voice:analyze-effort": "tsx scripts/analyzeVocalEffort.ts",
+    "voice:prune-skipped": "tsx scripts/pruneSkippedVoice.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --cache",
