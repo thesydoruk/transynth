@@ -174,6 +174,41 @@ const isVocalizationToken = (raw: string): boolean => {
   return matchesAny(token, PHONETIC_PATTERNS) || matchesAny(token, UK_PHONETIC_PATTERNS);
 };
 
+const LATIN_VOWEL_RE = /[aeiouy]/i;
+const CYRILLIC_VOWEL_RE = /[аеєиіїоуюяёыэ]/i;
+
+/** The same letter twice in a row: `ГГГХХХ` is a held sound, `РГМ` is an initialism. */
+const DOUBLED_LETTER_RE = /(\p{L})\1/iu;
+
+/**
+ * A sound written without a single vowel: «Гх», «Хр-рх», «М-м-м», «Нннгх», `Zzz`.
+ *
+ * No list of spellings can keep up with these — every translator writes a grunt
+ * differently — but none of them has a syllable to speak. One letter is a word
+ * («в», «з», «й») or a spelled-out letter. Capitals that are all different are
+ * an initialism read letter by letter («РГМ», `CPD`); that costs a shouted
+ * «НГХ!!», which is still sent to TTS as before.
+ */
+const isVowellessSound = (token: string): boolean => {
+  if (/\p{N}/u.test(token)) return false;
+  const letters = token.replace(/[^\p{L}]/gu, '');
+  if (letters.length < 2) return false;
+  // NFD turns `ö` into `o` + a combining mark, so accented Latin vowels still count.
+  if (LATIN_VOWEL_RE.test(letters.normalize('NFD')) || CYRILLIC_VOWEL_RE.test(letters)) {
+    return false;
+  }
+  const isInitialism = letters === letters.toUpperCase() && !DOUBLED_LETTER_RE.test(letters);
+  return !isInitialism;
+};
+
+const everyToken = (text: string, isSound: (token: string) => boolean): boolean => {
+  const line = text.trim();
+  if (!line) return false;
+  if (PUNCT_ONLY_RE.test(line)) return true;
+  const tokens = line.split(/\s+/).map(stripTokenPunct).filter(Boolean);
+  return tokens.length > 0 && tokens.every(isSound);
+};
+
 /**
  * True when the entire line is a non-lexical vocalization (no real words).
  *
@@ -183,10 +218,21 @@ const isVocalizationToken = (raw: string): boolean => {
  * @example isPhoneticVocalizationLine('Grrrah! Let go!') → false
  * @example isPhoneticVocalizationLine('Hey.') → false
  */
-export const isPhoneticVocalizationLine = (text: string): boolean => {
-  const line = text.trim();
-  if (!line) return false;
-  if (PUNCT_ONLY_RE.test(line)) return true;
-  const tokens = line.split(/\s+/).map(stripTokenPunct).filter(Boolean);
-  return tokens.length > 0 && tokens.every(isVocalizationToken);
-};
+export const isPhoneticVocalizationLine = (text: string): boolean =>
+  everyToken(text, isVocalizationToken);
+
+/**
+ * The same question about the text TTS would be asked to say: also true when
+ * every word is a sound written without a vowel.
+ *
+ * Only the translation is judged this way. English spells real words and titles
+ * without vowels (`Mr. D.`, `Wh-!?`), and an English hum often has a spoken
+ * translation (`Mhm.` → «Угу.»).
+ *
+ * @example isWordlessSpokenLine('Гх!') → true
+ * @example isWordlessSpokenLine('Хр-рх... Агх!') → true
+ * @example isWordlessSpokenLine('Угу.') → false
+ * @example isWordlessSpokenLine('РГМ?') → false
+ */
+export const isWordlessSpokenLine = (text: string): boolean =>
+  everyToken(text, (token) => isVocalizationToken(token) || isVowellessSound(token));

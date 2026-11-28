@@ -1,4 +1,4 @@
-import { isPhoneticVocalizationLine } from '../phoneticVocalization';
+import { isPhoneticVocalizationLine, isWordlessSpokenLine } from '../phoneticVocalization';
 
 describe('isPhoneticVocalizationLine', () => {
   it('matches combat and pain grunts from the audit', () => {
@@ -65,5 +65,54 @@ describe('isPhoneticVocalizationLine', () => {
 
   it('matches punctuation-only lines', () => {
     expect(isPhoneticVocalizationLine('...')).toBe(true);
+  });
+});
+
+describe('isWordlessSpokenLine', () => {
+  it('matches sounds written without a vowel, however they are spelled', () => {
+    for (const line of [
+      'Гх!',
+      'Ггх!',
+      'Гх...',
+      'Хр-рх!',
+      'Гм.',
+      'М-м-м...',
+      'Ммм-гм.',
+      "Г'гх!",
+      'Нннгх!',
+      'ГГГХХХ!!',
+      'Тсс...',
+      '"Мгм."',
+      'Zzz... zzzzz...',
+      'Гх... Нх...',
+    ]) {
+      expect(isWordlessSpokenLine(line)).toBe(true);
+    }
+  });
+
+  it('matches a line that mixes them with the known grunts', () => {
+    expect(isWordlessSpokenLine('Бррх... ох...')).toBe(true);
+    expect(isWordlessSpokenLine('Агх!')).toBe(true);
+  });
+
+  it('keeps words, one-letter words and initialisms', () => {
+    for (const line of [
+      'Угу.',
+      'Ой!',
+      'Гм, цікаво.',
+      'В...',
+      'Г. Д. Б.',
+      'РГМ?',
+      'CPD...',
+      'НГХ!!',
+      '5 км.',
+      'Pöttöm.',
+    ]) {
+      expect(isWordlessSpokenLine(line)).toBe(false);
+    }
+  });
+
+  it('does not treat empty as wordless', () => {
+    expect(isWordlessSpokenLine('')).toBe(false);
   });
 });

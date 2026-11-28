@@ -52,6 +52,18 @@ describe('isFullNonSpeechMarkerLine', () => {
     expect(isFullNonSpeechMarkerLine('[Сарказм] Ну звісно.')).toBe(false);
   });
 
+  it('matches an angle-bracket sound label but not a machine announcement', () => {
+    expect(isFullNonSpeechMarkerLine('<Howling>')).toBe(true);
+
+    expect(isFullNonSpeechMarkerLine("<звуки комп'ютера>")).toBe(true);
+
+    expect(isFullNonSpeechMarkerLine('<OPERATION LOG RECORDING>')).toBe(false);
+
+    expect(isFullNonSpeechMarkerLine('<КІНЕЦЬ ВІДТВОРЕННЯ СПОГАДУ>')).toBe(false);
+
+    expect(isFullNonSpeechMarkerLine('<Alias=Player>, ходімо.')).toBe(false);
+  });
+
   it('does not match dialogue with markers', () => {
     expect(isFullNonSpeechMarkerLine('*chuckle* Hello')).toBe(false);
 
@@ -168,6 +180,30 @@ describe('prepareVoiceTtsText', () => {
         speakerSource: 'Oof!',
       }),
     ).toEqual({ action: 'skip', reason: 'phonetic_vocalization' });
+  });
+
+  it('skips a grunt whose translation has no vowel to speak', () => {
+    expect(
+      prepareVoiceTtsText({
+        lineSource: 'Hurgh!',
+        translation: 'Хр-рх!',
+        speakerSource: 'Hurgh!',
+      }),
+    ).toEqual({ action: 'skip', reason: 'phonetic_vocalization' });
+  });
+
+  it('speaks the translation of an English hum or a vowelless English word', () => {
+    expect(
+      prepareVoiceTtsText({ lineSource: 'Mhm.', translation: 'Угу.', speakerSource: 'Mhm.' }),
+    ).toEqual({ action: 'synthesize', text: 'Угу.', speakerText: 'Mhm.' });
+
+    expect(
+      prepareVoiceTtsText({
+        lineSource: 'Mr. D.',
+        translation: 'Містере Д.',
+        speakerSource: 'Mr. D.',
+      }),
+    ).toEqual({ action: 'synthesize', text: 'Містере Д.', speakerText: 'Mr. D.' });
   });
 
   it('skips when stripping leaves no speakable translation', () => {

@@ -22,6 +22,8 @@
  *   Tone tag     — Sarcastic / [Сарказм] → skip (non_speech_marker)
  *   Interject stub — "Cait interjects", EDID CA_Interject_Stub_Cait → skip (interject_stub)
  *   Phonetic grunt — Agh! / Hmm… / Ha! → skip (phonetic_vocalization)
+ *   Vowelless sound — Hurgh! / Хр-рх! → skip (phonetic_vocalization)
+ *   Sound label  — <Howling> → skip (non_speech_marker)
  *   Prefix strip — "*chuckle* This troublemaker…" → synth (dialogue only)
  *   Prefix strip — "[Сарказм] Ну звісно…" → synth (dialogue only)
  *   Suffix strip — "…take your time *groan*" → synth (without *groan*)
@@ -39,7 +41,7 @@
  * human grunts use *Sigh*, *gasp*.
  */
 
-import { isPhoneticVocalizationLine } from './phoneticVocalization';
+import { isPhoneticVocalizationLine, isWordlessSpokenLine } from './phoneticVocalization';
 import type { EffortTag } from './vocalEffort/decide';
 
 /**
@@ -72,6 +74,17 @@ const FULL_BRACKET_LINE_RE = /^\[[^[\]]+\]$/;
 
 /** Whole line is one parenthesized sound label, e.g. `(Whine)`, `(Bark!)`. */
 const FULL_PAREN_LINE_RE = /^\([^)]+\)$/;
+
+/** Whole line is one angle-bracket sound label, e.g. `<Howling>`, `<Grunt>`. */
+const FULL_ANGLE_LINE_RE = /^<[^<>]+>$/;
+
+/**
+ * `<Howling>` and `<modem sounds>` label a sound; `<OPERATION LOG RECORDING>` is
+ * a machine announcement that a voice reads out. The game's own writers tell
+ * the two apart by case, and nothing else in the line does.
+ */
+const isAngleSoundLabel = (line: string): boolean =>
+  FULL_ANGLE_LINE_RE.test(line) && line !== line.toUpperCase();
 
 /** Companion auto-interject placeholders, e.g. `CA_Interject_Stub_Cait`. */
 const INTERJECT_STUB_EDID_RE = /^CA_Interject_Stub_/i;
@@ -158,6 +171,8 @@ export const isInterjectStubEdid = (edid?: string | null): boolean => {
  * @example isFullNonSpeechMarkerLine('(Whine)') → true
  * @example isFullNonSpeechMarkerLine('(Growl)') → true
  * @example isFullNonSpeechMarkerLine('[Сарказм]') → true
+ * @example isFullNonSpeechMarkerLine('<Howling>') → true
+ * @example isFullNonSpeechMarkerLine('<OPERATION LOG RECORDING>') → false
  * @example isFullNonSpeechMarkerLine('*chuckle* Hello there') → false
  */
 export const isFullNonSpeechMarkerLine = (
@@ -167,7 +182,9 @@ export const isFullNonSpeechMarkerLine = (
   const line = text.trim();
   if (!line) return false;
   if (markup.emphasisLineIsNonSpeech && FULL_ASTERISK_LINE_RE.test(line)) return true;
-  return FULL_PAREN_LINE_RE.test(line) || FULL_BRACKET_LINE_RE.test(line);
+  return (
+    FULL_PAREN_LINE_RE.test(line) || FULL_BRACKET_LINE_RE.test(line) || isAngleSoundLabel(line)
+  );
 };
 
 /** Human-readable skip reason for logs and batch `skipped[]` messages. */
@@ -190,14 +207,16 @@ export const voiceTtsSkipMessage = (reason: VoiceTtsSkipReason): string => {
  *
  * Skip if **any** of:
  * - `edid` matches `CA_Interject_Stub_*`
- * - entire `lineSource` is `*...*`, `(...)` or `[...]`
- * - entire `translation` is `*...*`, `(...)` or `[...]`
+ * - entire `lineSource` is `*...*`, `(...)`, `[...]` or a `<sound label>`
+ * - entire `translation` is `*...*`, `(...)`, `[...]` or a `<sound label>`
  * - leftover source or translation after strip is a grunt / filler / laugh
+ * - leftover translation is all sounds written without a vowel («Гх!», «М-м-м...»)
  *
  * @example detectVoiceTtsSkipReason('(Whine)', '*скавчить*') → 'non_speech_marker'
  * @example detectVoiceTtsSkipReason('Cait interjects', '*…*', 'CA_Interject_Stub_Cait')
  *          → 'interject_stub'
  * @example detectVoiceTtsSkipReason('Agh!', 'Агх!') → 'phonetic_vocalization'
+ * @example detectVoiceTtsSkipReason('Hurgh!', 'Хр-рх!') → 'phonetic_vocalization'
  * @example detectVoiceTtsSkipReason('*ahem* Hello?', 'Привіт?') → null
  */
 const detectVoiceTtsSkipReason = (
@@ -215,7 +234,7 @@ const detectVoiceTtsSkipReason = (
   }
   const sourceSpeak = stripVoiceNonSpeechBlocks(source, markup);
   const targetSpeak = stripVoiceNonSpeechBlocks(target, markup);
-  if (isPhoneticVocalizationLine(sourceSpeak) || isPhoneticVocalizationLine(targetSpeak)) {
+  if (isPhoneticVocalizationLine(sourceSpeak) || isWordlessSpokenLine(targetSpeak)) {
     return 'phonetic_vocalization';
   }
   return null;
