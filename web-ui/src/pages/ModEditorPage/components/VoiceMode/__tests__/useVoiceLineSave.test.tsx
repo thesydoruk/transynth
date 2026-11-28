@@ -161,7 +161,9 @@ describe('useVoiceLineSave clearing a line', () => {
     const clear = clearText();
 
     const undubbed = line({ hasTranslationAudio: false, voiceSimilarity: null });
-    await act(() => setup(undubbed).hook.result.current.clearLine(undubbed));
+    // Rendered outside `act`: inside it the hook has no result yet.
+    const first = setup(undubbed);
+    await act(() => first.hook.result.current.clearLine(undubbed));
     expect(remove).not.toHaveBeenCalled();
     expect(clear).toHaveBeenCalledTimes(1);
 

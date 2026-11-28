@@ -1,6 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import i18n from 'i18next';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import '../../../../../i18n';
 import type { VoiceLinePreview } from '../../../../../api';
 import { VoiceLineRow, type VoiceLineRowProps } from '../components/VoiceLinesView/VoiceLineRow';
@@ -65,6 +65,7 @@ describe('VoiceLineRow Clear', () => {
   beforeAll(async () => {
     await i18n.changeLanguage('en');
   });
+  afterEach(cleanup);
 
   it('says it removes the take too and asks the voice clear, not a plain text save', () => {
     const row = renderRow(line());
