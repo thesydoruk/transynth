@@ -531,6 +531,7 @@
     "voiceRefSetTitle": "Використовувати цю репліку як референс для озвучки персонажа",
     "voiceRefClear": "Скасувати",
     "voiceRefClearTitle": "Скасувати вибір референсу (автовибір)",
+    "voiceClearTitle": "Видалити переклад і озвучку репліки",
     "voiceRefBadge": "референс",
     "voiceInheritedBadge": "успадковане",
     "voiceInheritedTitle": "Успадковане аудіо з {{source}}",

@@ -32,6 +32,8 @@ export interface VoiceLineRowProps {
   onEdit: () => void;
   onCancel: () => void;
   onCommit: (text: string, advance: CommitAdvance) => void;
+  /** Clear the translation and remove the synthesized take. */
+  onClear: () => void;
   onPlay: (line: VoiceLinePreview, kind: PlayKind) => void;
   onSetReference: (line: VoiceLinePreview) => void;
   onGenerate: (line: VoiceLinePreview) => void;
@@ -56,6 +58,7 @@ export const VoiceLineRow = ({
   onEdit,
   onCancel,
   onCommit,
+  onClear,
   onPlay,
   onSetReference,
   onGenerate,
@@ -75,6 +78,8 @@ export const VoiceLineRow = ({
   const skipReason = line.ttsSkipReason;
   const canGenerate = !skipReason && (line.canGenerateVoice ?? Boolean(line.translation?.trim()));
   const hasTranslationAudio = !skipReason && Boolean(line.hasTranslationAudio);
+  // A take on disk counts even when the line is no longer synthesizable; clearing removes it.
+  const canClear = Boolean(line.translation) || Boolean(line.hasTranslationAudio);
 
   useEffect(() => {
     if (editing) {
@@ -193,9 +198,9 @@ export const VoiceLineRow = ({
             <button
               type="button"
               className={styles.action}
-              onClick={() => onCommit('', 'none')}
-              disabled={!line.translation}
-              title={t('dialogs.clearTitle')}
+              onClick={onClear}
+              disabled={!canClear || synthesizing}
+              title={t('modEditor.voiceClearTitle')}
             >
               {t('dialogs.clear')}
             </button>

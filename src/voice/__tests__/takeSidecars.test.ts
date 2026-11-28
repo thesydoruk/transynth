@@ -5,6 +5,7 @@ import path from 'node:path';
 import type { Tx } from '../../db';
 import {
   copyTakeSidecars,
+  removeVoiceTake,
   takeOnDisk,
   takeSidecarPath,
   writeVoiceTake,
@@ -76,6 +77,24 @@ describe('files that travel with a take', () => {
     // Nothing to copy is not an error.
     await copyTakeSidecars(path.join(dir, 'store', 'none.wem'), to, FFXANIM);
     await copyTakeSidecars(from, to, []);
+  });
+
+  it('removes a take with its sidecars and says whether the take was there', () => {
+    const take = path.join(dir, 'Npc', '00ae4a02.wem');
+    writeVoiceTake(take, built('wem', 'anim'));
+    const neighbour = path.join(dir, 'Npc', '00ae4a03.wem');
+    writeVoiceTake(neighbour, built('wem', 'anim'));
+
+    expect(removeVoiceTake(take, FFXANIM)).toBe(true);
+    expect(fs.existsSync(take)).toBe(false);
+    expect(fs.existsSync(takeSidecarPath(take, '.ffxanim'))).toBe(false);
+    expect(takeOnDisk(neighbour, FFXANIM)).toBe(true);
+
+    // A sidecar left behind by a take that is already gone goes too.
+    fs.writeFileSync(takeSidecarPath(take, '.ffxanim'), 'stale');
+    expect(removeVoiceTake(take, FFXANIM)).toBe(false);
+    expect(fs.existsSync(takeSidecarPath(take, '.ffxanim'))).toBe(false);
+    expect(removeVoiceTake(take, [])).toBe(false);
   });
 
   it('lists what every format leaves in a localize tree', () => {

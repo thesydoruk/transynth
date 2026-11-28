@@ -21,6 +21,8 @@ export type VoiceLineHandlers = {
   onEdit: (line: VoiceLinePreview) => void;
   onCancel: () => void;
   onCommit: (line: VoiceLinePreview, text: string, advance: CommitAdvance) => void;
+  /** Clear the translation and remove the line's synthesized take. */
+  onClear: (line: VoiceLinePreview) => void;
 };
 
 export interface VoiceLinesViewProps {
@@ -197,6 +199,7 @@ export const VoiceLinesView = ({
                     onEdit={() => lineHandlers.onEdit(line)}
                     onCancel={lineHandlers.onCancel}
                     onCommit={(text, advance) => lineHandlers.onCommit(line, text, advance)}
+                    onClear={() => lineHandlers.onClear(line)}
                     onPlay={onPlay}
                     onSetReference={onSetReference}
                     onGenerate={onGenerate}

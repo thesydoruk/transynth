@@ -527,6 +527,7 @@
     "voiceRefSetTitle": "Use this line as the TTS reference for this character",
     "voiceRefClear": "Clear",
     "voiceRefClearTitle": "Clear reference pick (use auto-selection)",
+    "voiceClearTitle": "Remove the translation and its voice take",
     "voiceRefBadge": "reference",
     "voiceInheritedBadge": "inherited",
     "voiceInheritedTitle": "Inherited audio from {{source}}",

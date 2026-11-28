@@ -11,9 +11,27 @@ import { decodeWemTakeToWav } from '../../../voice/wemTakeAudio';
 /** Rate of the browser copy of a `.wem` take; Wwise voice audio is 48 kHz or below. */
 const WEM_PREVIEW_SAMPLE_RATE = 48000;
 
-const cacheKeyForSource = async (sourcePath: string): Promise<string> => {
+const cacheKeyForSource = (sourcePath: string): string => {
   const stat = fs.statSync(sourcePath);
   return sha1Hex(`${sourcePath}|${stat.mtimeMs}|${stat.size}`);
+};
+
+/** Where the browser copy of `sourcePath`, as it is on disk now, is cached in `cacheDir`. */
+export const cachedPreviewWavPath = (sourcePath: string, cacheDir: string): string =>
+  path.join(cacheDir, `${cacheKeyForSource(sourcePath)}.wav`);
+
+const sourceMarkerPath = (cachedWav: string): string => cachedWav.replace(/\.wav$/, '.source');
+
+/**
+ * Drop the browser copy of `sourcePath` from `cacheDir`. The key is read from
+ * the file, so call this before the file itself is deleted. A missing source
+ * or copy is not an error.
+ */
+export const removeCachedPreviewWav = (sourcePath: string, cacheDir: string): void => {
+  if (!fs.existsSync(sourcePath)) return;
+  const cachedWav = cachedPreviewWavPath(sourcePath, cacheDir);
+  fs.rmSync(cachedWav, { force: true });
+  fs.rmSync(sourceMarkerPath(cachedWav), { force: true });
 };
 
 export const convertAudioToPreviewWav = async (
@@ -49,12 +67,11 @@ export const getOrCreateCachedPreviewWav = async (
   cacheDir: string,
   logLabel: string,
 ): Promise<{ ok: true; wavPath: string } | { ok: false; message: string }> => {
-  const digest = await cacheKeyForSource(sourcePath);
-  const cachedWav = path.join(cacheDir, `${digest}.wav`);
+  const cachedWav = cachedPreviewWavPath(sourcePath, cacheDir);
+  const markerPath = sourceMarkerPath(cachedWav);
 
   if (fs.existsSync(cachedWav)) {
     const sourceDigest = await sha1HexFile(sourcePath);
-    const markerPath = path.join(cacheDir, `${digest}.source`);
     const marker = fs.existsSync(markerPath) ? fs.readFileSync(markerPath, 'utf8').trim() : '';
     if (marker === sourceDigest) {
       return { ok: true, wavPath: cachedWav };
@@ -65,7 +82,7 @@ export const getOrCreateCachedPreviewWav = async (
   try {
     await convertAudioToPreviewWav(sourcePath, cachedWav);
     const sourceDigest = await sha1HexFile(sourcePath);
-    fs.writeFileSync(path.join(cacheDir, `${digest}.source`), sourceDigest);
+    fs.writeFileSync(markerPath, sourceDigest);
     return { ok: true, wavPath: cachedWav };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

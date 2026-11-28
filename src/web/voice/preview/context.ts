@@ -169,11 +169,16 @@ export const fillVoiceLocalizeDirFromImport = async (
   }
 };
 
-export const resolveLocalizeDir = (ctx: VoicePackageContext, targetLang: string): string | null => {
+/** The localize tree single-line synthesis writes into, without creating it. */
+export const packageLocalizeDir = (ctx: VoicePackageContext, targetLang: string): string | null => {
   const extractRoot = resolveModImportExtractRoot(ctx.pluginPath);
   if (!extractRoot) return null;
   const packages = resolveImportPackages(extractRoot, targetLang, ctx.pluginPath);
-  const localizeDir = packages[0]?.localizeDir ?? modImportLocalizeDir(extractRoot, targetLang);
-  ensureDir(localizeDir);
+  return packages[0]?.localizeDir ?? modImportLocalizeDir(extractRoot, targetLang);
+};
+
+export const resolveLocalizeDir = (ctx: VoicePackageContext, targetLang: string): string | null => {
+  const localizeDir = packageLocalizeDir(ctx, targetLang);
+  if (localizeDir) ensureDir(localizeDir);
   return localizeDir;
 };

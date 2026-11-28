@@ -15,6 +15,7 @@ describe('voice API mod ids', () => {
     ['GET', '/api/mods/abc/voice/audio/0001A2B3/1'],
     ['GET', '/api/mods/abc/voice/translation-audio/0001A2B3/1'],
     ['POST', '/api/mods/abc/voice/translation-audio/0001A2B3/1'],
+    ['DELETE', '/api/mods/abc/voice/translation-audio/0001A2B3/1'],
     ['PUT', '/api/mods/abc/voice/speaker-ref'],
     ['DELETE', '/api/mods/abc/voice/speaker-ref/npc'],
     ['POST', '/api/mods/abc/voice/regenerate/0001A2B3/1/session'],
