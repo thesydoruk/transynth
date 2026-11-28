@@ -1,5 +1,6 @@
 import type { Tx } from '../../../db';
 import { log } from '../../../logger';
+import { loadSpeakerEffortBaselines } from '../../../voice/voiceEffortStore';
 import { getVoiceListContext } from './voiceListContext';
 import { isOrphanVoiceEntry, sortSpeakers } from './buildVoiceLinePreview';
 import { formatVoiceFolderName, withDistinctSpeakerNames } from './speakerLabels';
@@ -47,6 +48,7 @@ export const listVoiceSpeakersForMod = async (
     (key) => loaded.speakerFolderName?.(key) ?? formatVoiceFolderName(key),
   );
 
+  const baselines = await loadSpeakerEffortBaselines(db, modId);
   const speakers = sortSpeakers(
     named.map(({ key, ...group }) => {
       const folderGender = loaded.folderGenders.get(key) ?? genderByFolder.get(key.toLowerCase());
@@ -59,6 +61,8 @@ export const listVoiceSpeakersForMod = async (
         lineCount: group.lineCount,
         dubbedCount: group.dubbedCount,
         orphanCount: group.orphanCount,
+        effortAnalyzed: baselines.has(key),
+        effortHasBaseline: baselines.get(key) === true,
       };
     }),
   );

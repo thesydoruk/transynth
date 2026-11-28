@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { inflateSync } from 'node:zlib';
 import type { Tx } from '../db';
+import { readInfoResponseNumber } from '../formats/esp/infoResponseNumber';
 import { parseTes4MasterNames, readMasterKinds } from '../formats/esp/pluginHeader';
 import type { EspRecordLayout } from '../formats/esp/recordLayout';
 import { gamePlugin } from '../games/registry';
@@ -64,19 +65,8 @@ export type InfoVoiceSlots = {
 const RECORD_HEADER = 24;
 const GRUP_HEADER = 24;
 const FLAG_COMPRESSED = 0x0004_0000;
-/** FO4 `TRDA` is a fixed 20-byte struct; the response number lives at offset 4. */
-const TRDA_SIZE = 20;
 /** Starfield `TRDA`: emotion FormID, WEM file id (offset 4), emotion-out float. */
 const WEM_TRDA_SIZE = 12;
-/**
- * Upper bound for a plausible response number, only to reject misaligned reads.
- *
- * Bethesda writers assign these by hand and vanilla `Fallout4.esm` goes well past
- * the response count — e.g. INFO `001505FB` uses 1, 102, 103, 104, 105, matching
- * `001505FB_102.fuz` … `_105.fuz`. A tight bound silently dropped those numbers,
- * fell back to the NAM1 ordinal, and left the audio unmatched.
- */
-const MAX_RESPONSE_NUMBER = 9999;
 /** Distinct plugin paths kept in memory (LRU). */
 const MAX_CACHED_PLUGINS = 8;
 
@@ -141,11 +131,10 @@ const parseInfoResponses = (recordData: Buffer, formId: number): ParsedInfo => {
     if (subSig === 'DNAM' && subSize === 4) {
       const target = recordData.readUInt32LE(dataStart);
       if (target !== 0) sharedFrom = target;
-    } else if (subSig === 'TRDA' && subSize >= TRDA_SIZE) {
-      const raw = recordData.readUInt32LE(dataStart + 4);
-      pendingResp = raw >= 1 && raw <= MAX_RESPONSE_NUMBER ? raw : null;
     } else if (subSig === 'TRDA' && subSize === WEM_TRDA_SIZE) {
       pendingWem = recordData.readUInt32LE(dataStart + 4);
+    } else if (subSig === 'TRDA') {
+      pendingResp = readInfoResponseNumber(recordData, dataStart, dataEnd);
     } else if (subSig === 'TROI' && subSize === 4) {
       const original = recordData.readUInt32LE(dataStart);
       pendingBorrowed = original !== 0 && original !== formId;

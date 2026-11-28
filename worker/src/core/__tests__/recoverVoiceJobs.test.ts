@@ -119,6 +119,24 @@ describe('recoverOrphanedVoiceGenerateJobs', () => {
     );
   });
 
+  it('starts a vocal effort analysis again as it was, which resumes it', async () => {
+    const data: JobData = { kind: 'voice-effort', modId: 33, params: { game: 'fo4' } };
+    const job = makeJob('job-723', data);
+    const deps = makeDeps({ getActiveJobs: async () => [job] });
+
+    await expect(recoverOrphanedVoiceGenerateJobs(deps)).resolves.toBe(1);
+    expect(job.moveToFailed).toHaveBeenCalled();
+    expect(deps.enqueueJob).toHaveBeenCalledWith(data, 800);
+    expect(deps.writeSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: 800,
+        status: 'running',
+        kind: 'voice-effort',
+        data: { jobId: 800, modId: 33, result: null },
+      }),
+    );
+  });
+
   it('leaves non-voice active jobs alone', async () => {
     const job = makeJob('job-10', { kind: 'llm-translate', modId: 1, params: {} });
     const deps = makeDeps({ getActiveJobs: async () => [job] });
@@ -162,6 +180,20 @@ describe('requeueStalledVoiceGenerate', () => {
       { kind: 'voice-generate', modId: 33, params: { ...params, resetVoice: false, runId: 724 } },
       800,
     );
+  });
+
+  it('looks for an unfinished job of the stalled kind only', async () => {
+    const data: JobData = { kind: 'voice-effort', modId: 33, params: { game: 'fo4' } };
+    const deps = makeDeps();
+    await expect(
+      requeueStalledVoiceGenerate(
+        makeJob('job-724', data),
+        new Error('job stalled more than allowable limit'),
+        deps,
+      ),
+    ).resolves.toBe(800);
+    expect(deps.findUnfinished).toHaveBeenCalledWith(['voice-effort'], 33);
+    expect(deps.enqueueJob).toHaveBeenCalledWith(data, 800);
   });
 
   it('does not enqueue a second voice job for the same mod', async () => {

@@ -1,4 +1,5 @@
 /** Pure pairing of dest lines with donor takes (text + speaker only; file hash is later). */
+import type { EffortTag } from './vocalEffort/decide';
 
 export type ReuseVoiceLineKey = {
   speakerKey: string;
@@ -8,6 +9,11 @@ export type ReuseVoiceLineKey = {
   translation: string;
   /** Transcript of the reference clip when it is not `sourceText` (see `VoiceTake`). */
   speakerSource?: string;
+  /**
+   * Effort tag the line's take is synthesized with, when its game has tags on.
+   * A take made with one tag is not a take of the same line under another.
+   */
+  effortTag?: EffortTag | null;
 };
 
 export type ReuseVoiceDestLine = ReuseVoiceLineKey & {
@@ -35,7 +41,7 @@ export type ReuseVoiceMatch = {
 };
 
 const reuseVoiceLineKey = (line: ReuseVoiceLineKey): string =>
-  `${line.speakerKey.toLowerCase()}\0${line.originPlugin}\0${line.sourceText}\0${line.translation}`;
+  `${line.speakerKey.toLowerCase()}\0${line.originPlugin}\0${line.sourceText}\0${line.translation}\0${line.effortTag ?? ''}`;
 
 export const isReusableVoiceText = (value: string | null | undefined): value is string =>
   Boolean(value && value.trim());

@@ -28,6 +28,11 @@ export interface ModAiControlsProps {
   onVoiceAll: () => void;
   onVoiceLowSimilarity: () => void;
   onVoiceStop: () => void;
+  /** The mod's vocal effort analysis; the voice slot shows it unless synthesis is running. */
+  voiceEffort?: ModAiJobEntry;
+  /** Adds "Analyze vocal effort" to the voice menu; only for a game that supports it. */
+  onVoiceAnalyzeEffort?: () => void;
+  onVoiceEffortStop?: () => void;
   /** Compact layout for mod list rows. */
   compact?: boolean;
   /** Circular icon buttons with progress ring (mod editor strip). */
@@ -182,6 +187,9 @@ export const ModAiControls = ({
   onVoiceAll,
   onVoiceLowSimilarity,
   onVoiceStop,
+  voiceEffort,
+  onVoiceAnalyzeEffort,
+  onVoiceEffortStop,
   compact = false,
   variant = 'bar',
   showGenderDetect = true,
@@ -204,7 +212,13 @@ export const ModAiControls = ({
     { label: t('modEditor.aiVoiceGenerateMissing'), onClick: onVoiceMissing },
     { label: t('modEditor.aiVoiceGenerateAll'), onClick: onVoiceAll },
     { label: t('modEditor.aiVoiceGenerateLowSimilarity'), onClick: onVoiceLowSimilarity },
+    ...(onVoiceAnalyzeEffort
+      ? [{ label: t('modEditor.aiVoiceAnalyzeEffort'), onClick: onVoiceAnalyzeEffort }]
+      : []),
   ];
+  // One slot for both voice jobs: the server runs at most one of them per mod.
+  const synthesizing = voice.status === 'running' || voice.status === 'stopping';
+  const effort = voiceEffort && voiceEffort.status !== 'idle' && !synthesizing ? voiceEffort : null;
 
   const translateRunningLabel =
     translate.translateMode === 'tm'
@@ -262,13 +276,15 @@ export const ModAiControls = ({
       />
       {showVoice && (
         <Slot
-          entry={voice}
-          label={t('modEditor.aiVoiceGenerate')}
-          runningLabel={t('modEditor.aiVoiceGenerateRunning')}
+          entry={effort ?? voice}
+          label={t(effort ? 'modEditor.aiVoiceEffort' : 'modEditor.aiVoiceGenerate')}
+          runningLabel={t(
+            effort ? 'modEditor.aiVoiceEffortRunning' : 'modEditor.aiVoiceGenerateRunning',
+          )}
           idleHint={t('modAi.hintVoice')}
           icon="🔊"
           menuItems={voiceMenuItems}
-          onStop={onVoiceStop}
+          onStop={effort ? (onVoiceEffortStop ?? onVoiceStop) : onVoiceStop}
           stoppable
           circular={circular}
         />

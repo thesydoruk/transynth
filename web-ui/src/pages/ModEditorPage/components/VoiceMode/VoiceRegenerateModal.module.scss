@@ -109,3 +109,34 @@
   inset: 0;
   z-index: 1200;
 }
+
+.effortChoice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+.effortChoiceLabel {
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.effortOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.effortOptionChosen {
+  color: var(--text-bright);
+}
+
+.effortHint {
+  margin: 12px 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}

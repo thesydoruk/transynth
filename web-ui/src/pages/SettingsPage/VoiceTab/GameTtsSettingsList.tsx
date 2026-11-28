@@ -39,6 +39,8 @@ export const GameTtsSettingsList = () => {
             <code className={s.gameCode}>{game.id}</code>
           </div>
           <GameTtsMatchToggles
+            gameId={game.id}
+            vocalEffort={game.vocalEffort === true}
             value={gameTtsMatchFor(map, game.id)}
             disabled={isPending}
             onChange={(patch) => patchGame(game.id, patch)}

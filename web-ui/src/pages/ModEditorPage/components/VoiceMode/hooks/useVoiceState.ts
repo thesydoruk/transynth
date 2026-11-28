@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export type VoiceLineFilter = 'all' | 'needsTranslation' | 'needsVoice';
+export type VoiceLineFilter = 'all' | 'needsTranslation' | 'needsVoice' | 'effortTagged';
 
 /** Local UI state for the voice editor: speaker pick, search, and line filters. */
 export const useVoiceState = () => {

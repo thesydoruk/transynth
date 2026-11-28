@@ -17,7 +17,7 @@ import { FUZ_TAKES, type VoiceTakeFormat } from './takeFormat';
 import { takeOnDisk, writeVoiceTake, writeVoiceTakeIfChanged } from './takeSidecars';
 import type { TakeSpeakerSexResolver } from './takeSpeakerSex';
 import { recordVoiceTake, voiceTakeSource } from './referenceVoiceTakeHooks';
-import { voiceTtsPayloadVersionFromPrepared } from './voiceTtsPayloadVersion';
+import { voiceTtsPayloadVersionFromPrepared, voiceTtsRequestText } from './voiceTtsPayloadVersion';
 import {
   lookupVoiceResynthStamp,
   settleVoiceResynthTake,
@@ -160,7 +160,7 @@ export const processVoiceLocalizeEntry = async (
     // TTS may use a different reference transcript than the line source; version
     // stamp stays on prepared text so it matches count/availability/rebuild.
     const tts = await synthesizeWav(
-      prepared.text,
+      voiceTtsRequestText(prepared),
       picked.clips.map((clip) => ({
         wavPath: clip.wavPath,
         speakerText: stripVoiceNonSpeechBlocks(clip.speakerText ?? referenceSource) || undefined,

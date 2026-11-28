@@ -5,6 +5,7 @@ import { CONFIG } from '../../../config';
 import { isVoiceFormidKey } from '../../../voice/voiceFormidKey';
 import { normalizeVoiceOrigin } from '../../../voice/voiceOrigin';
 import { parseRouteId } from '../parseRouteId';
+import { parseVoiceEffortChoice } from '../../voice/preview';
 import {
   commitVoiceRegenerateSession,
   discardVoiceRegenerateSession,
@@ -87,6 +88,7 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
           audioUrl: `/api/mods/${modId}/voice/regenerate/${sessionId}/${preview.id}.wav`,
           params: preview.params,
           voiceSimilarity: preview.voiceSimilarity ?? null,
+          effortChoice: preview.effort?.choice ?? null,
         })),
       });
     },
@@ -103,6 +105,8 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
       speakerKey?: string;
       originPlugin?: string;
       params?: VoiceRegenerateParams;
+      /** 'auto' | 'none' | 'loud' | 'shouting'; left out, the line's tag in force is used. */
+      effortChoice?: string;
     };
   }>('/api/mods/:id/voice/regenerate/:sessionId/preview', async (req, reply) => {
     const modId = parseRouteId(req.params.id);
@@ -122,6 +126,10 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
     if (!params) {
       return reply.code(400).send({ error: 'params are required' });
     }
+    const effortChoice = parseVoiceEffortChoice(req.body?.effortChoice);
+    if (req.body?.effortChoice != null && !effortChoice) {
+      return reply.code(400).send({ error: 'Invalid effortChoice' });
+    }
 
     const srcLang = req.body?.srcLang?.trim() || CONFIG.defaultSrcLang;
     const targetLang = req.body?.targetLang?.trim() || CONFIG.defaultTgtLang;
@@ -136,6 +144,7 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
       params,
       req.body?.speakerKey?.trim(),
       normalizeVoiceOrigin(req.body?.originPlugin) || undefined,
+      effortChoice ?? undefined,
     );
     if (!result.ok) {
       const status = result.reason === 'tts_failed' ? 503 : 400;

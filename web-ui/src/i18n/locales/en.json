@@ -351,6 +351,21 @@
     "aiVoiceGenerateMissing": "Missing only",
     "aiVoiceGenerateAll": "Regenerate all",
     "aiVoiceGenerateLowSimilarity": "Low similarity…",
+    "aiVoiceAnalyzeEffort": "Analyze vocal effort",
+    "aiVoiceEffort": "Vocal effort analysis",
+    "aiVoiceEffortRunning": "Analyzing vocal effort…",
+    "voiceEffortResult": {
+      "title": "Vocal effort: {{mod}}",
+      "takes": "Original takes",
+      "measured": "Measured in this run",
+      "failed": "Could not be decoded",
+      "speakers": "Speakers with a calm baseline",
+      "speakersValue": "{{withBaseline}} of {{total}}",
+      "shouting": "Lines tagged shouting",
+      "loud": "Lines tagged loud",
+      "failedHint": "Takes that could not be decoded are tried again the next time the mod is analyzed.",
+      "next": "The tags take effect only for a game with \"Shout where the original shouts\" on in Settings → Voice."
+    },
     "voiceResynth": {
       "title": "Re-synthesize low-similarity takes",
       "below": "Re-synthesize takes scoring below",
@@ -674,7 +689,8 @@
     "filter": {
       "all": "All",
       "needsTranslation": "No translation",
-      "needsVoice": "Needs dubbing"
+      "needsVoice": "Needs dubbing",
+      "effortTagged": "With effort tag"
     },
     "findPlaceholder": "Find in lines…",
     "hiddenLines": "{{count}} lines hidden by filter",
@@ -683,6 +699,32 @@
     "generateSpeaker": "Generate speaker voice",
     "generateSpeakerTitle": "Generate voice for this character (same job as the mod voice control)",
     "synthesizingTitle": "Synthesizing a line for {{name}}",
+    "effort": {
+      "tag": {
+        "shouting": "shouting",
+        "loud": "loud",
+        "none": "no tag"
+      },
+      "choice": {
+        "auto": "Auto ({{tag}})",
+        "shouting": "Shouting",
+        "loud": "Loud",
+        "none": "No tag"
+      },
+      "menuLabel": "Effort tag",
+      "add": "+ tag",
+      "addTitle": "Set an effort tag for this line",
+      "strength": "Effort {{strength}}",
+      "notMeasured": "Effort not measured",
+      "auto": "set automatically",
+      "manual": "set by hand (automatic: {{tag}})",
+      "off": "Effort tags are off for this game: Settings → Voice, “Shout where the original shouts”",
+      "saveError": "Failed to save the effort tag",
+      "noBaseline": "Too few calm lines to compare with: this character's lines get no effort tags",
+      "regenerateLabel": "Effort tag",
+      "regenerateOff": "Effort tags are off for this game in Settings → Voice, so attempts are made without a tag.",
+      "attemptTag": "tag: {{tag}}"
+    },
     "hotkeyHint": "↑↓ in search — switch speakers · ↑↓ line · Enter edit · Ctrl+Enter save and continue · Ctrl+Shift+Enter save and jump to untranslated · N next untranslated · P play · Esc cancel"
   },
   "ctx": {
@@ -1330,6 +1372,22 @@
       "sectionGameTtsDesc": "The xtts-engine match_timing flag is stored per game. Sampling parameters below still apply to every game.",
       "matchTiming": "Match timing to the reference",
       "matchTimingDesc": "xtts-engine fits the take to the duration of the first speaker clip (stretch speech only, never more than ~15% faster than the actor). Turn off if lines feel rushed or padded.",
+      "effortTags": "Shout where the original shouts",
+      "effortTagsDesc": "Lines whose original take is shouted or spoken in a raised voice are sent to TTS with a [shouting] or [loud] tag. Only mods analyzed from the Mods page (voice menu → Analyze vocal effort) have tags. Turning this on makes the takes of tagged lines stale; the rest are untouched.",
+      "effortTagsSummary": "Analyzed mods: {{mods}} · lines with a tag: {{tagged}} · already voiced: {{synthesized}}",
+      "effortTagsNotAnalyzable": "This game's mods cannot be analyzed for vocal effort, so the switch changes nothing.",
+      "effortTagsConfirmTitle": "Shout where the original shouts?",
+      "effortTagsConfirmButton": "Turn on",
+      "effortTagsConfirmStale_one": "About {{count}} take will become stale and be re-synthesized by the next \"Missing only\" job.",
+      "effortTagsConfirmStale_other": "About {{count}} takes will become stale and be re-synthesized by the next \"Missing only\" job.",
+      "effortTagsConfirmNoneStale": "None of the {{tagged}} lines with a tag is voiced yet, so nothing becomes stale; their takes will be made with the tag.",
+      "effortTagsConfirmNotAnalyzed": "No mod of this game has been analyzed yet, so nothing will change until you analyze one from the Mods page (voice menu → Analyze vocal effort).",
+      "effortTagsConfirmUnknown": "The takes of lines with a tag will become stale and be re-synthesized by the next \"Missing only\" job.",
+      "effortTagsOffConfirmTitle": "Stop sending effort tags?",
+      "effortTagsOffConfirmButton": "Turn off",
+      "effortTagsOffConfirm_one": "Up to {{count}} take made with a tag will become stale and be re-synthesized without it by the next \"Missing only\" job.",
+      "effortTagsOffConfirm_other": "Up to {{count}} takes made with a tag will become stale and be re-synthesized without it by the next \"Missing only\" job.",
+      "effortTagsOffConfirmUnknown": "Takes made with a tag will become stale and be re-synthesized without it by the next \"Missing only\" job.",
       "sectionSynthesis": "Synthesis",
       "sectionSynthesisDesc": "What to do with a take xtts-engine returns. The server generates each line once and reports a silent or cut-off take and the voice similarity; below the threshold transynth asks for more takes and keeps the best one.",
       "synthRetryBelow": "Voice similarity threshold",

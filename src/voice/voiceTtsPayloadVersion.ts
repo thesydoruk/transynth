@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import type { PrepareVoiceTtsTextResult } from './prepareVoiceTtsText';
+import { applyEffortTag } from './vocalEffort/decide';
 import { resolveTtsLanguage } from './voiceToolPaths';
 
 /**
@@ -26,13 +27,30 @@ export const computeVoiceTtsPayloadVersion = (payload: VoiceTtsPayload): string 
   return crypto.createHash('sha256').update(canonical, 'utf8').digest('hex');
 };
 
+type PreparedSpeech = Extract<PrepareVoiceTtsTextResult, { action: 'synthesize' }>;
+
+/**
+ * The text as the TTS server gets it: the line, behind its effort tag when it
+ * has one. Only the synthesis request and the version stamp use this — the
+ * lip-sync builder is given `prepared.text`, which has no tag to mouth.
+ *
+ * @example voiceTtsRequestText({ action: 'synthesize', text: 'Лягай!', speakerText: 'Get down!',
+ *   effortTag: 'shouting' }) // '[shouting] Лягай!'
+ */
+export const voiceTtsRequestText = (prepared: PreparedSpeech): string =>
+  applyEffortTag(prepared.text, prepared.effortTag ?? null);
+
+/**
+ * The stamp of a take made from this text. A line that gains or loses an
+ * effort tag gets a new stamp, so its take — and only its take — goes stale.
+ */
 export const voiceTtsPayloadVersionFromPrepared = (
-  prepared: Extract<PrepareVoiceTtsTextResult, { action: 'synthesize' }>,
+  prepared: PreparedSpeech,
   tgtLang: string,
   speakerText?: string | null,
 ): string =>
   computeVoiceTtsPayloadVersion({
-    text: prepared.text,
+    text: voiceTtsRequestText(prepared),
     speakerText: speakerText ?? prepared.speakerText,
     language: resolveTtsLanguage(tgtLang),
   });

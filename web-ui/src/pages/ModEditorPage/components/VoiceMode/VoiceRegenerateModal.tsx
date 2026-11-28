@@ -6,6 +6,7 @@ import { ModalShell } from '../../../../components/ModalShell';
 import { randomUUID } from '../../../../utils/randomUUID';
 import { VoiceRegenerateParamsForm } from '../../../SettingsPage/VoiceTab/VoiceRegenerateParamsForm';
 import { CompareTrackList } from './components/CompareTrackList';
+import { VoiceRegenerateEffortChoice } from './components/VoiceRegenerateEffortChoice';
 import { useVoiceRegenerateComparePlayback } from './hooks/useVoiceRegenerateComparePlayback';
 import { useVoiceRegenerateSession } from './hooks/useVoiceRegenerateSession';
 import s from './VoiceRegenerateModal.module.scss';
@@ -16,6 +17,10 @@ type VoiceRegenerateModalProps = {
   srcLang: string;
   targetLang: string;
   hasCurrentTranslation: boolean;
+  /** The game tags lines for vocal effort at all; without it nothing about tags is shown. */
+  effortTagsSupported?: boolean;
+  /** Tags reach synthesis, so an attempt can be made with or without one. */
+  effortTagsActive?: boolean;
   onClose: () => void;
   onCommitted: () => void;
 };
@@ -27,6 +32,8 @@ export const VoiceRegenerateModal = ({
   srcLang,
   targetLang,
   hasCurrentTranslation,
+  effortTagsSupported = false,
+  effortTagsActive = false,
   onClose,
   onCommitted,
 }: VoiceRegenerateModalProps) => {
@@ -45,6 +52,8 @@ export const VoiceRegenerateModal = ({
   const {
     params,
     setParams,
+    effortChoice,
+    setEffortChoice,
     selectedId,
     setSelectedId,
     loading,
@@ -65,6 +74,7 @@ export const VoiceRegenerateModal = ({
     sessionId,
     onCommitted,
     stopPlayback,
+    effortTagsActive,
   );
 
   const error = sessionError ?? playbackError;
@@ -107,6 +117,18 @@ export const VoiceRegenerateModal = ({
                     onChange={setParams}
                     disabled={generating || committing}
                   />
+                  {effortTagsActive ? (
+                    <VoiceRegenerateEffortChoice
+                      value={effortChoice}
+                      autoTag={line.effortAutoTag ?? null}
+                      onChange={setEffortChoice}
+                      disabled={generating || committing}
+                    />
+                  ) : (
+                    effortTagsSupported && (
+                      <p className={s.effortHint}>{t('voice.effort.regenerateOff')}</p>
+                    )
+                  )}
                   <Button
                     variant="secondary"
                     onClick={() => void handleGenerate()}
@@ -123,6 +145,7 @@ export const VoiceRegenerateModal = ({
                   <CompareTrackList
                     tracks={compareTracks}
                     currentSimilarity={line.voiceSimilarity}
+                    autoEffortTag={line.effortAutoTag ?? null}
                     selectedId={selectedId}
                     onSelect={setSelectedId}
                     playingTrack={playingTrack}

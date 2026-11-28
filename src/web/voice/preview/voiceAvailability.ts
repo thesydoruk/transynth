@@ -22,6 +22,7 @@ import {
   resolveVoiceLineSkipReason,
   type VoiceTtsSkipReason,
 } from '../../../voice/prepareVoiceTtsText';
+import { loadActiveVoiceEffortTags, lookupVoiceEffortTag } from '../../../voice/voiceEffortTags';
 import { loadImportedMod } from '../../../modImport/importedMod';
 import { resolveModVoiceContext } from './context';
 import { discoverVoiceEntries } from './voiceEntries';
@@ -60,6 +61,7 @@ export const listVoiceAvailabilityForMod = async (
     resolved.ctx.pluginPath,
   );
   const voiceRootRel = resolveVoiceRootRel(resolved.ctx.pluginRel);
+  const effortTags = await loadActiveVoiceEffortTags(db, modId, mod.game);
   const source: string[] = [];
   const translation: string[] = [];
   const stale: string[] = [];
@@ -105,6 +107,13 @@ export const listVoiceAvailabilityForMod = async (
       translation: row.translation,
       speakerSource: row.source,
       edid: row.edid,
+      effortTag: lookupVoiceEffortTag(
+        effortTags,
+        voiceSpeakerKey(entry, voiceRootRel),
+        entry.lineKey,
+        entry.variant,
+        entry.originPlugin,
+      ),
     });
     if (prepared.action !== 'synthesize') continue;
     const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, resolved.targetLang);

@@ -77,11 +77,12 @@ export const modVoiceGenerateRoutes = async (app: FastifyInstance, db: Tx) => {
       resynth = parsed.params;
     }
 
-    const running = await findActiveJobIdForMod(['voice-generate'], modId);
+    // A vocal effort analysis rewrites the mod's effort tags when it ends; takes made
+    // while it runs would be stamped under the old tags and go stale at once.
+    const running = await findActiveJobIdForMod(['voice-generate', 'voice-effort'], modId);
     if (running) {
-      return reply
-        .code(409)
-        .send({ error: `Voice generation already running (job #${running.jobId})` });
+      const what = running.kind === 'voice-effort' ? 'Vocal effort analysis' : 'Voice generation';
+      return reply.code(409).send({ error: `${what} already running (job #${running.jobId})` });
     }
 
     const { rows: modRows } = await db.query<{ name: string; game: string }>(

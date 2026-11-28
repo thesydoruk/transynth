@@ -75,6 +75,8 @@ export const useVoiceData = ({
     activeKey,
     activeSpeaker,
     lines,
+    effortTagsSupported: linesQuery.data?.ok ? Boolean(linesQuery.data.effortTagsSupported) : false,
+    effortTagsActive: linesQuery.data?.ok ? Boolean(linesQuery.data.effortTagsActive) : false,
     speakersQueryKey: voiceSpeakersQueryKey(modId, srcLang, targetLang),
     linesQueryKey: voiceSpeakerLinesQueryKey(modId, activeKey, srcLang, targetLang),
   };

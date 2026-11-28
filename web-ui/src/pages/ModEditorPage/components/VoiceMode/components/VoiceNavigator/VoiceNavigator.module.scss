@@ -150,6 +150,14 @@
   color: hsl(45 90% 65%);
 }
 
+/* Analyzed, but too few calm lines for a baseline: none of its lines can be tagged. */
+.noEffortBaseline {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-faint);
+  cursor: help;
+}
+
 .gender {
   flex-shrink: 0;
   font-size: 11px;

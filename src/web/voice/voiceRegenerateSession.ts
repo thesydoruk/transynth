@@ -9,6 +9,7 @@ import { PATHS } from '../../paths';
 import { ensureDir } from '../../utils/file';
 import type { VoiceLinePreviewBuild } from '../../games/contract';
 import { takeSidecarPath } from '../../voice/takeSidecars';
+import type { VoiceRegenerateEffort } from './voiceRegenerateEffort';
 
 export type VoiceRegenerateParams = {
   line_reference: boolean;
@@ -29,6 +30,8 @@ export type VoiceRegeneratePreviewMeta = {
   sidecars?: string[];
   speakerKey?: string;
   voiceSimilarity?: number | null;
+  /** The effort-tag choice the take was made under; absent when none applied. */
+  effort?: VoiceRegenerateEffort;
 };
 
 export type VoiceRegenerateSessionMeta = {

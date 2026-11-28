@@ -24,6 +24,7 @@ import {
   loadVoiceSynthesisVersionMap,
   lookupVoiceSynthesisVersion,
 } from '../../../voice/voiceSynthesisState';
+import { loadActiveVoiceEffortTags, lookupVoiceEffortTag } from '../../../voice/voiceEffortTags';
 import { voiceTtsPayloadVersionFromPrepared } from '../../../voice/voiceTtsPayloadVersion';
 import {
   loadVoiceResynthContext,
@@ -94,6 +95,7 @@ export const localizeVoicePackage = async (
   const resynth = options.resynth
     ? await loadVoiceResynthContext(db, modId, tgtLang, options.resynth)
     : undefined;
+  const effortTags = await loadActiveVoiceEffortTags(db, modId, options.game);
 
   if (work.items.length === 0) {
     log.info(`No voice lines to synthesize under ${prefix}${resolveVoiceRootRel(pluginRel)}`);
@@ -126,18 +128,25 @@ export const localizeVoicePackage = async (
 
     const takeRel = takes.localizedRelPath(entry);
     const takeDest = toDiskPath(pkg.localizeDir, takeRel);
+    const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
     const prepared = prepareVoiceTtsText({
       lineSource: row.source,
       translation: row.translation,
       speakerSource: source.referenceSource ?? row.source,
       edid: row.edid,
+      effortTag: lookupVoiceEffortTag(
+        effortTags,
+        speakerKey,
+        entry.lineKey,
+        entry.variant,
+        entry.originPlugin,
+      ),
     });
     if (prepared.action === 'skip') {
       skipped.push(`${prefix}${entry.relPath} (${voiceTtsSkipMessage(prepared.reason)})`);
       return null;
     }
 
-    const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
     const due = voiceTakeNeedsWork({
       force: options.force,
       resynth,

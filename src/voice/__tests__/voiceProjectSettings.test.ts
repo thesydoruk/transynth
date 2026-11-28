@@ -1,4 +1,4 @@
-import { SETTING_DEFAULTS } from '../../web/services/projectSettings';
+﻿import { SETTING_DEFAULTS } from '../../web/services/projectSettings';
 import type { Tx } from '../../db';
 import {
   voiceReferenceModeFromProjectSettings,
@@ -30,7 +30,9 @@ describe('voiceProjectSettings', () => {
       voiceSynthesisFromProjectSettings(
         {
           ...SETTING_DEFAULTS,
-          'voice.game_tts': { fo4: { matchLoudness: false, matchTiming: false } },
+          'voice.game_tts': {
+            fo4: { matchLoudness: false, matchTiming: false, effortTags: false },
+          },
         },
         'fo4',
       ),
@@ -44,7 +46,9 @@ describe('voiceProjectSettings', () => {
       voiceSynthesisFromProjectSettings(
         {
           ...SETTING_DEFAULTS,
-          'voice.game_tts': { fo4: { matchLoudness: false, matchTiming: false } },
+          'voice.game_tts': {
+            fo4: { matchLoudness: false, matchTiming: false, effortTags: false },
+          },
         },
         'disco',
       ),

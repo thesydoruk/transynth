@@ -28,6 +28,7 @@ export const JOB_KINDS = [
   'skip-detect',
   'gender-detect',
   'voice-generate',
+  'voice-effort',
   'batch-translate',
   'apply-imported',
   'mod-import',

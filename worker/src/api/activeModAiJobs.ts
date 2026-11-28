@@ -8,7 +8,13 @@ import { fromBullJobId, listUnfinishedJobs, removeIdleQueueJob } from '../core/q
 import { isJobMarkedCancelled, isTerminalSnapshotStatus, readJobSnapshot } from '../core/snapshots';
 import type { JobKind } from '../types';
 
-export type ModAiJobKind = 'translate' | 'verify' | 'skip-detect' | 'gender-detect' | 'voice';
+export type ModAiJobKind =
+  | 'translate'
+  | 'verify'
+  | 'skip-detect'
+  | 'gender-detect'
+  | 'voice'
+  | 'voice-effort';
 export type ModTranslateMode = 'tm' | 'llm';
 
 export type ActiveModAiJob = {
@@ -32,6 +38,7 @@ const UI_KIND: Partial<Record<JobKind, { kind: ModAiJobKind; translateMode?: Mod
     'skip-detect': { kind: 'skip-detect' },
     'gender-detect': { kind: 'gender-detect' },
     'voice-generate': { kind: 'voice' },
+    'voice-effort': { kind: 'voice-effort' },
   };
 
 const AI_JOB_KINDS = Object.keys(UI_KIND) as JobKind[];

@@ -44,6 +44,11 @@ export interface GameInfo {
   editor: GameEditorCapabilities;
   /** True when the game ships pre-rendered videos the agent can dub (the editor's media tab). */
   media: boolean;
+  /**
+   * True when the game's plugin reads how lines are delivered, which the vocal
+   * effort analysis needs to find each speaker's calm baseline.
+   */
+  vocalEffort: boolean;
 }
 
 const gameInfo = (id: string): GameInfo => {
@@ -61,6 +66,7 @@ const gameInfo = (id: string): GameInfo => {
     domainName: catalogue.nexus?.domain,
     editor: plugin.editor,
     media: plugin.media != null,
+    vocalEffort: plugin.voice?.loadLineDirections != null,
   };
 };
 

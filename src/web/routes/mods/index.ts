@@ -7,6 +7,7 @@ import { registerModVideoRoutes } from './video';
 import { registerModVideoJobRoutes } from './videoJobs';
 import { registerVoiceRoutes } from './voice';
 import { registerVoiceRegenerateRoutes } from './voiceRegenerate';
+import { registerVoiceEffortRoutes } from './voiceEffort';
 import { registerExportRoutes } from './export';
 import { registerApplyImportedRoutes } from './applyImported';
 import { registerDiffCarryOverRoutes } from './diffCarryOver';
@@ -19,6 +20,7 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
   await registerModVideoRoutes(app, db);
   await registerModVideoJobRoutes(app, db);
   await registerVoiceRegenerateRoutes(app, db);
+  await registerVoiceEffortRoutes(app, db);
   await registerExportRoutes(app, db);
   await registerApplyImportedRoutes(app, db);
   await registerDiffCarryOverRoutes(app, db);

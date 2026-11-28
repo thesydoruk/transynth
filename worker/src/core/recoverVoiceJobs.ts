@@ -5,16 +5,21 @@
  * already written: "Regenerate all" wipes once at job start, then continues as
  * missing. A low-similarity job keeps its scope and dialog params, and gets the
  * first job's id as `runId` so it skips the takes that job already handled.
+ * A vocal effort analysis (`voice-effort`) is started again as it was: it saves
+ * as it goes and measures only takes without a row, so the new job resumes.
  * Other kinds stay failed on stall.
  */
 import type { Job } from 'bullmq';
 import { logJobs } from '../../../src/logging/loggers';
-import type { JobData, JobSnapshot } from '../types';
+import type { JobData, JobKind, JobSnapshot } from '../types';
 import { allocateJobId, enqueueJob, findUnfinishedJobForMod, listActiveJobs } from './queue';
 import { fromBullJobId } from './jobId';
 import { readJobSnapshot, writeJobSnapshot } from './snapshots';
 
 const STALL_FAIL = /stalled more than allowable limit/i;
+
+/** Kinds a worker restart or a stall starts again instead of leaving failed. */
+const RESUMED_KINDS: readonly JobKind[] = ['voice-generate', 'voice-effort'];
 
 export type RecoverVoiceJobsDeps = {
   getActiveJobs?: () => Promise<Array<Job<JobData> | undefined | null>>;
@@ -66,7 +71,10 @@ const requeue = async (
     done: 0,
     total: 0,
     error: null,
-    data: { jobId: newId, modId: payload.modId, written: 0, skipped: 0, warningCount: 0 },
+    data:
+      payload.kind === 'voice-generate'
+        ? { jobId: newId, modId: payload.modId, written: 0, skipped: 0, warningCount: 0 }
+        : { jobId: newId, modId: payload.modId, result: null },
   });
   await enqueue(payload, newId);
   return newId;
@@ -99,7 +107,7 @@ const dropActiveJob = async (job: Job<JobData>): Promise<void> => {
   }
 };
 
-/** Re-enqueue active voice-generate jobs left behind by a previous worker process. */
+/** Re-enqueue active voice jobs left behind by a previous worker process. */
 export const recoverOrphanedVoiceGenerateJobs = async (
   deps: RecoverVoiceJobsDeps = {},
 ): Promise<number> => {
@@ -108,12 +116,12 @@ export const recoverOrphanedVoiceGenerateJobs = async (
   const active = await getActiveJobs();
   let recovered = 0;
   for (const job of active) {
-    if (!job || job.data.kind !== 'voice-generate') continue;
+    if (!job || !RESUMED_KINDS.includes(job.data.kind)) continue;
     const oldId = fromBullJobId(job.id);
     await dropActiveJob(job);
     await failOldSnapshot(oldId, deps, 'worker restarted');
     const newId = await requeue(job.data, oldId, deps);
-    log.info('recovered orphaned voice-generate', {
+    log.info(`recovered orphaned ${job.data.kind}`, {
       oldJobId: oldId,
       newJobId: newId,
       modId: job.data.modId,
@@ -129,15 +137,15 @@ export const requeueStalledVoiceGenerate = async (
   err: Error,
   deps: RecoverVoiceJobsDeps = {},
 ): Promise<number | null> => {
-  if (job.data.kind !== 'voice-generate' || !isVoiceStallFailure(err)) return null;
+  if (!RESUMED_KINDS.includes(job.data.kind) || !isVoiceStallFailure(err)) return null;
   const findUnfinished = deps.findUnfinished ?? findUnfinishedJobForMod;
   const log = deps.log ?? logJobs;
   if (job.data.modId != null) {
-    const existing = await findUnfinished(['voice-generate'], job.data.modId);
+    const existing = await findUnfinished([job.data.kind], job.data.modId);
     if (existing) return null;
   }
   const newId = await requeue(job.data, fromBullJobId(job.id), deps);
-  log.info('requeued stalled voice-generate', {
+  log.info(`requeued stalled ${job.data.kind}`, {
     oldJobId: fromBullJobId(job.id),
     newJobId: newId,
     modId: job.data.modId,

@@ -34,6 +34,7 @@ export type { ExportedZip, GameExportAdapter, ModExportContext } from './exporti
 export type {
   GameVoiceAdapter,
   VoiceJobScope,
+  VoiceLineDirection,
   VoiceLineRequest,
   VoiceLinePreviewBuild,
   VoiceLocalizeRequest,

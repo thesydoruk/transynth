@@ -17,6 +17,8 @@ export { listVoiceSpeakersForMod } from './listVoiceSpeakers';
 export { listVoiceLinesForSpeaker } from './listVoiceSpeakerLines';
 export { invalidateVoiceListContext } from './voiceListContext';
 export { listVoiceAvailabilityForMod } from './voiceAvailability';
+export { parseVoiceEffortChoice, setVoiceLineEffortChoice } from './voiceLineEffort';
+export type { VoiceEffortChoice } from './voiceLineEffort';
 export {
   clearVoiceSpeakerReferenceForMod,
   setVoiceSpeakerReferenceForMod,

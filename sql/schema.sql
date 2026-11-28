@@ -832,6 +832,40 @@ ALTER TABLE voice_synthesis_state ADD COLUMN IF NOT EXISTS voice_similarity DOUB
 -- A resumed run skips the takes it already handled; any other write clears it.
 ALTER TABLE voice_synthesis_state ADD COLUMN IF NOT EXISTS resynth_run_id INTEGER;
 
+-- ── Vocal effort of original takes ────────────────────────────────────────────
+-- How hard the actor pushes in each original take, and the Fish Speech tag that
+-- follows from it (`shouting`, `loud`). One row per analyzed take: the features
+-- are measured once, strength and tag are derived from them and from the
+-- speaker's other takes and are rewritten by every analysis run. A take with
+-- too little speech to measure keeps a row with NULL features, so it is not
+-- decoded again.
+CREATE TABLE IF NOT EXISTS voice_clip_effort (
+  mod_id        INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
+  origin_plugin TEXT NOT NULL DEFAULT '',
+  speaker_key   TEXT NOT NULL,
+  line_key      TEXT NOT NULL,
+  variant       INTEGER NOT NULL CHECK (variant >= 1),
+  f0_median_st  DOUBLE PRECISION,
+  brightness_db DOUBLE PRECISION,
+  voiced_ratio  DOUBLE PRECISION,
+  strength      DOUBLE PRECISION,
+  tag           TEXT,
+  analyzed_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (mod_id, origin_plugin, speaker_key, line_key, variant)
+);
+
+-- What a person decided for the take: NULL leaves the derived tag in force,
+-- 'none' means no tag, 'loud' / 'shouting' set one. Analysis never writes it.
+ALTER TABLE voice_clip_effort ADD COLUMN IF NOT EXISTS tag_override TEXT;
+-- A choice made for a take never analyzed creates its row with nothing measured;
+-- NULL `analyzed_at` tells analysis the take still has to be measured.
+ALTER TABLE voice_clip_effort ALTER COLUMN analyzed_at DROP NOT NULL;
+
+DROP INDEX IF EXISTS idx_voice_clip_effort_tagged;
+CREATE INDEX IF NOT EXISTS idx_voice_clip_effort_effective
+  ON voice_clip_effort(mod_id)
+  WHERE tag IS NOT NULL OR tag_override IS NOT NULL;
+
 -- ── Voice clips: one row per audio file a mod ships ──────────────────────────
 -- Every game indexes its takes differently — Creation Engine by speaker folder
 -- × FormID × TRDA response, Disco by the `.wav` stem beside a `.po` entry — but

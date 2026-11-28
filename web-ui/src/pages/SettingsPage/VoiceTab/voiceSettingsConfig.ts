@@ -11,6 +11,7 @@ export const VOICE_SETTINGS_DEFAULTS: VoiceProjectSettings = {
 export type GameTtsMatchSettings = {
   matchLoudness: boolean;
   matchTiming: boolean;
+  effortTags: boolean;
 };
 
 export type GameTtsSettingsMap = Record<string, GameTtsMatchSettings>;
@@ -18,6 +19,7 @@ export type GameTtsSettingsMap = Record<string, GameTtsMatchSettings>;
 const GAME_TTS_MATCH_DEFAULTS: GameTtsMatchSettings = {
   matchLoudness: true,
   matchTiming: true,
+  effortTags: false,
 };
 
 export const gameTtsMatchFor = (
@@ -48,5 +50,10 @@ export const GAME_TTS_MATCH_TOGGLES: Array<{
     field: 'matchTiming',
     labelKey: 'settings.voice.matchTiming',
     descKey: 'settings.voice.matchTimingDesc',
+  },
+  {
+    field: 'effortTags',
+    labelKey: 'settings.voice.effortTags',
+    descKey: 'settings.voice.effortTagsDesc',
   },
 ];

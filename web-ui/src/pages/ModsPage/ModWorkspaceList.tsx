@@ -11,6 +11,8 @@ import { toggleModAiVoice, stopModAiVoice } from '../../modAiVoiceRunner';
 import { startModAiSkipDetect, stopModAiSkipDetect } from '../../modAiSkipDetectRunner';
 import { toggleModAiGenderDetect, stopModAiGenderDetect } from '../../modAiGenderDetectRunner';
 import { VoiceResynthDialog } from '../../components/VoiceResynthDialog';
+import { useGameInfo } from '../../hooks/useGameInfo';
+import { startModVoiceEffort, stopModVoiceEffort } from '../../modAiVoiceEffortRunner';
 import { ModWorkspaceRow } from './ModWorkspaceRow';
 import { useModsWorkspace } from './ModsWorkspaceContext';
 import { formatModDisplayName, groupModVersions } from './modVersions';
@@ -20,6 +22,7 @@ import pageS from './ModsPage.module.scss';
 export const ModWorkspaceList = ({ mods }: { mods: Mod[] }) => {
   const { t } = useTranslation();
   const {
+    gameId,
     srcLang,
     targetLang,
     selection,
@@ -36,6 +39,8 @@ export const ModWorkspaceList = ({ mods }: { mods: Mod[] }) => {
   } = useModsWorkspace();
   const groups = groupModVersions(mods);
   const [resynthModId, setResynthModId] = useState<number | null>(null);
+  // The analysis needs the game's line directions; the plugin says whether it has them.
+  const analyzesEffort = useGameInfo(gameId).game?.vocalEffort === true;
 
   const renderRow = (mod: Mod, nested: boolean) => {
     const importJob = importJobByModId.get(mod.id) ?? null;
@@ -93,6 +98,10 @@ export const ModWorkspaceList = ({ mods }: { mods: Mod[] }) => {
         }
         onAiVoiceLowSimilarity={() => setResynthModId(mod.id)}
         onAiVoiceStop={() => void stopModAiVoice(mod.id, getModAiJob(mod.id, 'voice').jobId)}
+        onAiVoiceAnalyzeEffort={analyzesEffort ? () => void startModVoiceEffort(mod.id) : undefined}
+        onAiVoiceEffortStop={() =>
+          void stopModVoiceEffort(mod.id, getModAiJob(mod.id, 'voice-effort').jobId)
+        }
         onClearRows={() => deleteActions.setPendingClear({ id: mod.id, name: displayName })}
         onDeleteAll={() =>
           deleteActions.requestDeleteMods(

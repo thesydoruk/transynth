@@ -28,7 +28,9 @@ import {
 import { voiceTakeSource, type VoiceTakeSource } from './referenceVoiceTakeHooks';
 import { FUZ_TAKES, type BuiltVoiceTake, type VoiceTakeFormat } from './takeFormat';
 import { loadTakeSpeakerSexResolver } from './takeSpeakerSex';
-import { voiceTtsPayloadVersionFromPrepared } from './voiceTtsPayloadVersion';
+import type { EffortTag } from './vocalEffort';
+import { loadActiveVoiceEffortTags, lookupVoiceEffortTag } from './voiceEffortTags';
+import { voiceTtsPayloadVersionFromPrepared, voiceTtsRequestText } from './voiceTtsPayloadVersion';
 import { resolveTtsBaseUrl, resolveTtsLanguage, type TtsReferenceMode } from './voiceToolPaths';
 import { loadVoiceProjectSettings } from './voiceProjectSettings';
 import { fillMissingVoiceKeys } from './voiceTextRows';
@@ -53,6 +55,11 @@ export type SynthesizeModVoiceLineOptions = {
   referenceMode?: TtsReferenceMode;
   ttsBaseUrl?: string;
   synthesis?: Partial<TtsSynthesisParams>;
+  /**
+   * Effort tag to synthesize with in place of the stored one (null: none), for the
+   * regenerate review. Left out, the tag is looked up as every other path does.
+   */
+  effortTag?: EffortTag | null;
   /** Return true to abort before the TTS call when the stored stamp is already current. */
   skipIfCurrent?: (payloadVersion: string, takeRel: string) => Promise<boolean> | boolean;
 };
@@ -118,15 +125,30 @@ export const synthesizeModVoiceLineBuffers = async (
     return { ok: false, reason: 'no_translation', message: 'No translation for this voice line' };
   }
   const referenceSource = masterBacked?.referenceSource ?? row.source;
+  const mod = await loadImportedMod(db, opts.modId);
+  const game = opts.game ?? mod.game;
+  const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
+  const effortTag =
+    opts.effortTag !== undefined
+      ? opts.effortTag
+      : lookupVoiceEffortTag(
+          await loadActiveVoiceEffortTags(db, opts.modId, game),
+          speakerKey,
+          entry.lineKey,
+          entry.variant,
+          entry.originPlugin,
+        );
 
-  // The version stamp must hash the line-source transcript, exactly like the
-  // batch path (processVoiceLocalizeEntry) — otherwise takes committed here are
-  // seen as stale by mod-wide jobs and get re-synthesized/overwritten.
+  // The version stamp must hash the line-source transcript and carry the same
+  // effort tag, exactly like the batch path (processVoiceLocalizeEntry) —
+  // otherwise takes committed here are seen as stale by mod-wide jobs and get
+  // re-synthesized/overwritten.
   const prepared = prepareVoiceTtsText({
     lineSource: row.source,
     translation: row.translation,
     speakerSource: referenceSource,
     edid: row.edid,
+    effortTag,
   });
   if (prepared.action === 'skip') {
     return {
@@ -143,8 +165,6 @@ export const synthesizeModVoiceLineBuffers = async (
   }
 
   const ttsBaseUrl = opts.ttsBaseUrl ?? resolveTtsBaseUrl();
-  const mod = await loadImportedMod(db, opts.modId);
-  const game = opts.game ?? mod.game;
   const voiceConfig = await loadVoiceProjectSettings(db, game);
   const referenceMode = opts.referenceMode ?? voiceConfig.referenceMode;
   const synthesis = { ...voiceConfig.synthesis, ...opts.synthesis };
@@ -168,7 +188,6 @@ export const synthesizeModVoiceLineBuffers = async (
         await loadVoiceSources(db, masterBacked.context.master.modId, opts.srcLang),
       );
     }
-    const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
     const lineEnglishWav = await prepareReferenceAudio(entry, workDir);
     const siblingPool = masterBacked
       ? masterBacked.context.bySpeaker
@@ -200,7 +219,7 @@ export const synthesizeModVoiceLineBuffers = async (
     // TTS may speak against a different reference transcript than the line
     // source; the version stamp above stays on the line-source transcript.
     const tts = await synthesizeWav(
-      prepared.text,
+      voiceTtsRequestText(prepared),
       picked.clips.map((clip) => ({
         wavPath: clip.wavPath,
         speakerText: stripVoiceNonSpeechBlocks(clip.speakerText ?? referenceSource) || undefined,
