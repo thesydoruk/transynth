@@ -147,6 +147,20 @@ export type VoiceGenerateLineResult =
       message: string;
     };
 
+export type VoiceRemoveLineResult =
+  | {
+      ok: true;
+      /** Takes deleted from the mod's localize tree; 0 when the line had none. */
+      takesRemoved: number;
+      /** Synthesis stamps forgotten with them. */
+      stampsRemoved: number;
+    }
+  | {
+      ok: false;
+      reason: 'mod_not_found' | 'no_plugin_path' | 'plugin_missing' | 'line_not_found';
+      message: string;
+    };
+
 export type VoiceSpeakerRefResult =
   | { ok: true; referencePick: VoiceSpeakerRefPick | null }
   | {

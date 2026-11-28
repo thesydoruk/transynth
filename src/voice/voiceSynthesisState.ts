@@ -302,6 +302,35 @@ export const markVoiceResynthHandled = async (
   );
 };
 
+/**
+ * Forget one take's stamp: its own row and the row this speaker's take had
+ * before origins existed. As in {@link upsertVoiceSynthesisState}, the shared
+ * no-speaker row of a known speaker stays — Nate and Nora may both fall back to
+ * it, and without the take on disk it no longer counts as current for this one.
+ */
+export const deleteVoiceSynthesisStamp = async (
+  db: Tx,
+  take: Pick<
+    VoiceSynthesisStateRow,
+    'modId' | 'lineKey' | 'variant' | 'targetLang' | 'speakerKey' | 'originPlugin'
+  >,
+): Promise<number> => {
+  const { rowCount } = await db.query(
+    `DELETE FROM voice_synthesis_state
+     WHERE mod_id = $1 AND line_key = $2 AND variant = $3 AND target_lang = $4
+       AND speaker_key = $5 AND origin_plugin IN ($6, '')`,
+    [
+      take.modId,
+      take.lineKey.toUpperCase(),
+      take.variant,
+      take.targetLang.trim().toLowerCase(),
+      normalizeVoiceSpeakerKey(take.speakerKey),
+      normalizeVoiceOrigin(take.originPlugin),
+    ],
+  );
+  return rowCount ?? 0;
+};
+
 /** Remove all synthesis version rows (does not delete `.fuz` files). */
 export const clearAllVoiceSynthesisState = async (db: Tx): Promise<number> => {
   const { rowCount } = await db.query(`DELETE FROM voice_synthesis_state`);

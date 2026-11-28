@@ -3,6 +3,7 @@ export type {
   VoiceAvailabilityResult,
   VoiceGenerateLineResult,
   VoiceLinePreview,
+  VoiceRemoveLineResult,
   VoiceSpeakerLinesResult,
   VoiceSpeakerRefResult,
   VoiceSpeakerSummary,
@@ -27,3 +28,4 @@ export type { VoiceFolderGender } from './speakerGender';
 
 export { getVoicePreviewWav, getVoiceTranslationWav } from './previewWav';
 export { generateVoiceTranslationForMod } from './generateVoice';
+export { removeVoiceTranslationForMod } from './removeVoiceTranslation';

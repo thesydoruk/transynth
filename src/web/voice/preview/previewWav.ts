@@ -15,7 +15,7 @@ type ModVoiceMeta =
   | { ok: false; reason: 'mod_not_found' | 'no_plugin_path' | 'plugin_missing'; message: string }
   | { ok: true; absPath: string; voice: GameVoiceAdapter };
 
-const loadModVoiceMeta = async (db: Tx, modId: number): Promise<ModVoiceMeta> => {
+export const loadModVoiceMeta = async (db: Tx, modId: number): Promise<ModVoiceMeta> => {
   const { rows } = await db.query<{ abs_path: string | null; game: string | null }>(
     `SELECT abs_path, game FROM mods WHERE id = $1`,
     [modId],
@@ -33,7 +33,8 @@ const loadModVoiceMeta = async (db: Tx, modId: number): Promise<ModVoiceMeta> =>
   return { ok: true, absPath: resolveModStoredPath(mod.abs_path), voice };
 };
 
-const resolveVoiceEntry = async (
+/** The source take of one line: the mod's own, or the master's for a line it only overrides. */
+export const resolveVoiceEntry = async (
   db: Tx,
   modId: number,
   meta: { absPath: string; voice: GameVoiceAdapter },

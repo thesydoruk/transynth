@@ -14,6 +14,7 @@ import {
   listVoiceAvailabilityForMod,
   listVoiceLinesForSpeaker,
   listVoiceSpeakersForMod,
+  removeVoiceTranslationForMod,
   setVoiceSpeakerReferenceForMod,
 } from '../../voice/preview';
 import { attachVoiceLiveSse } from '../../voice/voiceLiveHub';
@@ -207,6 +208,49 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
           : result.reason === 'tts_failed'
             ? 503
             : 400;
+      return reply.code(status).send(result);
+    }
+    invalidateVoiceListContext(modId);
+    return reply.send(result);
+  });
+
+  // DELETE /api/mods/:id/voice/translation-audio/:lineKey/:variant — remove one line's take.
+  // Like the POST it takes no lock: a voice job running for the mod may write the take again.
+  app.delete<{
+    Params: { id: string; lineKey: string; variant: string };
+    Querystring: {
+      srcLang?: string;
+      targetLang?: string;
+      speakerKey?: string;
+      originPlugin?: string;
+    };
+  }>('/api/mods/:id/voice/translation-audio/:lineKey/:variant', async (req, reply) => {
+    const modId = parseRouteId(req.params.id);
+    const lineKey = req.params.lineKey.trim();
+    const variant = Number.parseInt(req.params.variant, 10);
+    if (modId === null) {
+      return reply.code(400).send({ error: 'Invalid mod id' });
+    }
+    if (!isVoiceFormidKey(lineKey)) {
+      return reply.code(400).send({ error: 'Invalid formid' });
+    }
+    if (!Number.isInteger(variant) || variant < 1) {
+      return reply.code(400).send({ error: 'Invalid variant' });
+    }
+
+    const result = await removeVoiceTranslationForMod(
+      db,
+      modId,
+      lineKey,
+      variant,
+      req.query.srcLang?.trim() || CONFIG.defaultSrcLang,
+      req.query.targetLang?.trim() || CONFIG.defaultTgtLang,
+      req.query.speakerKey?.trim(),
+      originQuery(req.query.originPlugin),
+    );
+    if (!result.ok) {
+      const status =
+        result.reason === 'mod_not_found' || result.reason === 'line_not_found' ? 404 : 400;
       return reply.code(status).send(result);
     }
     invalidateVoiceListContext(modId);

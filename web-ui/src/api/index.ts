@@ -28,6 +28,7 @@ import { llmTranslateEndpoints } from './endpoints/llmTranslate';
 import { voiceGenerateEndpoints } from './endpoints/voiceGenerate';
 import { voiceEffortAnalysisEndpoints } from './endpoints/voiceEffortAnalysis';
 import { voiceEffortEndpoints } from './endpoints/voiceEffort';
+import { voiceTakesEndpoints } from './endpoints/voiceTakes';
 import { modAiJobsEndpoints } from './endpoints/modAiJobs';
 import { exportsEndpoints } from './endpoints/exports';
 import { vortexEndpoints } from './endpoints/vortex';
@@ -61,6 +62,7 @@ export const api = {
   voiceGenerate: voiceGenerateEndpoints,
   voiceEffortAnalysis: voiceEffortAnalysisEndpoints,
   voiceEffort: voiceEffortEndpoints,
+  voiceTakes: voiceTakesEndpoints,
   modAiJobs: modAiJobsEndpoints,
   exports: exportsEndpoints,
   vortex: vortexEndpoints,

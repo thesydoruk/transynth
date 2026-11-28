@@ -50,6 +50,23 @@ export const writeVoiceTakeIfChanged = (
   return changed;
 };
 
+/**
+ * Delete a take and its sidecars. A sidecar left without its take goes too.
+ * True when the take itself was there.
+ */
+export const removeVoiceTake = (
+  takePath: string,
+  sidecarExtensions: readonly string[],
+): boolean => {
+  const present = fs.existsSync(takePath);
+  if (present) fs.unlinkSync(takePath);
+  for (const extension of sidecarExtensions) {
+    const sidecar = takeSidecarPath(takePath, extension);
+    if (fs.existsSync(sidecar)) fs.unlinkSync(sidecar);
+  }
+  return present;
+};
+
 /** Copy the sidecars a take has next to its copy. A missing one is skipped. */
 export const copyTakeSidecars = async (
   fromTakePath: string,

@@ -117,7 +117,10 @@ export const VoiceMode = ({
   const lineView = useVoiceLineView(visibleLines);
   const cursor = useVoiceLineCursor(lineView.lineIds, lineView.lineById);
   const save = useVoiceLineSave({
+    modId,
     linesQueryKey: data.linesQueryKey,
+    speakersQueryKey: data.speakersQueryKey,
+    srcLang,
     targetLang,
   });
 
@@ -140,6 +143,10 @@ export const VoiceMode = ({
     },
     onCancel: cursor.closeEditor,
     onCommit: commitLine,
+    onClear: (line) => {
+      void save.clearLine(line);
+      cursor.closeEditor();
+    },
   };
 
   useVoiceKeyboard({
