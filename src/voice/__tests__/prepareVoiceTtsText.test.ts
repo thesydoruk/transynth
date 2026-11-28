@@ -206,7 +206,7 @@ describe('prepareVoiceTtsText', () => {
     ).toEqual({ action: 'synthesize', text: 'Містере Д.', speakerText: 'Mr. D.' });
   });
 
-  it('skips when stripping leaves no speakable translation', () => {
+  it('skips a source that is several stage directions, whatever the translation says', () => {
     expect(
       prepareVoiceTtsText({
         lineSource: '*Gasping* *Coughing*',
@@ -214,6 +214,20 @@ describe('prepareVoiceTtsText', () => {
         translation: '*хапає ротом повітря* *кашляє*',
 
         speakerSource: '*Gasping* *Coughing*',
+      }),
+    ).toEqual({ action: 'skip', reason: 'non_speech_marker' });
+    expect(canSynthesizeVoiceLine('*cough* *hack*', 'Кахи-кахи, щоб тебе.')).toBe(false);
+    expect(canSynthesizeVoiceLine('*cough* Hello. *hack*', 'Привіт.')).toBe(true);
+  });
+
+  it('skips when stripping leaves no speakable translation', () => {
+    expect(
+      prepareVoiceTtsText({
+        lineSource: 'Hold on.',
+
+        translation: '*хапає ротом повітря* *кашляє*',
+
+        speakerSource: 'Hold on.',
       }),
     ).toEqual({ action: 'skip', reason: 'empty_after_strip' });
   });
